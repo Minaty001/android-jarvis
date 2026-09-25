@@ -1,0 +1,91 @@
+Only in /home/shanu/Desktop/android-jarvis: .agents
+Only in /home/shanu/Desktop/android-jarvis/app/src/main/assets: speaker
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/agent/AgentKernel.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/agent/AgentKernel.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/agent/skills/CommunicationSkill.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/agent/skills/CommunicationSkill.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/agent/skills/TelecomSkill.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/agent/skills/TelecomSkill.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/agent/skills/VisionSkill.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/agent/skills/VisionSkill.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/ai/IntentModel.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/ai/IntentModel.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/ai/LlmPlanner.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/ai/LlmPlanner.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/autonomous/AutonomousDaemon.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/autonomous/AutonomousDaemon.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/conversation/ConversationManager.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/conversation/ConversationManager.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/data/JarvisDatabase.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/data/JarvisDatabase.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/data/model/DataModels.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/data/model/DataModels.kt differ
+Only in /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/data/repository: MemoryRepository.kt
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/earbuds/EarbudsAssistantEngine.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/earbuds/EarbudsAssistantEngine.kt differ
+Only in /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis: emergency
+Only in /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/execution: AgentVerifier.kt
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/execution/VerificationEngine.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/execution/VerificationEngine.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/foundation/AutonomyPolicy.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/foundation/AutonomyPolicy.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/habit/HabitManager.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/habit/HabitManager.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/habit/HabitModel.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/habit/HabitModel.kt differ
+Only in /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis: meeting
+Only in /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/memory: IMemoryStore.kt
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/memory/MemoryStore.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/memory/MemoryStore.kt differ
+Only in /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/rag: IRagIndexStore.kt
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/rag/RagIndexStore.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/rag/RagIndexStore.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/retrieval/context/StructuredContextBuilder.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/retrieval/context/StructuredContextBuilder.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/runtime/AssistantRuntime.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/runtime/AssistantRuntime.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/service/CommandReceiver.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/service/CommandReceiver.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/service/JarvisForegroundService.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/service/JarvisForegroundService.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/skilllearning/LearnedSkill.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/skilllearning/LearnedSkill.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/skilllearning/LearnedSkillStore.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/skilllearning/LearnedSkillStore.kt differ
+Only in /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis: stitch
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/tools/AppAutopilotTool.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/tools/AppAutopilotTool.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/tools/MediaPlaybackControlTool.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/tools/MediaPlaybackControlTool.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/tools/MusicPlayTool.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/tools/MusicPlayTool.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/tools/RagIndexTool.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/tools/RagIndexTool.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/tools/UiTools.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/tools/UiTools.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/ui/data/UiPreferencesStore.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/ui/data/UiPreferencesStore.kt differ
+Only in /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/ui/dialogs: OwnerVoiceEnrollmentDialog.kt
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/ui/dialogs/VoiceEnrollmentDialog.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/ui/dialogs/VoiceEnrollmentDialog.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/ui/MainActivity.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/ui/MainActivity.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/ui/model/UiModels.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/ui/model/UiModels.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/ui/screens/SettingsScreen.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/ui/screens/SettingsScreen.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/voice/VoiceEngine.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/voice/VoiceEngine.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/voice/VoicePipelineLifecycleManager.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/voice/VoicePipelineLifecycleManager.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/voice/WakeWordEngine.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/voice/WakeWordEngine.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/wakeword/HybridWakeWordDetector.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/wakeword/HybridWakeWordDetector.kt differ
+Only in /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/wakeword: OwnerVoiceProfile.kt
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/wakeword/RaphaelPhoneticMatcher.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/wakeword/RaphaelPhoneticMatcher.kt differ
+Only in /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/wakeword: TfliteOwnerVoiceVerifier.kt
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/wakeword/VoiceSampleRecorder.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/wakeword/VoiceSampleRecorder.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/main/java/com/jarvis/wear/WearableCompanionReceiver.kt and /home/shanu/Pictures/android-jarvis-main/app/src/main/java/com/jarvis/wear/WearableCompanionReceiver.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/ai/LlmPlannerAndTtsFixTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/ai/LlmPlannerAndTtsFixTest.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/BluetoothAndWearableCompanionTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/BluetoothAndWearableCompanionTest.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/CameraVisionLiveOcrTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/CameraVisionLiveOcrTest.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/CameraVisionTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/CameraVisionTest.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/ContinuousConversationTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/ContinuousConversationTest.kt differ
+Only in /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis: EarbudsAssistantTest.kt
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/foundation/PolicyEngineTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/foundation/PolicyEngineTest.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/FullDuplexBargeInAndDuckingTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/FullDuplexBargeInAndDuckingTest.kt differ
+Only in /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis: HabitManagerTest.kt
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/MasterSystemFunctionVerificationTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/MasterSystemFunctionVerificationTest.kt differ
+Only in /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis: OwnerVoiceProfileTest.kt
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/RaphaelPhoneticMatcherTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/RaphaelPhoneticMatcherTest.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/RaphaelRetrievalRerankingTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/RaphaelRetrievalRerankingTest.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/ScreenVisionTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/ScreenVisionTest.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/VoiceEnrollmentAndCalibrationTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/VoiceEnrollmentAndCalibrationTest.kt differ
+Only in /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis: VoiceReliabilityPlanVerificationTest.kt
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/wakeword/HybridWakeWordDetectorTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/wakeword/HybridWakeWordDetectorTest.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/WhatsAppAttachmentSkillTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/WhatsAppAttachmentSkillTest.kt differ
+Files /home/shanu/Desktop/android-jarvis/app/src/test/java/com/jarvis/WhatsAppMessagingTest.kt and /home/shanu/Pictures/android-jarvis-main/app/src/test/java/com/jarvis/WhatsAppMessagingTest.kt differ
+Only in /home/shanu/Desktop/android-jarvis: .codex
+Only in /home/shanu/Pictures/android-jarvis-main: diff_summary.txt
+Only in /home/shanu/Desktop/android-jarvis: dist
+Files /home/shanu/Desktop/android-jarvis/docs/ARCHITECTURE.md and /home/shanu/Pictures/android-jarvis-main/docs/ARCHITECTURE.md differ
+Only in /home/shanu/Pictures/android-jarvis-main/docs: Jarvis_System_Overview.md
+Only in /home/shanu/Desktop/android-jarvis/docs: superpowers
+Only in /home/shanu/Desktop/android-jarvis: export
+Only in /home/shanu/Desktop/android-jarvis: exports
+Only in /home/shanu/Pictures/android-jarvis-main: fix_engine.py
+Only in /home/shanu/Pictures/android-jarvis-main: fix_skill_store.py
+Files /home/shanu/Desktop/android-jarvis/local.properties and /home/shanu/Pictures/android-jarvis-main/local.properties differ
+Files /home/shanu/Desktop/android-jarvis/README.md and /home/shanu/Pictures/android-jarvis-main/README.md differ
+Only in /home/shanu/Desktop/android-jarvis: release
+Only in /home/shanu/Desktop/android-jarvis/.reticle: .gitignore
+Files /home/shanu/Desktop/android-jarvis/.reticle/impact.json and /home/shanu/Pictures/android-jarvis-main/.reticle/impact.json differ
+Only in /home/shanu/Desktop/android-jarvis: .reticle-setup-crash.log
+Only in /home/shanu/Desktop/android-jarvis/scripts: __pycache__
+Files /home/shanu/Desktop/android-jarvis/settings.gradle.kts and /home/shanu/Pictures/android-jarvis-main/settings.gradle.kts differ
+Only in /home/shanu/Desktop/android-jarvis/.ua: intermediate
+Only in /home/shanu/Desktop/android-jarvis/.ua: tmp
