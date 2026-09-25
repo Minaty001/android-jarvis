@@ -1,0 +1,87 @@
+# JARVIS Android System Overview
+
+This document provides a comprehensive overview of all functions, features, systems, settings, available actions, and tools/tasks within the Jarvis Android application codebase.
+
+---
+
+## 1. System Architecture & Core Services
+
+Jarvis integrates deeply into the Android OS using a suite of background services and broadcast receivers to achieve full autonomy and contextual awareness.
+
+*   **JarvisForegroundService (Microphone):** The core always-on engine. It maintains a persistent notification and keeps the microphone active for wake-word detection (`jarvis_dscnn_int8.tflite`) without being killed by the Android system.
+*   **JarvisAccessibilityService:** The autonomous UI navigator. It reads the screen (View hierarchy) and performs UI actions (clicks, swipes, scrolling, text entry) on behalf of the user to execute "App Autopilot" macros.
+*   **JarvisVoiceInteractionService & JarvisAssistActivity:** Replaces Google Assistant as the system's default Digital Assistant. It handles long-press power button, home button long-press, and lock-screen voice invocation.
+*   **JarvisRecognitionService:** Integrates Jarvis as the default Voice Typing engine for Android keyboards.
+*   **JarvisNotificationListenerService:** Intercepts incoming notifications to read messages aloud, analyze urgency, and perform auto-replies (e.g., WhatsApp).
+*   **JarvisCallScreeningService:** Intercepts incoming phone calls for spam filtering, caller ID analysis, and potential auto-answering or blocking.
+*   **JarvisFloatingOverlayService & OverlayTileService:** Provides a visual "Orb" overlay that floats above other apps, and a Quick Settings tile for easy toggling.
+*   **Broadcast Receivers:**
+    *   `JarvisBootReceiver`: Auto-starts Jarvis on device boot.
+    *   `DailyBriefingReceiver`: Triggers morning summaries.
+    *   `PhoneCallReceiver` & `SmsReceiver`: Real-time telecom event handling.
+    *   `WearableCompanionReceiver`: Handles Bluetooth and Smartwatch integration commands.
+
+---
+
+## 2. Core Features & Capabilities
+
+*   **Continuous Conversation & Barge-in:** Jarvis keeps listening after speaking to allow follow-up questions without repeating the wake word. You can interrupt Jarvis mid-sentence (barge-in).
+*   **Media Ducking:** Intelligently lowers the volume of music, podcasts, or videos when Jarvis is speaking or listening, and restores it afterward.
+*   **Lock Screen Intelligence:** Safely executes voice commands while the device is locked, bypassing PIN requirements only for non-sensitive actions (controlled by PolicyEngine).
+*   **Skill Learning (Procedural Memory):** Automatically remembers sequences of UI actions. If Jarvis successfully navigates an app once, it saves the steps as a reusable "macro" for future use.
+*   **Proactive Alerts & Daily Briefing:** Can interrupt the user with critical contextual alerts (e.g., low battery, upcoming calendar events) and provides a scheduled daily briefing.
+*   **Bluetooth & Wearable Routing:** Routes audio seamlessly through Bluetooth headsets and syncs commands from WearOS companions.
+
+---
+
+## 3. Agent Actions & Tools (Skills)
+
+The LLM Agent powering Jarvis has access to an extensive "Tool Registry". These tools allow the AI to interact with the device and the internet.
+
+### Device Control & Automation
+*   **App Autopilot & Macro Workflow:** Opens apps and autonomously clicks, swipes, and enters text to achieve a goal.
+*   **DeviceSettingsTool:** Toggles Wi-Fi, Bluetooth, Airplane mode, Brightness, DND, etc.
+*   **FlashlightTool & BatteryStatusTool:** Hardware control and monitoring.
+*   **SystemSwitchboardTool:** Deep integration for hardware state changes.
+
+### Vision, Context & Search
+*   **ScreenVisionTool:** Takes a screenshot, parses the UI using an OCR/Vision model, and understands what is currently on the screen.
+*   **CameraVisionTool:** Captures photos to identify objects, text, or surroundings.
+*   **LocationTool & NavigationTool:** Retrieves GPS coordinates and initiates Google Maps navigation.
+*   **DeepResearchTool:** Performs web searches and crawls webpages to answer complex queries.
+
+### Communication & Telephony
+*   **MessageReaderTool & NotificationsTool:** Reads WhatsApp, SMS, and system notifications.
+*   **TelephonyTool:** Places phone calls, answers, or hangs up.
+*   **WhatsApp Automation:** Deep integration to send messages, read chats, and auto-reply.
+
+### Organization & Productivity
+*   **CalendarTool:** Checks schedule and adds events.
+*   **ReminderSchedulerTool:** Sets alarms and timers.
+*   **JarvisDbTool & FileManagerTool:** Saves notes/memories to a local database and manages files on the SD card.
+*   **UnitCurrencyConverterTool:** Handles live conversions.
+*   **MediaPlaybackControlTool & SpotifyControlTool:** Plays, pauses, and searches for music/podcasts.
+
+---
+
+## 4. Settings & Preferences
+
+Users can customize Jarvis heavily via the `UiPreferencesStore` and Settings Screen.
+
+*   **Wake Word & Voice Profile:**
+    *   `wakeWord`: The custom phrase used to trigger Jarvis (e.g., "Hey Jarvis").
+    *   `wakeSensitivity`: Threshold (0.0 to 1.0) balancing false positives against responsiveness.
+    *   Voice enrollment and calibration data for specific user voices.
+*   **Safety & Security Rules:**
+    *   `requireConfirmationForMediumRisk` / `HighRisk`: Forces Jarvis to ask permission before taking actions like sending emails or deleting files.
+    *   `lockScreenVoiceEnabled`: Toggles lock-screen functionality.
+    *   `deviceUnlockPin`: Optional PIN caching for autonomous unlocking (if permitted by policy).
+*   **Conversational AI Settings:**
+    *   `preferredLlmModel`: Switch between different AI models (e.g., Groq, Gemini, local Ollama).
+    *   `ttsProvider` & `ttsVoice`: Configures the Text-to-Speech voice and engine.
+    *   `offlineAsrPreferred`: Forces on-device speech recognition for privacy.
+*   **Behavioral Toggles:**
+    *   `mediaDuckingEnabled`, `continuousConversation`, `bargeInEnabled`, `wearableSyncEnabled`.
+*   **Developer & Debug:**
+    *   `developerMode`: Enables deep logging and raw LLM prompt visibility.
+    *   `logVerbosity`: Controls the amount of debug output.
