@@ -22,7 +22,13 @@ class CalendarTool(
     val metadata = ToolMetadata(
         name = "CALENDAR_MANAGE",
         description = "Manages meetings, reminders, and daily calendar schedule.",
-        parameters = emptyList(),
+        parameters = listOf(
+            com.jarvis.foundation.ParameterSchema("action", "string", "Action: add_event, list_events, today_agenda, check_conflict", required = true),
+            com.jarvis.foundation.ParameterSchema("title", "string", "Event title or meeting name", required = false),
+            com.jarvis.foundation.ParameterSchema("time", "string", "Natural language time or date (e.g. 'tomorrow at 3pm')", required = false),
+            com.jarvis.foundation.ParameterSchema("duration", "integer", "Event duration in minutes (default 60)", required = false),
+            com.jarvis.foundation.ParameterSchema("location", "string", "Event location or meeting link", required = false)
+        ),
         riskLevel = RiskLevel.LOW
     )
 

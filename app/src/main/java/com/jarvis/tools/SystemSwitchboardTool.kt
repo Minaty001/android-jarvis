@@ -28,7 +28,11 @@ class SystemSwitchboardTool(private val context: Context) : Tool {
     val metadata = ToolMetadata(
         name = "SYSTEM_SWITCHBOARD",
         description = "Toggles device radios, DND and torch; opens Settings when Android blocks the change.",
-        parameters = emptyList(),
+        parameters = listOf(
+            com.jarvis.foundation.ParameterSchema("action", "string", "Action: wifi, bt, dnd, hotspot, led, state, brightness, ringer", required = true),
+            com.jarvis.foundation.ParameterSchema("target", "string", "Target state: on, off, true, false. Or for ringer: silent, vibrate, normal", required = false),
+            com.jarvis.foundation.ParameterSchema("value", "string", "Value for adjustments, e.g. brightness level 0-255", required = false)
+        ),
         riskLevel = RiskLevel.MEDIUM
     )
 

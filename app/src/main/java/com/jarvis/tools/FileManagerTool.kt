@@ -18,7 +18,13 @@ class FileManagerTool(
     val metadata = ToolMetadata(
         name = "FILE_MANAGER",
         description = "Manages file creation, directory inspection, storage health, and document reading.",
-        parameters = emptyList(),
+        parameters = listOf(
+            com.jarvis.foundation.ParameterSchema("action", "string", "Action: create_file, write_file, list_directory, read_text_file, search_file, delete_file, storage_breakdown, cleanup_suggestions", required = true),
+            com.jarvis.foundation.ParameterSchema("path", "string", "File or directory path / filename", required = false),
+            com.jarvis.foundation.ParameterSchema("content", "string", "Text content to write to file", required = false),
+            com.jarvis.foundation.ParameterSchema("query", "string", "Search query for finding files", required = false),
+            com.jarvis.foundation.ParameterSchema("append", "boolean", "Append to file instead of overwrite (default false)", required = false)
+        ),
         riskLevel = RiskLevel.LOW
     )
 
