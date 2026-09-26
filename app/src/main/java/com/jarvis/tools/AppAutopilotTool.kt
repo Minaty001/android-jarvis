@@ -20,14 +20,14 @@ class AppAutopilotTool(private val context: Context? = null) : Tool {
 
     override val name: String = "APP_AUTOPILOT"
     override val description: String =
-        "Autonomously interacts with on-screen UI across any app. Actions: 'click', 'type', 'fill_form', 'scroll', 'dismiss_popup'. Params: action, target, text, direction."
+        "Autonomously interacts with on-screen UI across any app. Actions: 'click', 'type', 'fill_form', 'scroll', 'read_screen', 'like_instagram', 'dismiss_popup'. Params: action, target, text, direction."
     override val policy: ToolPolicy = ToolPolicy(idempotent = false, retryable = true, riskLevel = RiskLevel.MEDIUM)
 
     val metadata = ToolMetadata(
         name = "APP_AUTOPILOT",
         description = "Navigates and drives third-party application user interfaces via accessibility tree.",
         parameters = listOf(
-            com.jarvis.foundation.ParameterSchema("action", "string", "Action to perform: click, type, fill_form, scroll, dismiss_popup", required = true),
+            com.jarvis.foundation.ParameterSchema("action", "string", "Action to perform: click, type, fill_form, scroll, read_screen, like_instagram, dismiss_popup", required = true),
             com.jarvis.foundation.ParameterSchema("target", "string", "Button, field label, hint, or view ID to interact with", required = false),
             com.jarvis.foundation.ParameterSchema("text", "string", "Text to type or form data key-value JSON", required = false),
             com.jarvis.foundation.ParameterSchema("direction", "string", "Scroll direction: 'down' or 'up'", required = false)
@@ -48,6 +48,30 @@ class AppAutopilotTool(private val context: Context? = null) : Tool {
         Log.i(TAG, "Executing UI Autopilot: action='$action', target='$target', text='$text'")
 
         return when (action) {
+            "read_screen", "read_page" -> {
+                val nodes = service.dumpInteractiveTree()
+                val textNodes = nodes.filter { !it.text.isNullOrBlank() || !it.contentDescription.isNullOrBlank() }
+                if (textNodes.isNotEmpty()) {
+                    val content = textNodes.joinToString("\n") { it.text ?: it.contentDescription ?: "" }
+                    ToolResult.Success("Screen content:\n$content")
+                } else {
+                    ToolResult.Failed("No readable text found on the screen.")
+                }
+            }
+
+            "like_instagram", "like_reel" -> {
+                // Double tap the center of the screen to like a reel or post on Instagram
+                val displayMetrics = service.resources.displayMetrics
+                val width = displayMetrics.widthPixels.toFloat()
+                val height = displayMetrics.heightPixels.toFloat()
+                val tapped = service.doubleTapCoordinatesAsync(width / 2f, height / 2f)
+                if (tapped) {
+                    ToolResult.Success("Double-tapped center of screen to like.")
+                } else {
+                    ToolResult.Failed("Failed to double-tap to like.")
+                }
+            }
+
             "dismiss_popup", "dismiss", "close_dialog" -> {
                 val dismissed = AutonomousUiNavigator.dismissIntrusiveDialogs(service)
                 if (dismissed) {
