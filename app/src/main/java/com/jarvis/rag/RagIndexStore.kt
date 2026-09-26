@@ -83,7 +83,7 @@ class RagDatabaseHelper(context: Context) :
 }
 
 
-class RagIndexStore(context: android.content.Context) : IRagIndexStore {
+class RagIndexStore(context: android.content.Context) {
     private val dbHelper = RagDatabaseHelper(com.jarvis.storage.JarvisStorageHub.createDatabaseContext(context.applicationContext))
 
     companion object {
@@ -118,7 +118,7 @@ class RagIndexStore(context: android.content.Context) : IRagIndexStore {
     }
 
     @Synchronized
-    override fun indexDocument(metadata: DocumentMetadata, chunks: List<DocumentChunk>) {
+    fun indexDocument(metadata: DocumentMetadata, chunks: List<DocumentChunk>) {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -179,7 +179,7 @@ class RagIndexStore(context: android.content.Context) : IRagIndexStore {
     }
 
     @Synchronized
-    override fun deleteDocument(docId: String) {
+    fun deleteDocument(docId: String) {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -196,7 +196,7 @@ class RagIndexStore(context: android.content.Context) : IRagIndexStore {
         db.delete("rag_term_freq", "doc_id = ?", arrayOf(docId))
     }
 
-    override fun getChunk(chunkId: String): DocumentChunk? {
+    fun getChunk(chunkId: String): DocumentChunk? {
         val db = dbHelper.readableDatabase
         val cursor = db.query(
             "rag_chunks",
@@ -210,7 +210,7 @@ class RagIndexStore(context: android.content.Context) : IRagIndexStore {
         }
     }
 
-    override fun getAllChunks(): List<DocumentChunk> {
+    fun getAllChunks(): List<DocumentChunk> {
         val db = dbHelper.readableDatabase
         val cursor = db.query("rag_chunks", null, null, null, null, null, "doc_id, chunk_index ASC")
         val list = mutableListOf<DocumentChunk>()
@@ -222,7 +222,7 @@ class RagIndexStore(context: android.content.Context) : IRagIndexStore {
         return list
     }
 
-    override fun getChunksForDocument(docId: String): List<DocumentChunk> {
+    fun getChunksForDocument(docId: String): List<DocumentChunk> {
         val db = dbHelper.readableDatabase
         val cursor = db.query("rag_chunks", null, "doc_id = ?", arrayOf(docId), null, null, "chunk_index ASC")
         val list = mutableListOf<DocumentChunk>()
@@ -234,7 +234,7 @@ class RagIndexStore(context: android.content.Context) : IRagIndexStore {
         return list
     }
 
-    override fun getAllDocuments(): List<DocumentMetadata> {
+    fun getAllDocuments(): List<DocumentMetadata> {
         val db = dbHelper.readableDatabase
         val cursor = db.query("rag_documents", null, null, null, null, null, "created_at DESC")
         val list = mutableListOf<DocumentMetadata>()
@@ -257,7 +257,7 @@ class RagIndexStore(context: android.content.Context) : IRagIndexStore {
         return list
     }
 
-    override fun getTermPostings(term: String): List<TermPosting> {
+    fun getTermPostings(term: String): List<TermPosting> {
         val db = dbHelper.readableDatabase
         val cursor = db.query(
             "rag_term_freq",
@@ -281,7 +281,7 @@ class RagIndexStore(context: android.content.Context) : IRagIndexStore {
         return list
     }
 
-    override fun getStats(): RagStats {
+    fun getStats(): RagStats {
         val db = dbHelper.readableDatabase
         var totalDocs = 0
         var totalChunks = 0

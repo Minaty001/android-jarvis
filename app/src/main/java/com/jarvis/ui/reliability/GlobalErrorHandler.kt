@@ -10,10 +10,9 @@ object GlobalErrorHandler {
     fun install(context: Context) {
         if (installed) return
         installed = true
-        val logger = CorrelationLogger(context.applicationContext)
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
-            val id = logger.error("GlobalError", "Unhandled exception on ${thread.name}", error)
+            val id = Log.e("GlobalError", "Unhandled exception on ${thread.name}", error)
             Log.e("GlobalError", "correlationId=$id", error)
             // Android still receives the crash after durable logging. This avoids silently swallowing corrupted process state.
             previous?.uncaughtException(thread, error) ?: Process.killProcess(Process.myPid())

@@ -1,13 +1,13 @@
 package com.jarvis.tools
 
 import com.jarvis.rag.DocumentChunker
-import com.jarvis.rag.IRagIndexStore
+import com.jarvis.rag.RagIndexStore
 import java.io.File
 import java.util.UUID
 
 
 class RagIndexTool(
-    private val indexStore: IRagIndexStore,
+    private val indexStore: RagIndexStore,
     private val chunker: DocumentChunker = DocumentChunker()
 ) : Tool {
     override val name: String = "RAG_INDEX"

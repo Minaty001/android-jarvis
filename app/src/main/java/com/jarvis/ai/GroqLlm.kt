@@ -1,6 +1,5 @@
 package com.jarvis.ai
 
-import com.jarvis.foundation.MetricsCollector
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -21,8 +20,7 @@ import java.util.concurrent.TimeUnit
 class GroqLlm(
     private val apiKey: String,
     private val model: String = LlmConfig.DEFAULT_MODEL,
-    private val baseUrl: String = LlmConfig.DEFAULT_BASE_URL,
-    private val metrics: MetricsCollector = MetricsCollector.shared
+    private val baseUrl: String = LlmConfig.DEFAULT_BASE_URL
 ) : LlmClient, java.io.Closeable {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -35,16 +33,7 @@ class GroqLlm(
         messages: List<Message>,
         onToken: (String) -> Unit
     ): Result<String> {
-        val start = System.currentTimeMillis()
         val result = chatInternal(messages, onToken)
-        metrics.record(
-            component = "llm",
-            operation = "chat",
-            ok = result.isSuccess,
-            wallMs = System.currentTimeMillis() - start,
-            tokensIn = messages.sumOf { MetricsCollector.estimateTokens(it.content) },
-            tokensOut = MetricsCollector.estimateTokens(result.getOrNull().orEmpty())
-        )
         return result
     }
 
@@ -169,16 +158,7 @@ class GroqLlm(
         uiContext: String?,
         onToken: (String) -> Unit
     ): Result<String> {
-        val start = System.currentTimeMillis()
         val result = chatVisionInternal(prompt, base64ImageUrl, uiContext, onToken)
-        metrics.record(
-            component = "llm",
-            operation = "chat_vision",
-            ok = result.isSuccess,
-            wallMs = System.currentTimeMillis() - start,
-            tokensIn = MetricsCollector.estimateTokens(prompt + (uiContext ?: "")),
-            tokensOut = MetricsCollector.estimateTokens(result.getOrNull().orEmpty())
-        )
         return result
     }
 

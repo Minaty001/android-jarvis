@@ -3,7 +3,7 @@ package com.jarvis.memory
 /**
  * Resolves memory conflicts by versioning and superseding previous entries with the same key.
  */
-class MemoryConflictResolver(private val store: IMemoryStore) {
+class MemoryConflictResolver(private val store: MemoryStore) {
 
     fun resolveAndStore(item: MemoryItem): Long {
         val existing = store.queryByKey(item.key, item.namespace)

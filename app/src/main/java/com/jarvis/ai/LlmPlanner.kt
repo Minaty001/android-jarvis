@@ -2,7 +2,6 @@ package com.jarvis.ai
 
 import android.util.Log
 import com.jarvis.agent.*
-import com.jarvis.foundation.MetricsCollector
 import org.json.JSONObject
 
 data class ActionPlan(
@@ -35,7 +34,6 @@ class LlmPlanner(
     ): Result<AgentDecision> {
         val route = router?.route(goal)
         if (route != null) {
-            MetricsCollector.shared.record("router", route.tier.name.lowercase(), ok = route.usesCloud, wallMs = 0)
             if (route.privacySensitive) {
                 return Result.failure(
                     IllegalStateException("This request looks privacy-sensitive; refusing to send it to a cloud model.")

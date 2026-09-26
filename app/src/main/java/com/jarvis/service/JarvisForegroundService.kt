@@ -48,8 +48,6 @@ class JarvisForegroundService : Service() {
         private set
     var clipboardIntelligenceEngine: com.jarvis.clipboard.ClipboardIntelligenceEngine? = null
         private set
-    var batteryAutopilotEngine: com.jarvis.battery.BatteryThermalAutopilotEngine? = null
-        private set
     var ambientContextEngine: com.jarvis.context.AmbientContextEngine? = null
         private set
     private var wakeLock: android.os.PowerManager.WakeLock? = null
@@ -78,34 +76,6 @@ class JarvisForegroundService : Service() {
             Log.w(TAG, "Error releasing WakeLock", e)
         }
     }
-
-    private fun startGuardianObserver() {
-        guardianJob?.cancel()
-        val engine = voiceEngine ?: return
-        val guardian = engine.assistantRuntime.deviceGuardian
-
-        guardianJob = ensureActiveScope().launch {
-            engine.assistantRuntime.worldStore.state.collect { _ ->
-                val verdict = guardian.canExecuteAutonomousTask(requiresAudio = true)
-                if (!verdict.allowed) {
-                    if (!isListeningSuspended) {
-                        isListeningSuspended = true
-                        Log.i(TAG, "Suspending continuous listening & releasing WakeLock: ${verdict.reason}")
-                        engine.continuousAudioStream.stop()
-                        releaseWakeLock()
-                    }
-                } else {
-                    if (isListeningSuspended) {
-                        isListeningSuspended = false
-                        Log.i(TAG, "Resuming continuous listening & acquiring WakeLock: ${verdict.reason}")
-                        acquireWakeLock()
-                        engine.continuousAudioStream.start()
-                    }
-                }
-            }
-        }
-    }
-
     inner class LocalBinder : Binder() {
         fun getService(): JarvisForegroundService = this@JarvisForegroundService
     }
@@ -275,14 +245,6 @@ class JarvisForegroundService : Service() {
             }
             clipboardIntelligenceEngine?.start()
 
-            if (batteryAutopilotEngine == null) {
-                batteryAutopilotEngine = com.jarvis.battery.BatteryThermalAutopilotEngine(
-                    context = applicationContext,
-                    ttsEngine = voiceEngine?.ttsEngine
-                )
-            }
-            batteryAutopilotEngine?.start()
-
             if (ambientContextEngine == null) {
                 ambientContextEngine = com.jarvis.context.AmbientContextEngine(
                     context = applicationContext,
@@ -293,7 +255,7 @@ class JarvisForegroundService : Service() {
             ambientContextEngine?.start()
 
             startBluetoothScoObserver()
-            startGuardianObserver()
+            
             startNotificationObserver()
             scheduleHeartbeatWatchdog()
         }
@@ -416,8 +378,8 @@ class JarvisForegroundService : Service() {
             earbudsAssistantEngine = null
             clipboardIntelligenceEngine?.stop()
             clipboardIntelligenceEngine = null
-            batteryAutopilotEngine?.stop()
-            batteryAutopilotEngine = null
+            
+            
             ambientContextEngine?.stop()
             ambientContextEngine = null
             com.jarvis.wear.WearableNotificationDispatcher.dismiss(applicationContext)

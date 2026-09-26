@@ -40,7 +40,7 @@ data class RagQueryResult(
 )
 
 class RagRetriever(
-    private val indexStore: IRagIndexStore,
+    private val indexStore: RagIndexStore,
     private val k1: Double = 1.2,
     private val b: Double = 0.75,
     private val vectorizer: EmbeddingVectorizer? = null,

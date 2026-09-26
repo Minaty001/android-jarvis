@@ -143,7 +143,7 @@ class MemoryDatabaseHelper(context: Context) :
     }
 }
 
-class MemoryStore(context: android.content.Context) : IMemoryStore {
+class MemoryStore(context: android.content.Context) {
     private val dbHelper = MemoryDatabaseHelper(com.jarvis.storage.JarvisStorageHub.createDatabaseContext(context.applicationContext))
 
     fun saveMemory(
@@ -196,7 +196,7 @@ class MemoryStore(context: android.content.Context) : IMemoryStore {
         }
     }
 
-    override fun archiveMemory(id: Long) {
+    fun archiveMemory(id: Long) {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -213,9 +213,9 @@ class MemoryStore(context: android.content.Context) : IMemoryStore {
         }
     }
 
-    override fun queryByKey(key: String, namespace: String): List<MemoryItem> {
+    fun queryByKey(key: String, namespace: String? = null): List<MemoryItem> {
         val db = dbHelper.readableDatabase
-        val isAll = namespace.equals("all", ignoreCase = true) || namespace.isBlank()
+        val isAll = namespace.isNullOrBlank() || namespace.equals("all", ignoreCase = true)
         val selection = if (isAll) "key = ? AND archived = 0" else "key = ? AND namespace = ? AND archived = 0"
         val args = if (isAll) arrayOf(key) else arrayOf(key, namespace)
         val cursor = db.query(
@@ -230,9 +230,9 @@ class MemoryStore(context: android.content.Context) : IMemoryStore {
         return cursorToItems(cursor)
     }
 
-    override fun getAllActiveMemories(namespace: String): List<MemoryItem> {
+    fun getAllActiveMemories(namespace: String? = null): List<MemoryItem> {
         val db = dbHelper.readableDatabase
-        val isAll = namespace.equals("all", ignoreCase = true) || namespace.isBlank()
+        val isAll = namespace.isNullOrBlank() || namespace.equals("all", ignoreCase = true)
         val selection = if (isAll) "archived = 0" else "namespace = ? AND archived = 0"
         val args = if (isAll) null else arrayOf(namespace)
         val cursor = db.query(
@@ -247,7 +247,7 @@ class MemoryStore(context: android.content.Context) : IMemoryStore {
         return cursorToItems(cursor)
     }
 
-    override fun saveMemoryItem(item: MemoryItem): Long {
+    fun saveMemoryItem(item: MemoryItem): Long {
         val db = dbHelper.writableDatabase
         val values = ContentValues().apply {
             put("type", item.type.name)
@@ -286,12 +286,12 @@ class MemoryStore(context: android.content.Context) : IMemoryStore {
         }
     }
 
-    override fun rebuildFtsIndex() {
+    fun rebuildFtsIndex() {
         val db = dbHelper.writableDatabase
         dbHelper.rebuildFts(db)
     }
 
-    override fun setConfirmed(id: Long, confirmed: Boolean) {
+    fun setConfirmed(id: Long, confirmed: Boolean) {
         val db = dbHelper.writableDatabase
         val cv = ContentValues().apply {
             put("confirmed", if (confirmed) 1 else 0)
@@ -364,7 +364,7 @@ class MemoryStore(context: android.content.Context) : IMemoryStore {
         val candidates = linkedMapOf<Long, MemoryItem>()
         val effectiveTypes = if (types.isEmpty()) MemoryType.values().toSet() else types
         val typeNames = effectiveTypes.map { it.name }
-        val isAllNamespace = namespace.equals("all", ignoreCase = true) || namespace.isBlank()
+        val isAllNamespace = namespace.isNullOrBlank() || namespace.equals("all", ignoreCase = true)
 
         val ftsTerms = tokenize(cleanQuery)
         if (ftsTerms.isNotEmpty()) {

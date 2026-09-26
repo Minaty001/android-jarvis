@@ -20,19 +20,10 @@ class BatteryStatusTool(private val context: Context? = null) : Tool {
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
         val state = BatteryMonitor.getBatteryState(context)
-        val autopilot = com.jarvis.battery.BatteryThermalAutopilotEngine.instance?.getAutopilotStatus()
-
         val summary = buildString {
             append(BatteryMonitor.formatSummary(state))
-            if (autopilot != null) {
-                if (autopilot.estimatedMinutesRemaining != null) {
-                    val verb = if (state.isCharging) "until full" else "remaining"
-                    append(" Approximately ${autopilot.estimatedMinutesRemaining} mins $verb.")
-                }
-                append(" Temperature is ${autopilot.temperatureC.toInt()}°C (${autopilot.thermalStatus}).")
-            }
+            append(" Temperature is ${state.temperatureC.toInt()}°C.")
         }
-
         return ToolResult.Success(
             message = summary,
             data = mapOf(
@@ -40,9 +31,7 @@ class BatteryStatusTool(private val context: Context? = null) : Tool {
                 "is_charging" to state.isCharging,
                 "is_full" to state.isFull,
                 "plugged" to state.pluggedSource,
-                "temperature" to state.temperatureC,
-                "estimated_minutes" to (autopilot?.estimatedMinutesRemaining ?: -1),
-                "thermal_status" to (autopilot?.thermalStatus ?: "NORMAL")
+                "temperature" to state.temperatureC
             )
         )
     }

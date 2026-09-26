@@ -37,7 +37,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var store: UiPreferencesStore
     private lateinit var apiManager: ApiManager
     private lateinit var runner: BackgroundTaskRunner
-    private lateinit var logger: CorrelationLogger
     private var currentRoute = "Dashboard"
     private var dirty = false
     private var service: JarvisForegroundService? = null
@@ -70,7 +69,6 @@ class MainActivity : AppCompatActivity() {
         store = UiPreferencesStore(this)
         apiManager = ApiManager(store, SecureCredentialStore(this))
         runner = BackgroundTaskRunner()
-        logger = CorrelationLogger(applicationContext)
         setContentView(buildRoot())
         applyTheme(store.loadSettings().theme)
         requestPermissionsIfNeeded()
@@ -127,13 +125,13 @@ class MainActivity : AppCompatActivity() {
                 service?.let { s.bindService(it) }
             }
             "Memory" -> MemoryScreen(this)
-            "APIs" -> ApiManagerScreen(this, this, apiManager, logger) { service?.reloadConfig() }
+            "APIs" -> ApiManagerScreen(this, this, apiManager) { service?.reloadConfig() }
             "Settings" -> SettingsScreen(this, store, store.loadSettings(), { dirty = it }, { service?.reloadConfig() }, service?.voiceEngine)
             "Logs" -> LogsScreen(this, store)
             else -> DashboardScreen(
                 this, this, runner, store::loadSettings,
                 { showRoute("Settings") },
-                logger,
+                
                 { showRoute("Skills") },
                 { showRoute("Memory") }
             ).also { it.tag = "dashboard" }

@@ -1,5 +1,6 @@
 package com.jarvis.ui.screens
 
+import android.util.Log
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -19,7 +20,6 @@ import com.jarvis.ui.components.Ui
 import com.jarvis.ui.model.AppSettings
 import com.jarvis.ui.model.safeDisplay
 import com.jarvis.ui.reliability.BackgroundTaskRunner
-import com.jarvis.ui.reliability.CorrelationLogger
 import com.jarvis.voice.VoiceState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -40,7 +40,6 @@ class DashboardScreen(
     private val runner: BackgroundTaskRunner,
     private val settings: () -> AppSettings,
     private val onOpenSettings: () -> Unit,
-    private val logger: CorrelationLogger,
     private val onOpenSkills: (() -> Unit)? = null,
     private val onOpenMemory: (() -> Unit)? = null
 ) : ScrollView(context) {
@@ -499,8 +498,8 @@ class DashboardScreen(
                 }
                 engine.processTextCommand(command)
             } catch (t: Throwable) {
-                val id = logger.error("Dashboard", "Command failed", t)
-                response.text = "JARVIS  •  Failed. Reference ${id.take(8)}."
+                Log.e("Dashboard", "Command failed", t)
+                response.text = "JARVIS  •  Failed."
                 status.text = "ERROR"
                 orb.setState(VoiceState.ERROR)
                 waveform.setState(VoiceState.ERROR)

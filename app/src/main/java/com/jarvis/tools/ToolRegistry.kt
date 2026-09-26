@@ -4,7 +4,6 @@ import android.util.Log
 import com.jarvis.execution.VerificationEngine
 import com.jarvis.execution.VerificationResult
 import com.jarvis.execution.VerificationStatus
-import com.jarvis.foundation.MetricsCollector
 import com.jarvis.foundation.ParameterSchema
 import com.jarvis.foundation.PolicyEngine
 import com.jarvis.foundation.ToolMetadata
@@ -476,7 +475,6 @@ class ToolExecutor(
     val registry: ToolRegistry,
     private val policyEngine: PolicyEngine = PolicyEngine(),
     private val verificationEngine: VerificationEngine? = null,
-    private val metrics: MetricsCollector = MetricsCollector.shared,
     private val auditSink: AuditSink? = null
 ) {
     private val TAG = "ToolExecutor"
@@ -488,7 +486,6 @@ class ToolExecutor(
     ): ToolResult {
         val start = System.currentTimeMillis()
         val result = executeInternal(actionType, params, userApprovalGranted)
-        metrics.record("tool", actionType, ok = result.success, wallMs = System.currentTimeMillis() - start)
         return result
     }
 

@@ -2,7 +2,7 @@ package com.jarvis.memory
 
 import java.util.concurrent.TimeUnit
 
-class MemoryGarbageCollector(private val memoryStore: IMemoryStore) {
+class MemoryGarbageCollector(private val memoryStore: MemoryStore) {
 
     fun computeDecayedImportance(item: MemoryItem, now: Long = System.currentTimeMillis()): Double {
         val ageMs = (now - item.createdAt).coerceAtLeast(0)

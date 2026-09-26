@@ -42,10 +42,10 @@ data class VerificationResult(
     }
 }
 
-class VerificationEngine(private val context: android.content.Context? = null) : AgentVerifier {
+class VerificationEngine(private val context: android.content.Context? = null) {
     private val TAG = "VerificationEngine"
 
-    override fun verify(actionType: String, params: Map<String, String>, result: ToolResult): VerificationResult {
+    fun verify(actionType: String, params: Map<String, String>, result: ToolResult): VerificationResult {
         if (!result.success) {
             if (result.interrupted) {
                 return VerificationResult.unknown(

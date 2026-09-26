@@ -15,7 +15,7 @@ import java.util.Locale
  */
 class QuickNotesTool(
     private val context: Context? = null,
-    private val customIndexStore: com.jarvis.rag.IRagIndexStore? = null
+    private val customIndexStore: com.jarvis.rag.RagIndexStore? = null
 ) : Tool {
     private val TAG = "QuickNotesTool"
 
@@ -110,7 +110,7 @@ class QuickNotesTool(
                 // Seamlessly index note into local RAG Knowledge Vault for semantic retrieval
                 var indexedInRag = false
                 runCatching {
-                    val ragStore: com.jarvis.rag.IRagIndexStore? = customIndexStore ?: context?.let { com.jarvis.rag.RagIndexStore(it) }
+                    val ragStore: com.jarvis.rag.RagIndexStore? = customIndexStore ?: context?.let { com.jarvis.rag.RagIndexStore(it) }
                     if (ragStore != null) {
                         val chunker = com.jarvis.rag.DocumentChunker()
                         val (meta, chunks) = chunker.chunk(

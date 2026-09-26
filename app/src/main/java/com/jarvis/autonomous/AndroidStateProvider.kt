@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.NotificationManager
 import android.content.Context
 import com.jarvis.foundation.TaskStateManager
-import com.jarvis.foundation.worldstate.StateProvider
 import com.jarvis.foundation.worldstate.WorldStateSnapshot
 import com.jarvis.media.MediaSessionManager
 
@@ -16,9 +15,9 @@ class AndroidStateProvider(
     private val ambientEngine: AmbientContextEngine,
     private val mediaManager: MediaSessionManager,
     private val taskStateManager: TaskStateManager
-) : StateProvider {
+) {
 
-    override fun snapshot(): WorldStateSnapshot {
+    fun snapshot(): WorldStateSnapshot {
         val ambient = ambientEngine.inferCurrentContext()
         val activeTask = taskStateManager.getRecentTasks(10).firstOrNull { it.status in RUNNING_STATES }
         

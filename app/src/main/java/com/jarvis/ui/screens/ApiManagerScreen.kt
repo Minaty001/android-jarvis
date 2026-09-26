@@ -1,5 +1,6 @@
 package com.jarvis.ui.screens
 
+import android.util.Log
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -13,7 +14,6 @@ import com.jarvis.ui.model.ApiConfig
 import com.jarvis.ui.model.AuthMethod
 import com.jarvis.ui.model.ProviderRegistry
 import com.jarvis.ui.reliability.ApiManager
-import com.jarvis.ui.reliability.CorrelationLogger
 import com.jarvis.ui.data.UiPreferencesStore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -22,7 +22,6 @@ class ApiManagerScreen(
     context: Context,
     private val owner: LifecycleOwner,
     private val manager: ApiManager,
-    private val logger: CorrelationLogger,
     private val onChanged: (() -> Unit)? = null
 ) : ScrollView(context) {
     private val list = LinearLayout(context)
@@ -218,10 +217,10 @@ class ApiManagerScreen(
             result.fold(
                 onSuccess = { code -> Toast.makeText(context, "Connection OK (HTTP $code)", Toast.LENGTH_LONG).show() },
                 onFailure = { e ->
-                    val id = logger.error("ApiManager", "${config.name} test failed", e)
+                    Log.e("ApiManager", "${config.name} test failed", e)
                     val cached = manager.lastKnownStatus(config.id)
                     val fallback = cached?.let { " Last known good: $it." } ?: " No cached success available."
-                    Toast.makeText(context, "Failed. Correlation ${id.take(8)}. Check Logs.$fallback", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Check Logs.$fallback", Toast.LENGTH_LONG).show()
                 }
             )
         }
@@ -298,8 +297,8 @@ class ApiManagerScreen(
                     refresh()
                     onChanged?.invoke()
                 } catch (e: Throwable) {
-                    val id = logger.error("ApiManager", "Invalid API configuration", e)
-                    Toast.makeText(context, "Not saved: ${e.message} (${id.take(8)})", Toast.LENGTH_LONG).show()
+                    Log.e("ApiManager", "Invalid API configuration", e)
+                    Toast.makeText(context, "Not saved: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
             .show()

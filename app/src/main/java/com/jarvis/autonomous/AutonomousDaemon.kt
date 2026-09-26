@@ -1,7 +1,7 @@
 package com.jarvis.autonomous
 
 import com.jarvis.calendar.CalendarManager
-import com.jarvis.execution.AgentVerifier
+import com.jarvis.execution.VerificationEngine
 import com.jarvis.execution.VerificationResult
 import com.jarvis.files.FileManager
 import com.jarvis.tools.ToolExecutor
@@ -52,7 +52,7 @@ class AutonomousDaemon(
     private val calendarManager: CalendarManager? = null,
     private val fileManager: FileManager? = null,
     private val toolExecutor: ToolExecutor? = null,
-    private val verificationEngine: AgentVerifier? = null,
+    private val verificationEngine: VerificationEngine? = null,
     private val busyProvider: () -> Boolean = { false },
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 ) {

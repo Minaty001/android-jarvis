@@ -28,12 +28,9 @@ data class WorldStateSnapshot(
     }.toString()
 }
 
-fun interface StateProvider {
-    fun snapshot(): WorldStateSnapshot
-}
 
 /** Keeps a small history of device states so a command's before/after state can be observed. */
-class WorldStateService(private val provider: StateProvider) {
+class WorldStateService(private val provider: com.jarvis.autonomous.AndroidStateProvider) {
     private val history = ArrayDeque<WorldStateSnapshot>()
 
     fun fresh(): WorldStateSnapshot = provider.snapshot().also(::record)

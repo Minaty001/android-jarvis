@@ -1,6 +1,5 @@
 package com.jarvis.ai
 
-import com.jarvis.foundation.MetricsCollector
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -24,8 +23,7 @@ import java.util.concurrent.TimeUnit
  */
 class OllamaLlm(
     private val baseUrl: String = DEFAULT_BASE_URL,
-    private val model: String = DEFAULT_MODEL,
-    private val metrics: MetricsCollector = MetricsCollector.shared
+    private val model: String = DEFAULT_MODEL
 ) : LlmClient, java.io.Closeable {
 
     companion object {
@@ -46,16 +44,7 @@ class OllamaLlm(
         messages: List<Message>,
         onToken: (String) -> Unit
     ): Result<String> {
-        val start = System.currentTimeMillis()
         val result = chatInternal(messages, onToken)
-        metrics.record(
-            component = "ollama_llm",
-            operation = "chat",
-            ok = result.isSuccess,
-            wallMs = System.currentTimeMillis() - start,
-            tokensIn = messages.sumOf { MetricsCollector.estimateTokens(it.content) },
-            tokensOut = MetricsCollector.estimateTokens(result.getOrNull().orEmpty())
-        )
         return result
     }
 

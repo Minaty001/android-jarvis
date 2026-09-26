@@ -1,6 +1,5 @@
 package com.jarvis.agent
 
-import com.jarvis.foundation.worldstate.StateProvider
 import com.jarvis.memory.AugmentedMemoryPipeline
 import com.jarvis.retrieval.engine.RaphaelRetrievalManager
 import com.jarvis.ai.Message
@@ -18,7 +17,7 @@ enum class ContextNeed {
 class AgentContextRouter(
     private val memoryPipeline: AugmentedMemoryPipeline? = null,
     private val ragInjector: com.jarvis.rag.RagContextInjector? = null,
-    private val stateProvider: StateProvider? = null,
+    private val stateProvider: com.jarvis.autonomous.AndroidStateProvider? = null,
     private val raphaelRetrievalManager: RaphaelRetrievalManager? = null
 ) {
     fun routeNeeds(goal: String): Set<ContextNeed> {

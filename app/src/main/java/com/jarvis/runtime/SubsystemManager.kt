@@ -5,16 +5,9 @@ import android.content.Context
 import android.util.Log
 import com.jarvis.camera.CameraPerceptionEngine
 import com.jarvis.camera.TfLiteVisionDetector
-import com.jarvis.controlplane.DeviceGuardian
-import com.jarvis.controlplane.ExecutionPipeline
-import com.jarvis.controlplane.FailureJournal
-import com.jarvis.controlplane.GoalManager
 import com.jarvis.controlplane.JarvisEventBus
-import com.jarvis.controlplane.StrategyRegistry
-import com.jarvis.controlplane.WorldStateStore
 import com.jarvis.execution.VerificationEngine
 import com.jarvis.files.FileManager
-import com.jarvis.foundation.MetricsCollector
 import com.jarvis.foundation.PolicyEngine
 import com.jarvis.macro.MacroWorkflowEngine
 import com.jarvis.media.MediaSessionManager
@@ -72,13 +65,7 @@ class SubsystemManager(private val context: Context? = null) {
     // =========================================================================
     // 1. CORE SUBSYSTEMS (Boot-critical, lightweight, always available)
     // =========================================================================
-    val worldStore: WorldStateStore = WorldStateStore.shared
     val eventBus: JarvisEventBus = JarvisEventBus.shared
-    val deviceGuardian: DeviceGuardian = DeviceGuardian(worldStore)
-    val goalManager: GoalManager = GoalManager.shared
-    val failureJournal: FailureJournal = FailureJournal.shared
-    val strategyRegistry: StrategyRegistry = StrategyRegistry.shared
-    val metrics: MetricsCollector = MetricsCollector.shared
 
     val taskStateManager by lazy { TaskStateManager(requireNotNull(context) { "Context required for TaskStateManager" }) }
     val policyEngine by lazy {
@@ -102,14 +89,6 @@ class SubsystemManager(private val context: Context? = null) {
 
     val memoryStore: MemoryStore by lazy { MemoryStore(requireNotNull(context) { "Context required for MemoryStore" }) }
     val augmentedMemoryPipeline: AugmentedMemoryPipeline by lazy { AugmentedMemoryPipeline(memoryStore) }
-    val executionPipeline: ExecutionPipeline by lazy {
-        ExecutionPipeline(
-            worldStore = worldStore,
-            guardian = deviceGuardian,
-            eventBus = eventBus,
-            goalManager = goalManager
-        )
-    }
 
     // =========================================================================
     // 2. VISION SUBSYSTEM (Lazy, evictable)

@@ -44,7 +44,6 @@ class AssistantRuntime(
     val subsystems = SubsystemManager(context)
 
     // Infrastructure & Services
-    val metrics get() = subsystems.metrics
     val memoryStore get() = subsystems.memoryStore
     val conversationManager get() = subsystems.conversationManager
     val augmentedMemoryPipeline get() = subsystems.augmentedMemoryPipeline
@@ -72,13 +71,6 @@ class AssistantRuntime(
     )
 
     // Autonomous Control Plane Architecture (Layers 0 - 10)
-    val eventBus: com.jarvis.controlplane.JarvisEventBus get() = subsystems.eventBus
-    val worldStore: com.jarvis.controlplane.WorldStateStore get() = subsystems.worldStore
-    val deviceGuardian: com.jarvis.controlplane.DeviceGuardian get() = subsystems.deviceGuardian
-    val goalManager: com.jarvis.controlplane.GoalManager get() = subsystems.goalManager
-    val executionPipeline: com.jarvis.controlplane.ExecutionPipeline get() = subsystems.executionPipeline
-    val failureJournal: com.jarvis.controlplane.FailureJournal get() = subsystems.failureJournal
-    val strategyRegistry: com.jarvis.controlplane.StrategyRegistry get() = subsystems.strategyRegistry
 
     // Reliability & Persistence
     val checkpointManager get() = subsystems.checkpointManager
@@ -258,7 +250,7 @@ class AssistantRuntime(
         reapInterruptedTasks()
         initPlannerAndKernel()
         networkStateMonitor.start()
-        startEventBusObserver()
+        
         loadVoiceProfile()
         scope.launch(Dispatchers.IO) {
             com.jarvis.tools.AppScanner.scanInstalledApps(context)
@@ -271,42 +263,6 @@ class AssistantRuntime(
             val profile = store.loadVoiceProfile()
             if (profile.isEnrolled) {
                 wakeEngine.applyVoiceProfile(profile)
-            }
-        }
-    }
-
-    private fun startEventBusObserver() {
-        scope.launch {
-            eventBus.events.collect { event ->
-                when (event) {
-                    is com.jarvis.controlplane.JarvisEvent.BatteryStateChanged -> {
-                        worldStore.update { it.copy(batteryPercent = event.level, isCharging = event.isCharging) }
-                    }
-                    is com.jarvis.controlplane.JarvisEvent.IncomingCall -> {
-                        worldStore.update { it.copy(activeCaller = event.callerName ?: event.phoneNumber) }
-                    }
-                    is com.jarvis.controlplane.JarvisEvent.CallStateChanged -> {
-                        if (event.state.equals("IDLE", ignoreCase = true)) {
-                            worldStore.update { it.copy(activeCaller = null) }
-                        }
-                    }
-                    is com.jarvis.controlplane.JarvisEvent.MediaStateChanged -> {
-                        worldStore.update { it.copy(isMediaPlaying = event.isPlaying, currentMediaTitle = event.title) }
-                    }
-                    is com.jarvis.controlplane.JarvisEvent.BluetoothStateChanged -> {
-                        worldStore.update { it.copy(isBluetoothScoConnected = event.isScoReady) }
-                    }
-                    is com.jarvis.controlplane.JarvisEvent.NetworkStateChanged -> {
-                        worldStore.update { it.copy(isNetworkOnline = event.isOnline, isMeteredNetwork = event.isMetered) }
-                    }
-                    is com.jarvis.controlplane.JarvisEvent.SmsReceived -> {
-                        worldStore.update { it.copy(unreadSmsCount = it.unreadSmsCount + 1, latestOtp = event.detectedOtp ?: it.latestOtp) }
-                    }
-                    is com.jarvis.controlplane.JarvisEvent.WhatsAppNotification -> {
-                        worldStore.update { it.copy(unreadWhatsAppCount = it.unreadWhatsAppCount + 1) }
-                    }
-                    else -> Unit
-                }
             }
         }
     }
@@ -466,24 +422,6 @@ class AssistantRuntime(
         activeTaskId = null
         pendingClarificationTaskId = null
         pendingResumeStrikes = 0
-    }
-
-    suspend fun executeAutonomousGoal(
-        objective: String,
-        actionType: String,
-        params: Map<String, String> = emptyMap(),
-        priority: Int = 0,
-        rollbackAction: (suspend () -> Unit)? = null
-    ): com.jarvis.controlplane.GoalExecutionResult {
-        val goal = com.jarvis.controlplane.Goal(
-            objective = objective,
-            actionType = actionType,
-            params = params,
-            priority = priority,
-            rollbackAction = rollbackAction
-        )
-        goalManager.submitGoal(goal)
-        return executionPipeline.executeGoal(goal, toolExecutor)
     }
 
     private fun registerDefaultTools() {
@@ -662,9 +600,7 @@ class AssistantRuntime(
         userApprovalGranted: Boolean = false,   // SECURITY: fail-closed — callers must explicitly grant approval
         onEvent: (AgentEvent) -> Unit = {}
     ): RuntimeExecutionResult = commandMutex.withLock {
-        val start = System.currentTimeMillis()
         val result = executeCommandInternal(utterance, userApprovalGranted, onEvent)
-        metrics.record("command", "execute", ok = result.success, wallMs = System.currentTimeMillis() - start)
         result
     }
 
