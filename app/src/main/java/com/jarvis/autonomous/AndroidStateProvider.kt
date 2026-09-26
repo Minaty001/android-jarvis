@@ -8,6 +8,8 @@ import com.jarvis.foundation.worldstate.StateProvider
 import com.jarvis.foundation.worldstate.WorldStateSnapshot
 import com.jarvis.media.MediaSessionManager
 
+import com.jarvis.accessibility.JarvisAccessibilityService
+
 /** Real device-state provider composed from the runtime subsystems already present. */
 class AndroidStateProvider(
     private val context: Context,
@@ -19,6 +21,18 @@ class AndroidStateProvider(
     override fun snapshot(): WorldStateSnapshot {
         val ambient = ambientEngine.inferCurrentContext()
         val activeTask = taskStateManager.getRecentTasks(10).firstOrNull { it.status in RUNNING_STATES }
+        
+        val fgPackage = JarvisAccessibilityService.currentForegroundPackage
+        val activeSession = when {
+            fgPackage == null -> null
+            fgPackage.contains("youtube", ignoreCase = true) -> "YouTube"
+            fgPackage.contains("instagram", ignoreCase = true) -> "Instagram"
+            fgPackage.contains("chrome", ignoreCase = true) -> "Chrome"
+            fgPackage.contains("whatsapp", ignoreCase = true) -> "WhatsApp"
+            fgPackage.contains("spotify", ignoreCase = true) -> "Spotify"
+            else -> fgPackage.substringAfterLast('.')
+        }
+
         return WorldStateSnapshot(
             batteryPercent = ambient.batteryPercent,
             isCharging = ambient.isCharging,
@@ -31,7 +45,9 @@ class AndroidStateProvider(
             },
             activeTaskTitle = activeTask?.goal,
             activeTaskStatus = activeTask?.status,
-            missingPermissions = missingPermissions()
+            missingPermissions = missingPermissions(),
+            foregroundPackage = fgPackage,
+            activeAppSession = activeSession
         )
     }
 

@@ -63,6 +63,13 @@ class AgentContextRouter(
             needs.add(ContextNeed.NONE)
         }
 
+        // Always include device state if there is an active foreground app session,
+        // so the LLM knows which app is currently open for contextual routing.
+        if (stateProvider?.snapshot()?.activeAppSession != null) {
+            needs.add(ContextNeed.DEVICE_STATE)
+            needs.remove(ContextNeed.NONE)
+        }
+
         return needs
     }
 

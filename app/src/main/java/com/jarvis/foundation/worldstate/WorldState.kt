@@ -11,7 +11,9 @@ data class WorldStateSnapshot(
     val mediaTitle: String? = null,
     val activeTaskTitle: String? = null,
     val activeTaskStatus: String? = null,
-    val missingPermissions: List<String> = emptyList()
+    val missingPermissions: List<String> = emptyList(),
+    val foregroundPackage: String? = null,
+    val activeAppSession: String? = null
 ) {
     fun overview(): String = buildString {
         append("Battery: $batteryPercent%")
@@ -22,6 +24,7 @@ data class WorldStateSnapshot(
         if (mediaPlaying) append(", media playing: ${mediaTitle ?: "unknown"}")
         activeTaskTitle?.let { append(", active task: $it [$activeTaskStatus]") }
         if (missingPermissions.isNotEmpty()) append(", missing permissions: ${missingPermissions.joinToString()}")
+        activeAppSession?.let { append(", ACTIVE APP SESSION: $it") }
     }.toString()
 }
 

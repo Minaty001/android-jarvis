@@ -221,6 +221,7 @@ class LlmPlanner(
             16. Stop when the actual user goal is satisfied.
             17. Keep reasoning concise and operational.
             18. Return strict JSON only.
+            19. APP SESSIONS: If DEVICE STATE shows an "ACTIVE APP SESSION" (e.g. YouTube, Instagram, Chrome), route vaguely-phrased commands (like "search for X", "scroll", "play") into APP_AUTOPILOT or specific app tools targeting that foreground app, unless the user explicitly asks to close it or open another app.
 
             USER GOAL: $goal
             TASK ITERATION: ${state.iteration}
