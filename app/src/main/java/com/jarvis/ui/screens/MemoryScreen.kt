@@ -97,15 +97,15 @@ class MemoryScreen(context: Context) : ScrollView(context) {
 
     private fun setupTabStrip() {
         tabContainer.removeAllViews()
-        val tabTitles = listOf("1. MEMORY STORE", "2. RETRIEVAL INSPECTOR", "3. GC & DECAY HUD")
+        val tabTitles = listOf("1. MEMORY STORE", "2. RETRIEVAL INSPECTOR", "3. GC & DECAY HUD", "4. LANGCHAIN RAG")
         tabTitles.forEachIndexed { index, title ->
             val tabButton = Button(context).apply {
                 text = title
-                textSize = 10f
+                textSize = 9f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(if (index == activeTab) Ui.BG else Ui.CYAN)
                 setBackgroundColor(if (index == activeTab) Ui.CYAN else Ui.SURFACE_2)
-                setPadding(Ui.dp(context, 10), Ui.dp(context, 6), Ui.dp(context, 10), Ui.dp(context, 6))
+                setPadding(Ui.dp(context, 4), Ui.dp(context, 4), Ui.dp(context, 4), Ui.dp(context, 4))
                 setOnClickListener {
                     if (activeTab != index) {
                         activeTab = index
@@ -126,7 +126,38 @@ class MemoryScreen(context: Context) : ScrollView(context) {
             0 -> renderMemoryStoreTab()
             1 -> renderRetrievalInspectorTab()
             2 -> renderGcAndDecayTab()
+            3 -> renderLangChainRagTab()
         }
+    }
+
+    private fun renderLangChainRagTab() {
+        contentContainer.addView(TextView(context).apply {
+            text = "LANGCHAIN VECTOR EMBEDDINGS (Persistent)"
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Ui.CYAN)
+        })
+        contentContainer.addView(Ui.divider(context))
+
+        val file = java.io.File(context.filesDir, "langchain_rag.json")
+        if (!file.exists()) {
+            contentContainer.addView(TextView(context).apply { text = "No persistent vector store initialized yet."; setTextColor(Ui.TEXT) })
+            return
+        }
+        val card = MaterialCardView(context).apply {
+            setCardBackgroundColor(Ui.SURFACE_2)
+            radius = Ui.dp(context, 8).toFloat()
+            strokeWidth = Ui.dp(context, 1)
+            strokeColor = Ui.CYAN_DIM
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = Ui.dp(context, 8) }
+        }
+        card.addView(TextView(context).apply {
+            text = "Persistent Vector Store Active\nPath: ${file.name}\nSize: ${file.length()} bytes"
+            setTextColor(Ui.TEXT)
+            textSize = 13f
+            setPadding(Ui.dp(context, 12), Ui.dp(context, 12), Ui.dp(context, 12), Ui.dp(context, 12))
+        })
+        contentContainer.addView(card)
     }
 
     // ==========================================

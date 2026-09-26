@@ -18,7 +18,8 @@ data class ExecutionPlan(
 class LlmPlanner(
     private val llmClient: LlmClient,
     private val router: ModelRouter? = null,
-    private val strongLlm: LlmClient? = null
+    private val strongLlm: LlmClient? = null,
+    var langchainAssistant: LangChainAssistant? = null
 ) {
     private val TAG = "LlmPlanner"
 
@@ -41,6 +42,26 @@ class LlmPlanner(
             }
         }
         val activeLlm = if (route?.tier == ModelTier.STRONG && strongLlm != null) strongLlm else llmClient
+
+        val lowerGoal = goal.lowercase().trim()
+        val isActionableGoal = lowerGoal.isNotBlank() && MultiTaskDecomposer.hasActionVerb(lowerGoal)
+
+        if (!isActionableGoal && langchainAssistant != null && state.iteration == 1) {
+            return runCatching {
+                val ans = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    langchainAssistant!!.chat(goal)
+                }
+                AgentDecision(
+                    type = DecisionType.ACT,
+                    action = AgentAction(type = "SPEAK", params = mapOf("text" to ans)),
+                    question = null,
+                    reasonCode = "langchain_memory_rag",
+                    successCriteria = listOf("Replied from LangChain memory"),
+                    confidence = 1.0f
+                )
+            }
+        }
+
         val prompt = buildDecisionPrompt(goal, state, workingMemory, context, availableTools)
         val messages = mutableListOf<Message>()
         messages.add(Message("system", prompt))

@@ -391,6 +391,16 @@ class AssistantRuntime(
                 router = com.jarvis.ai.ModelRouter(defaultModel = groqModel),
                 strongLlm = strongClient
             )
+            // Initialize LangChain Assistant for Memory and RAG
+            if (effectiveGroqKey.isNotBlank()) {
+                val lcAssistant = com.jarvis.ai.LangChainAssistant(
+                    context = context,
+                    apiKey = effectiveGroqKey,
+                    modelName = groqModel,
+                    baseUrl = "https://api.groq.com/openai/v1"
+                )
+                llmPlanner?.langchainAssistant = lcAssistant
+            }
         }
         toolRegistry.registerLazy(
             name = "SCREEN_VISION",
@@ -514,6 +524,9 @@ class AssistantRuntime(
         }
         toolRegistry.registerLazy("SEARCH_MEMORY", "Searches encrypted on-device memory store") {
             SearchMemoryTool(memoryStore)
+        }
+        toolRegistry.registerLazy("REMEMBER", "Saves facts, notes, or long-term memories using LangChain vector storage") {
+            com.jarvis.tools.LangChainIngestTool(llmPlanner?.langchainAssistant)
         }
 
         // Foundation File & System tools
