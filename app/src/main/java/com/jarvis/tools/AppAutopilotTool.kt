@@ -20,14 +20,14 @@ class AppAutopilotTool(private val context: Context? = null) : Tool {
 
     override val name: String = "APP_AUTOPILOT"
     override val description: String =
-        "Autonomously interacts with on-screen UI across any app. Actions: 'click', 'type', 'fill_form', 'scroll', 'read_screen', 'like_instagram', 'dismiss_popup'. Params: action, target, text, direction."
+        "Autonomously interacts with on-screen UI across any app. Actions: 'click', 'type', 'fill_form', 'scroll', 'read_screen', 'like_instagram', 'next_reel', 'comment_instagram', 'dismiss_popup'. Params: action, target, text, direction."
     override val policy: ToolPolicy = ToolPolicy(idempotent = false, retryable = true, riskLevel = RiskLevel.MEDIUM)
 
     val metadata = ToolMetadata(
         name = "APP_AUTOPILOT",
         description = "Navigates and drives third-party application user interfaces via accessibility tree.",
         parameters = listOf(
-            com.jarvis.foundation.ParameterSchema("action", "string", "Action to perform: click, type, fill_form, scroll, read_screen, like_instagram, dismiss_popup", required = true),
+            com.jarvis.foundation.ParameterSchema("action", "string", "Action to perform: click, type, fill_form, scroll, read_screen, like_instagram, next_reel, comment_instagram, dismiss_popup", required = true),
             com.jarvis.foundation.ParameterSchema("target", "string", "Button, field label, hint, or view ID to interact with", required = false),
             com.jarvis.foundation.ParameterSchema("text", "string", "Text to type or form data key-value JSON", required = false),
             com.jarvis.foundation.ParameterSchema("direction", "string", "Scroll direction: 'down' or 'up'", required = false)
@@ -69,6 +69,25 @@ class AppAutopilotTool(private val context: Context? = null) : Tool {
                     ToolResult.Success("Double-tapped center of screen to like.")
                 } else {
                     ToolResult.Failed("Failed to double-tap to like.")
+                }
+            }
+            
+            "next_reel", "swipe_reel" -> {
+                val swiped = service.swipeNextReel()
+                if (swiped) {
+                    ToolResult.Success("Swiped to next reel.")
+                } else {
+                    ToolResult.Failed("Failed to swipe to next reel.")
+                }
+            }
+
+            "comment_instagram", "comment_reel" -> {
+                if (text.isBlank()) return ToolResult.Failed("Specify text to comment.")
+                val commented = service.commentOnInstagram(text)
+                if (commented) {
+                    ToolResult.Success("Commented '$text' on Instagram.")
+                } else {
+                    ToolResult.Failed("Failed to post comment on Instagram.")
                 }
             }
 

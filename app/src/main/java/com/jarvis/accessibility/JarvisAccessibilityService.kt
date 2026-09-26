@@ -411,6 +411,55 @@ class JarvisAccessibilityService : AccessibilityService() {
     }
 
     /**
+     * Swipes to the next reel/story on Instagram or similar apps.
+     */
+    suspend fun swipeNextReel(): Boolean {
+        val displayMetrics = resources.displayMetrics
+        val width = displayMetrics.widthPixels.toFloat()
+        val height = displayMetrics.heightPixels.toFloat()
+        // Fast swipe up from bottom 80% to top 20%
+        return swipeAsync(width / 2f, height * 0.8f, width / 2f, height * 0.2f, 150)
+    }
+
+    /**
+     * Automates posting a comment on an active Instagram post/reel.
+     */
+    suspend fun commentOnInstagram(message: String): Boolean {
+        val commentButton = findNodeByContentDescription("Comment") 
+            ?: findNodeByViewId("com.instagram.android:id/row_feed_button_comment")
+        
+        if (commentButton != null) {
+            val target = if (commentButton.isClickable) commentButton else commentButton.parent
+            if (target != null) clickNode(target)
+        } else {
+            // Fallback: Guess comment button location (bottom left usually)
+            val displayMetrics = resources.displayMetrics
+            val width = displayMetrics.widthPixels.toFloat()
+            val height = displayMetrics.heightPixels.toFloat()
+            clickCoordinatesAsync(width * 0.2f, height * 0.85f)
+        }
+        
+        delay(1200) // Wait for comment bottom sheet
+        
+        val input = findNodeByText("Add a comment", exact = false) ?: findFirstEditableNode()
+        if (input == null) return false
+        
+        setNodeText(input, message)
+        delay(500)
+        
+        val postBtn = findNodeByContentDescription("Post") ?: findNodeByText("Post") ?: findNodeByViewId("com.instagram.android:id/layout_comment_thread_post_button_click_area")
+        if (postBtn != null) {
+            val pTarget = if (postBtn.isClickable) postBtn else postBtn.parent
+            if (pTarget != null) clickNode(pTarget)
+        } else {
+            // Fallback: tap bottom right where Post usually is
+            val displayMetrics = resources.displayMetrics
+            clickCoordinatesAsync(displayMetrics.widthPixels * 0.9f, displayMetrics.heightPixels * 0.9f)
+        }
+        return true
+    }
+
+    /**
      * Searches for a node matching text (contains or exact).
      */
     fun findNodeByText(text: String, exact: Boolean = false): AccessibilityNodeInfo? {
