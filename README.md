@@ -68,7 +68,9 @@ The app is organized into **5 core navigation tabs** along with a persistent HUD
 - **Retrieval Simulator & Benchmarking**: Inspect cross-encoder re-ranking, BM25 keyword relevance, vector cosine similarity, and candidate source attribution.
 - **Garbage Collector & Half-Life Decay**: Real-time half-life decay visualization with automated memory pruning.
 
-### 4. 🔑 API & Model Manager (`APIS`)
+### 4. 🔑 Brain & Wake Config (`BRAIN`)
+- **Unified Brain Control:** Provides a unified setup for API keys (Groq, Gemini, Ollama) and Wake Word phrase configuration.
+- **Voice Enrollment:** Instantly calibrate your voice to bypass background noise.
 - **Hardware-Backed Keystore**: Visual badge confirming AES-GCM-256 Android Keystore credential encryption.
 - **Active Reasoning Models**: One-tap selection across multi-provider LLM models:
   - `openai/gpt-oss-20b` (Default high-speed reasoning, planning & tool use)
