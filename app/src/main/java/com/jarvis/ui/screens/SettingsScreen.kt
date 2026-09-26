@@ -31,7 +31,6 @@ class SettingsScreen(
     private val wakeAckSpinner = Spinner(context)
     private val ttsProviderSpinner = Spinner(context)
     private val ttsVoiceSpinner = Spinner(context)
-    private val llmModel = EditText(context)
     private val notifications = MaterialSwitch(context)
     private val developer = MaterialSwitch(context)
     private val continuousConvSwitch = MaterialSwitch(context)
@@ -691,7 +690,6 @@ class SettingsScreen(
             setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
         }
         addField(wakeInner, "Wake Word (TFLite KWS)", wakeWord, initial.wakeWord)
-        addField(wakeInner, "Preferred Groq Model", llmModel, initial.preferredLlmModel)
 
         val ackOptions = listOf("CHIME", "VOICE", "BOTH", "SILENT")
         wakeAckSpinner.adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, ackOptions)
@@ -1151,7 +1149,7 @@ class SettingsScreen(
         root.addView(logCard)
         renderLogs()
 
-        val editFields = listOf(timeout, retries, wakeWord, llmModel, customKey, customValue)
+        val editFields = listOf(timeout, retries, wakeWord, customKey, customValue)
         editFields.forEach { field ->
             field.addTextChangedListener(object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -1210,7 +1208,6 @@ class SettingsScreen(
             maxRetryAttempts = retries.text.toString().toIntOrNull()?.coerceIn(1, 8) ?: 3,
             logVerbosity = verbosity.selectedItem.toString(),
             wakeWord = wakeWord.text.toString().trim().ifBlank { "Jarvis" },
-            preferredLlmModel = llmModel.text.toString().trim().ifBlank { LlmConfig.DEFAULT_MODEL },
             developerMode = developer.isChecked,
             continuousConversation = continuousConvSwitch.isChecked,
             bargeInEnabled = bargeInSwitch.isChecked,

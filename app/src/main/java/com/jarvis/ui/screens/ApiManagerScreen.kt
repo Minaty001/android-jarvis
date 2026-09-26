@@ -11,9 +11,10 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import com.jarvis.ui.components.Ui
 import com.jarvis.ui.model.ApiConfig
 import com.jarvis.ui.model.AuthMethod
+import com.jarvis.ui.model.ProviderRegistry
 import com.jarvis.ui.reliability.ApiManager
 import com.jarvis.ui.reliability.CorrelationLogger
-import com.jarvis.ui.security.SecureCredentialStore
+import com.jarvis.ui.data.UiPreferencesStore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -26,6 +27,7 @@ class ApiManagerScreen(
 ) : ScrollView(context) {
     private val list = LinearLayout(context)
     private var testJob: Job? = null
+    private val uiStore = UiPreferencesStore(context)
 
     init {
         setBackgroundColor(Ui.BG)
@@ -59,10 +61,51 @@ class ApiManagerScreen(
         root.addView(header)
 
         root.addView(Ui.divider(context))
+        
+        // Active Model Dropdown
+        root.addView(Ui.sectionLabel(context, "Active Agent Model"))
+        val modelDropdownCard = Ui.glassCard(context, Ui.BORDER_GLOW)
+        val modelDropdownInner = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Ui.dp(context, 14), Ui.dp(context, 8), Ui.dp(context, 14), Ui.dp(context, 8))
+        }
+        val modelSpinner = Spinner(context)
+        modelDropdownInner.addView(modelSpinner)
+        modelDropdownCard.addView(modelDropdownInner)
+        root.addView(modelDropdownCard)
+        
+        // Populate Spinner based on configured APIs
+        val configuredApis = manager.list().filter { it.active }.map { it.name }
+        val availableModels = mutableListOf<String>()
+        // Always add a fallback
+        availableModels.add("openai/gpt-oss-20b") 
+        for (provider in ProviderRegistry.providers.keys) {
+            if (configuredApis.contains(provider)) {
+                availableModels.addAll(ProviderRegistry.providers[provider] ?: emptyList())
+            }
+        }
+        val adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, availableModels.distinct())
+        modelSpinner.adapter = adapter
+        
+        // Set selection
+        val savedModel = uiStore.loadSettings().preferredLlmModel
+        val savedIndex = availableModels.distinct().indexOf(savedModel)
+        if (savedIndex >= 0) modelSpinner.setSelection(savedIndex)
+        
+        modelSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedModel = adapter.getItem(position) ?: return
+                uiStore.saveSettings(uiStore.loadSettings().copy(preferredLlmModel = selectedModel))
+                onChanged?.invoke()
+            }
+        }
 
-        // LLM Provider & Model Presets Card
-        root.addView(Ui.sectionLabel(context, "Hybrid multi-provider models"))
-        val modelCard = Ui.glassCard(context, Ui.BORDER_GLOW)
+        root.addView(Ui.divider(context))
+
+        // LLM Provider Presets Card
+        root.addView(Ui.sectionLabel(context, "Providers (1-Click Setup)"))
+        val modelCard = Ui.glassCard(context, Ui.BORDER)
         val modelInner = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
@@ -72,20 +115,17 @@ class ApiManagerScreen(
             overScrollMode = View.OVER_SCROLL_NEVER
         }
         val modelRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-        modelRow.addView(Ui.techChip(context, "gpt-oss-20b (Groq)", "⚡") {
-            Toast.makeText(context, "Primary Groq model: openai/gpt-oss-20b", Toast.LENGTH_SHORT).show()
+        modelRow.addView(Ui.techChip(context, "Groq", "⚡") {
+            showSimpleEditor("Groq")
         })
-        modelRow.addView(Ui.techChip(context, "Gemini 2.0 Flash", "✨") {
-            showEditor(ApiConfig(name = "Google Gemini", baseUrl = "https://generativelanguage.googleapis.com", apiKeyHeader = "x-goog-api-key"))
+        modelRow.addView(Ui.techChip(context, "Gemini", "✨") {
+            showSimpleEditor("Gemini")
         })
-        modelRow.addView(Ui.techChip(context, "Claude 3.5 Sonnet", "🎭") {
-            showEditor(ApiConfig(name = "OpenRouter (Claude)", baseUrl = "https://openrouter.ai/api/v1", apiKeyHeader = "Authorization"))
+        modelRow.addView(Ui.techChip(context, "OpenRouter", "🎭") {
+            showSimpleEditor("OpenRouter")
         })
-        modelRow.addView(Ui.techChip(context, "DeepSeek R1", "🧠") {
-            showEditor(ApiConfig(name = "OpenRouter (DeepSeek)", baseUrl = "https://openrouter.ai/api/v1", apiKeyHeader = "Authorization"))
-        })
-        modelRow.addView(Ui.techChip(context, "Ollama (Local)", "🖥️") {
-            showEditor(ApiConfig(name = "Ollama Local", baseUrl = "http://10.0.2.2:11434", apiKeyHeader = "Authorization"))
+        modelRow.addView(Ui.techChip(context, "Ollama", "🖥️") {
+            showSimpleEditor("Ollama")
         })
         modelScroll.addView(modelRow)
         modelInner.addView(modelScroll)
@@ -97,13 +137,13 @@ class ApiManagerScreen(
             setPadding(0, Ui.dp(context, 4), 0, Ui.dp(context, 8))
         }
         actionRow.addView(TextView(context).apply {
-            text = "ACTIVE ENDPOINTS"
+            text = "CONFIGURED PROVIDERS"
             textSize = 10.5f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
             letterSpacing = 0.12f
         }, LinearLayout.LayoutParams(0, -2, 1f))
-        actionRow.addView(Ui.primaryButton(context, "+ ADD API") { showEditor(null) })
+        actionRow.addView(Ui.primaryButton(context, "+ CUSTOM API") { showAdvancedEditor(null) })
         root.addView(actionRow)
 
         list.orientation = LinearLayout.VERTICAL
@@ -116,7 +156,7 @@ class ApiManagerScreen(
         val apis = manager.list()
         if (apis.isEmpty()) {
             list.addView(TextView(context).apply {
-                text = "No custom APIs configured. Add Groq or another LLM endpoint."
+                text = "No providers configured. Click a provider above to set up."
                 textSize = 12f
                 setTextColor(Ui.MUTED)
                 setPadding(0, Ui.dp(context, 8), 0, 0)
@@ -153,7 +193,7 @@ class ApiManagerScreen(
 
             val actions = Ui.row(context)
             actions.addView(Ui.primaryButton(context, "TEST PING") { runTest(config) })
-            actions.addView(Ui.button(context, "EDIT") { showEditor(config) })
+            actions.addView(Ui.button(context, "EDIT") { showAdvancedEditor(config) })
             actions.addView(Ui.dangerButton(context, "DELETE") {
                 manager.delete(config.id)
                 refresh()
@@ -187,7 +227,34 @@ class ApiManagerScreen(
         }
     }
 
-    private fun showEditor(existing: ApiConfig?) {
+    private fun showSimpleEditor(providerName: String) {
+        val container = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(Ui.dp(context,18), Ui.dp(context,8), Ui.dp(context,18), Ui.dp(context,8)) }
+        val secret = Ui.input(context, if (providerName == "Ollama") "Base URL (e.g. http://10.0.2.2:11434)" else "API Key for $providerName")
+        container.addView(secret.first)
+        
+        androidx.appcompat.app.AlertDialog.Builder(context)
+            .setTitle("Setup $providerName")
+            .setView(container)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save") { _, _ ->
+                val cfg = ProviderRegistry.getConfigFor(providerName)
+                try {
+                    val secretText = secret.second.text?.toString()?.trim()
+                    if (providerName == "Ollama" && !secretText.isNullOrBlank()) {
+                        manager.save(cfg.copy(baseUrl = secretText), null)
+                    } else {
+                        manager.save(cfg, secretText?.takeIf { it.isNotEmpty() })
+                    }
+                    refresh()
+                    onChanged?.invoke()
+                } catch (e: Throwable) {
+                    Toast.makeText(context, "Failed to save: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+            .show()
+    }
+
+    private fun showAdvancedEditor(existing: ApiConfig?) {
         val container = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(Ui.dp(context,18), Ui.dp(context,8), Ui.dp(context,18), Ui.dp(context,8)) }
         val name = Ui.input(context, "API name"); val url = Ui.input(context, "Endpoint URL"); val keyHeader = Ui.input(context, "API-key header (default Authorization)"); val secret = Ui.input(context, secretHint(existing?.authMethod ?: AuthMethod.API_KEY))
         container.addView(name.first); container.addView(url.first)
@@ -209,7 +276,7 @@ class ApiManagerScreen(
         }
 
         androidx.appcompat.app.AlertDialog.Builder(context)
-            .setTitle(if (existing == null) "Add API" else "Edit API")
+            .setTitle(if (existing == null) "Add Custom API" else "Edit API")
             .setView(container)
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Save") { _, _ ->

@@ -343,25 +343,34 @@ class AssistantRuntime(
 
         val providers = mutableListOf<ProviderEntry>()
         val strongProviders = mutableListOf<ProviderEntry>()
+        
+        val preferredModel = groqModel
+        fun isModelFor(provider: String): Boolean {
+            return com.jarvis.ui.model.ProviderRegistry.providers[provider]?.contains(preferredModel) == true
+        }
 
         if (effectiveGroqKey.isNotBlank()) {
-            providers.add(ProviderEntry("Groq", GroqLlm(effectiveGroqKey, model = groqModel), priority = 0))
+            val m = if (isModelFor("Groq")) preferredModel else LlmConfig.DEFAULT_MODEL
+            providers.add(ProviderEntry("Groq", GroqLlm(effectiveGroqKey, model = m), priority = if (m == preferredModel) -1 else 0))
             strongProviders.add(ProviderEntry("Groq-Strong", GroqLlm(effectiveGroqKey, model = LlmConfig.STRONG_MODEL), priority = 0))
         }
 
         if (effectiveGeminiKey.isNotBlank()) {
-            providers.add(ProviderEntry("Gemini", GeminiLlm(effectiveGeminiKey, model = LlmConfig.GEMINI_DEFAULT_MODEL), priority = 1))
+            val m = if (isModelFor("Gemini")) preferredModel else LlmConfig.GEMINI_DEFAULT_MODEL
+            providers.add(ProviderEntry("Gemini", GeminiLlm(effectiveGeminiKey, model = m), priority = if (m == preferredModel) -1 else 1))
             strongProviders.add(ProviderEntry("Gemini-Strong", GeminiLlm(effectiveGeminiKey, model = LlmConfig.GEMINI_STRONG_MODEL), priority = 1))
         }
 
         if (effectiveOpenRouterKey.isNotBlank()) {
-            providers.add(ProviderEntry("OpenRouter", OpenRouterLlm(effectiveOpenRouterKey, model = LlmConfig.OPENROUTER_DEFAULT_MODEL), priority = 2))
+            val m = if (isModelFor("OpenRouter")) preferredModel else LlmConfig.OPENROUTER_DEFAULT_MODEL
+            providers.add(ProviderEntry("OpenRouter", OpenRouterLlm(effectiveOpenRouterKey, model = m), priority = if (m == preferredModel) -1 else 2))
             strongProviders.add(ProviderEntry("OpenRouter-Strong", OpenRouterLlm(effectiveOpenRouterKey, model = LlmConfig.OPENROUTER_STRONG_MODEL), priority = 2))
         }
 
         if (effectiveOllamaUrl.isNotBlank()) {
-            providers.add(ProviderEntry("Ollama", OllamaLlm(baseUrl = effectiveOllamaUrl, model = LlmConfig.OLLAMA_DEFAULT_MODEL), priority = 3))
-            strongProviders.add(ProviderEntry("Ollama", OllamaLlm(baseUrl = effectiveOllamaUrl, model = LlmConfig.OLLAMA_DEFAULT_MODEL), priority = 3))
+            val m = if (isModelFor("Ollama")) preferredModel else LlmConfig.OLLAMA_DEFAULT_MODEL
+            providers.add(ProviderEntry("Ollama", OllamaLlm(baseUrl = effectiveOllamaUrl, model = m), priority = if (m == preferredModel) -1 else 3))
+            strongProviders.add(ProviderEntry("Ollama", OllamaLlm(baseUrl = effectiveOllamaUrl, model = m), priority = 3))
         }
 
         // Also check custom APIs configured via ApiManager
@@ -370,12 +379,22 @@ class AssistantRuntime(
             val name = api.name.lowercase()
             if (key.isNotBlank()) {
                 if (name.contains("gemini") && providers.none { it.name == "Gemini" }) {
-                    providers.add(ProviderEntry("Gemini", GeminiLlm(key, model = LlmConfig.GEMINI_DEFAULT_MODEL), priority = 1))
+                    val m = if (isModelFor("Gemini")) preferredModel else LlmConfig.GEMINI_DEFAULT_MODEL
+                    providers.add(ProviderEntry("Gemini", GeminiLlm(key, model = m), priority = if (m == preferredModel) -1 else 1))
                     strongProviders.add(ProviderEntry("Gemini-Strong", GeminiLlm(key, model = LlmConfig.GEMINI_STRONG_MODEL), priority = 1))
                 } else if ((name.contains("openrouter") || name.contains("claude") || name.contains("deepseek")) && providers.none { it.name == "OpenRouter" }) {
-                    providers.add(ProviderEntry("OpenRouter", OpenRouterLlm(key, model = LlmConfig.OPENROUTER_DEFAULT_MODEL), priority = 2))
+                    val m = if (isModelFor("OpenRouter")) preferredModel else LlmConfig.OPENROUTER_DEFAULT_MODEL
+                    providers.add(ProviderEntry("OpenRouter", OpenRouterLlm(key, model = m), priority = if (m == preferredModel) -1 else 2))
                     strongProviders.add(ProviderEntry("OpenRouter-Strong", OpenRouterLlm(key, model = LlmConfig.OPENROUTER_STRONG_MODEL), priority = 2))
+                } else if (name.contains("groq") && providers.none { it.name == "Groq" }) {
+                    val m = if (isModelFor("Groq")) preferredModel else LlmConfig.DEFAULT_MODEL
+                    providers.add(ProviderEntry("Groq", GroqLlm(key, model = m), priority = if (m == preferredModel) -1 else 0))
+                    strongProviders.add(ProviderEntry("Groq-Strong", GroqLlm(key, model = LlmConfig.STRONG_MODEL), priority = 0))
                 }
+            } else if (name.contains("ollama") && api.baseUrl.isNotBlank() && providers.none { it.name == "Ollama" }) {
+                val m = if (isModelFor("Ollama")) preferredModel else LlmConfig.OLLAMA_DEFAULT_MODEL
+                providers.add(ProviderEntry("Ollama", OllamaLlm(baseUrl = api.baseUrl, model = m), priority = if (m == preferredModel) -1 else 3))
+                strongProviders.add(ProviderEntry("Ollama", OllamaLlm(baseUrl = api.baseUrl, model = m), priority = 3))
             }
         }
 
