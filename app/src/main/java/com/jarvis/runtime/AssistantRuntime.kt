@@ -385,11 +385,15 @@ class AssistantRuntime(
         currentLlmClient = client
         currentStrongClient = strongClient
 
+        val userProfileStore = com.jarvis.ui.data.UserProfileStore(context)
+        val activeUserProfile = userProfileStore.loadProfile()
+
         if (client != null) {
             llmPlanner = LlmPlanner(
                 client,
                 router = com.jarvis.ai.ModelRouter(defaultModel = groqModel),
-                strongLlm = strongClient
+                strongLlm = strongClient,
+                userProfile = activeUserProfile
             )
             // Initialize LangChain Assistant for Memory and RAG
             if (effectiveGroqKey.isNotBlank()) {
@@ -399,6 +403,7 @@ class AssistantRuntime(
                     modelName = groqModel,
                     baseUrl = "https://api.groq.com/openai/v1"
                 )
+                lcAssistant.ingestUserProfile(activeUserProfile)
                 llmPlanner?.langchainAssistant = lcAssistant
             }
         }

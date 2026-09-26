@@ -84,6 +84,24 @@ class LangChainAssistant(
     }
 
     /**
+     * Ingests and indexes user profile & personality facts into RAG vector memory.
+     */
+    fun ingestUserProfile(profile: com.jarvis.ui.model.UserProfile) {
+        val summary = StringBuilder().apply {
+            append("User Profile & Personal Facts:\n")
+            append("- User Name: ${profile.userName}\n")
+            append("- User Title/Preferred Address: ${profile.userTitle}\n")
+            append("- User Occupation: ${profile.occupation}\n")
+            append("- Personal Facts & Notes: ${profile.personalNotes}\n")
+            append("- Preferred AI Persona Name: ${profile.aiPersonaName}\n")
+            append("- AI Personality Style: ${profile.aiPersonalityStyle.name}\n")
+            append("- Custom Instructions: ${profile.customSystemInstructions}\n")
+        }.toString()
+
+        ingestDocument(summary)
+    }
+
+    /**
      * Talk to the assistant using memory and RAG context.
      */
     fun chat(message: String): String {

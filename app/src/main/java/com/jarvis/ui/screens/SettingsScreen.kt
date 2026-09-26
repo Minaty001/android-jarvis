@@ -100,6 +100,72 @@ class SettingsScreen(
 
         root.addView(Ui.divider(context))
 
+        // 👤 User Profile & AI Personality Card
+        root.addView(Ui.sectionLabel(context, "User Profile & AI Personality"))
+        val profileStore = com.jarvis.ui.data.UserProfileStore(context)
+        var userProfile = profileStore.loadProfile()
+
+        val profileCard = Ui.glassCard(context, Ui.BORDER_GLOW)
+        val profileInner = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
+        }
+
+        val profileRow = Ui.row(context)
+        profileRow.addView(TextView(context).apply {
+            text = "PERSONA & RAG DATA CONFIG"
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Ui.CYAN)
+            letterSpacing = 0.08f
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        profileRow.addView(Ui.hudBadge(context, "AUTO-SYNC", Ui.CYAN))
+        profileInner.addView(profileRow)
+
+        // Inputs
+        val (userNameLayout, userNameInput) = Ui.input(context, "User Name (e.g. Alex)").also { (_, edit) -> edit.setText(userProfile.userName) }
+        val (userTitleLayout, userTitleInput) = Ui.input(context, "Preferred Title (e.g. Sir, Boss)").also { (_, edit) -> edit.setText(userProfile.userTitle) }
+        val (occupationLayout, occupationInput) = Ui.input(context, "Occupation / Role").also { (_, edit) -> edit.setText(userProfile.occupation) }
+        val (personalNotesLayout, personalNotesInput) = Ui.input(context, "Personal Facts & Notes (Saved to RAG)").also { (_, edit) -> edit.setText(userProfile.personalNotes) }
+        val (customInstructionsLayout, customInstructionsInput) = Ui.input(context, "Custom AI Instructions").also { (_, edit) -> edit.setText(userProfile.customSystemInstructions) }
+
+        profileInner.addView(TextView(context).apply { text = "USER DETAILS"; textSize = 10f; setTextColor(Ui.MUTED); setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 2)) })
+        profileInner.addView(userNameLayout)
+        profileInner.addView(userTitleLayout)
+        profileInner.addView(occupationLayout)
+
+        profileInner.addView(TextView(context).apply { text = "PERSONAL FACTS & RAG NOTES"; textSize = 10f; setTextColor(Ui.MUTED); setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 2)) })
+        profileInner.addView(personalNotesLayout)
+
+        profileInner.addView(TextView(context).apply { text = "SYSTEM PERSONA & INSTRUCTIONS"; textSize = 10f; setTextColor(Ui.MUTED); setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 2)) })
+        profileInner.addView(customInstructionsLayout)
+
+        val saveProfileBtn = Ui.primaryButton(context, "💾 SAVE & SYNC TO RAG MEMORY") {
+            val updatedProfile = com.jarvis.ui.model.UserProfile(
+                userName = userNameInput.text?.toString()?.ifBlank { "Alex" } ?: "Alex",
+                userTitle = userTitleInput.text?.toString()?.ifBlank { "Sir" } ?: "Sir",
+                occupation = occupationInput.text?.toString() ?: "",
+                personalNotes = personalNotesInput.text?.toString() ?: "",
+                aiPersonaName = "J.A.R.V.I.S.",
+                customSystemInstructions = customInstructionsInput.text?.toString() ?: ""
+            )
+            profileStore.saveProfile(updatedProfile)
+            
+            // Sync to LangChain RAG vector store asynchronously
+            val groqKey = com.jarvis.ui.security.SecureCredentialStore(context).get("groq_api_key") ?: com.jarvis.BuildConfig.GROQ_API_KEY
+            if (groqKey.isNotBlank()) {
+                try {
+                    val lcAssistant = com.jarvis.ai.LangChainAssistant(context, apiKey = groqKey)
+                    lcAssistant.ingestUserProfile(updatedProfile)
+                } catch (e: Exception) {}
+            }
+            Toast.makeText(context, "User Profile & Personality saved & synced to RAG!", Toast.LENGTH_SHORT).show()
+            onSaved?.invoke()
+        }
+        profileInner.addView(saveProfileBtn)
+        profileCard.addView(profileInner)
+        root.addView(profileCard)
+
         // System Default Digital Assistant Card
         root.addView(Ui.sectionLabel(context, "System Default Digital Assistant"))
         val isDefaultAssist = com.jarvis.assistant.AssistantSettingsHelper.isDefaultAssistant(context)

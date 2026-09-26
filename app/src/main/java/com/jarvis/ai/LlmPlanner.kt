@@ -19,7 +19,8 @@ class LlmPlanner(
     private val llmClient: LlmClient,
     private val router: ModelRouter? = null,
     private val strongLlm: LlmClient? = null,
-    var langchainAssistant: LangChainAssistant? = null
+    var langchainAssistant: LangChainAssistant? = null,
+    var userProfile: com.jarvis.ui.model.UserProfile? = null
 ) {
     private val TAG = "LlmPlanner"
 
