@@ -26,7 +26,7 @@ class ResponsiveNav(context: Context, private val onSelect: (String) -> Unit) : 
             NavItem("Dashboard", "Home", "⌂"),
             NavItem("Skills", "Skills", "⚡"),
             NavItem("Memory", "Memory", "◈"),
-            NavItem("APIs", "APIs", "◌"),
+            NavItem("Brain", "Brain", "◌"),
             NavItem("Settings", "Settings", "⚙")
         ).forEach { item ->
             val tab = LinearLayout(context).apply {

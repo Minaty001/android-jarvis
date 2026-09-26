@@ -125,7 +125,7 @@ class MainActivity : AppCompatActivity() {
                 service?.let { s.bindService(it) }
             }
             "Memory" -> MemoryScreen(this)
-            "APIs" -> ApiManagerScreen(this, this, apiManager) { service?.reloadConfig() }
+            "Brain" -> ApiManagerScreen(this, this, apiManager, service?.voiceEngine) { service?.reloadConfig() }
             "Settings" -> SettingsScreen(this, store, store.loadSettings(), { dirty = it }, { service?.reloadConfig() }, service?.voiceEngine)
             "Logs" -> LogsScreen(this, store)
             else -> DashboardScreen(

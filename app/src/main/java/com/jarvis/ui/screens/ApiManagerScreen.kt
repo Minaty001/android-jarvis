@@ -15,6 +15,7 @@ import com.jarvis.ui.model.AuthMethod
 import com.jarvis.ui.model.ProviderRegistry
 import com.jarvis.ui.reliability.ApiManager
 import com.jarvis.ui.data.UiPreferencesStore
+import com.jarvis.ui.dialogs.VoiceEnrollmentDialog
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -22,6 +23,7 @@ class ApiManagerScreen(
     context: Context,
     private val owner: LifecycleOwner,
     private val manager: ApiManager,
+    private val voiceEngine: com.jarvis.voice.VoiceEngine? = null,
     private val onChanged: (() -> Unit)? = null
 ) : ScrollView(context) {
     private val list = LinearLayout(context)
@@ -42,7 +44,7 @@ class ApiManagerScreen(
         val header = Ui.row(context)
         val brand = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         brand.addView(TextView(context).apply {
-            text = "API & MODEL MANAGER"
+            text = "BRAIN & WAKE CONFIG"
             textSize = 19f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
@@ -99,6 +101,72 @@ class ApiManagerScreen(
                 onChanged?.invoke()
             }
         }
+
+
+        root.addView(Ui.divider(context))
+
+        // Wake Engine Configuration
+        root.addView(Ui.sectionLabel(context, "Wake Word Engine (TFLite KWS)"))
+        val wakeCard = Ui.glassCard(context, Ui.BORDER_GLOW)
+        val wakeInner = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
+        }
+        
+        // Wake Word Selector
+        val initialSettings = uiStore.loadSettings()
+        val wakeWordOptions = listOf("Jarvis", "Computer", "Alice", "Echo", "Friday")
+        val wakeWordSpinner = Spinner(context)
+        val wakeWordAdapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, wakeWordOptions)
+        wakeWordSpinner.adapter = wakeWordAdapter
+        val selectedWakeWordIndex = wakeWordOptions.indexOfFirst { it.equals(initialSettings.wakeWord, ignoreCase = true) }.coerceAtLeast(0)
+        wakeWordSpinner.setSelection(selectedWakeWordIndex)
+        wakeWordSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
+                val newWord = wakeWordOptions[position]
+                uiStore.saveSettings(uiStore.loadSettings().copy(wakeWord = newWord))
+                voiceEngine?.wakeEngine?.setActiveWakeWord(newWord)
+                onChanged?.invoke()
+            }
+            override fun onNothingSelected(p0: AdapterView<*>?) {}
+        }
+        val wakeWordRow = Ui.row(context)
+        wakeWordRow.addView(TextView(context).apply { text = "Detection Phrase"; setTextColor(Ui.TEXT); textSize = 12f }, LinearLayout.LayoutParams(0, -2, 1f))
+        wakeWordRow.addView(wakeWordSpinner)
+        wakeInner.addView(wakeWordRow)
+
+        // Wake Acknowledgment
+        val ackOptions = listOf("CHIME", "VOICE", "BOTH", "SILENT")
+        val wakeAckSpinner = Spinner(context)
+        wakeAckSpinner.adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, ackOptions)
+        val selectedAck = ackOptions.indexOf(initialSettings.wakeAcknowledgment.uppercase()).coerceAtLeast(0)
+        wakeAckSpinner.setSelection(selectedAck)
+        wakeAckSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
+                uiStore.saveSettings(uiStore.loadSettings().copy(wakeAcknowledgment = ackOptions[position]))
+                onChanged?.invoke()
+            }
+            override fun onNothingSelected(p0: AdapterView<*>?) {}
+        }
+        val ackRow = Ui.row(context)
+        ackRow.addView(TextView(context).apply { text = "Response Style"; setTextColor(Ui.TEXT); textSize = 12f }, LinearLayout.LayoutParams(0, -2, 1f))
+        ackRow.addView(wakeAckSpinner)
+        wakeInner.addView(ackRow)
+
+        // Voice Enrollment Profile
+        val profileRow = Ui.row(context).apply { setPadding(0, Ui.dp(context, 8), 0, 0) }
+        val enrollBtn = Ui.primaryButton(context, "ENROLL VOICE PROFILE") {
+            VoiceEnrollmentDialog(context, voiceEngine = voiceEngine) { newProfile ->
+                uiStore.saveVoiceProfile(newProfile)
+                voiceEngine?.applyVoiceProfile(newProfile)
+                Toast.makeText(context, "Voice profile updated!", Toast.LENGTH_SHORT).show()
+            }.show()
+        }
+        profileRow.addView(enrollBtn)
+        wakeInner.addView(profileRow)
+
+        wakeCard.addView(wakeInner)
+        root.addView(wakeCard)
 
         root.addView(Ui.divider(context))
 
