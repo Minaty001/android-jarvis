@@ -31,14 +31,14 @@ The `/home/shanu/Pictures/android-jarvis-main` repository shows evidence of clea
 
 ### 2.1 Interface Segregation
 The `main` branch abstracts concrete classes into interfaces to improve testability and Dependency Injection.
-*   **Added Files:** `IMemoryStore.kt`, `IRagIndexStore.kt`
+*   **Added Files:** _(removed: single-impl interfaces deleted per YAGNI audit)_
 *   **Impact:** The Desktop version relies on concrete `MemoryStore.kt` and `RagIndexStore.kt` directly.
 
 ### 2.2 Skill Persistence (Recent Fixes)
 *   **Changes in `LearnedSkillStore.kt`:** The `main` branch recently implemented `java.io.Serializable` and Object Streams to save learned procedural UI macros to disk across device restarts. The Desktop version likely still holds these only in RAM (technical debt).
 
 ### 2.3 Additional Abstractions
-*   **Added Files:** `MemoryRepository.kt` (Abstracts raw DB access), `AgentVerifier.kt` (Decouples execution validation).
+*   **Added Files:** `MemoryRepository.kt` (Abstracts raw DB access), _(removed: single-impl wrapper deleted per YAGNI audit)_
 
 ---
 
@@ -46,7 +46,7 @@ The `main` branch abstracts concrete classes into interfaces to improve testabil
 
 | Feature Area | `android-jarvis-main` (Pictures) | `android-jarvis` (Desktop) |
 | :--- | :--- | :--- |
-| **Architecture** | Cleaner, interface-driven (`IMemoryStore`) | Monolithic, concrete classes |
+| **Architecture** | Clean, direct implementation (YAGNI-audited) | Monolithic, concrete classes |
 | **Procedural Memory** | **Persistent** (survives app reboots) | **Volatile** (in-memory only) |
 | **Voice Security** | Standard Wake Word matching | **Advanced Biometric** (`TfliteOwnerVoiceVerifier`) |
 | **Experimental Modes** | None | **Emergency**, **Meeting**, & **Stitch** modules |

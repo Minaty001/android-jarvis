@@ -1,7 +1,7 @@
 # 🤖 J.A.R.V.I.S. — Autonomous Android AI Super-Agent & Voice Assistant
 
 [![Build Status](https://img.shields.io/badge/Build-Passing-00E676?style=flat-square&logo=android)](https://github.com/1209codex/android-jarvis)
-[![Unit Tests](https://img.shields.io/badge/Unit%20Tests-474%20Passed-00E676?style=flat-square)](https://github.com/1209codex/android-jarvis)
+[![Unit Tests](https://img.shields.io/badge/Unit%20Tests-430%20Passed-00E676?style=flat-square)](https://github.com/1209codex/android-jarvis)
 [![Safety](https://img.shields.io/badge/Safety-4D%20Autonomy%20Policy%20(Tiers%200--10)-00E676?style=flat-square)](https://github.com/1209codex/android-jarvis)
 [![Platform](https://img.shields.io/badge/Platform-Android%209.0%2B%20(API%2028%2B)-00E5FF?style=flat-square)](https://github.com/1209codex/android-jarvis)
 [![Release APK](https://img.shields.io/badge/Release%20APK-30%20MB-blue?style=flat-square&logo=googleplay)](dist/jarvis-v1.0-release.apk)
@@ -387,11 +387,11 @@ adb shell am start -n com.jarvis/.ui.MainActivity
 - Android Studio Ladybug / Koala / Iguana
 - Android SDK (Target API 34, Min API 28 / Android 9.0+)
 - Java 17 / OpenJDK 17
-- Optional: Add your Groq API key in `local.properties` (`GROQ_API_KEY=gsk_...`) or configure it directly in the app's **APIs** tab.
+- Optional: Add your Groq API key in `local.properties` (`GROQ_API_KEY=gsk_...`) or configure it directly in the app's **Brain** tab.
 
 ### Build Commands
 ```bash
-# Run the automated unit test suite (474 tests)
+# Run the automated unit test suite (430 tests)
 ./gradlew testDebugUnitTest
 
 # Build Debug APK
@@ -405,7 +405,7 @@ adb shell am start -n com.jarvis/.ui.MainActivity
 
 ## 🧪 Testing & Verification
 
-The project includes an extensive test suite of **474 automated unit tests** with a **100% pass rate**:
+The project includes an extensive test suite of **430 automated unit tests** with a **100% pass rate**:
 ```bash
 ./gradlew testDebugUnitTest
 ```
@@ -415,8 +415,6 @@ The project includes an extensive test suite of **474 automated unit tests** wit
 - [`EndToEndAutonomousWorkflowTest.kt`](app/src/test/java/com/jarvis/EndToEndAutonomousWorkflowTest.kt): End-to-end multi-step autonomous workflows: compound request parsing & sub-goal decomposition (English & Hinglish), proactive contextual alert cooldown (30-min window) & calendar pre-briefings, dynamic acoustic voice wake-word calibration, durable memory superseding & half-life garbage collection, and deferred subsystem allocation & OS memory pressure eviction.
 - [`SubsystemContainerAndMemoryOptimizationTest.kt`](app/src/test/java/com/jarvis/SubsystemContainerAndMemoryOptimizationTest.kt): Lazy subsystem container and cold-start RAM footprint optimization. Verifies boot-critical segregation (`SubsystemManager`), `LazyTool` parameter and policy metadata discovery without delegate instantiation, on-demand deferred initialization, `ToolRegistry.evictIdleLazyTools()`, Android `ComponentCallbacks2.onTrimMemory()` memory warning handling (`TRIM_MEMORY_UI_HIDDEN`, `TRIM_MEMORY_RUNNING_CRITICAL`), automatic RAG dense vector cache flushing, and live memory diagnostics reporting.
 - [`VoiceEnrollmentAndCalibrationTest.kt`](app/src/test/java/com/jarvis/VoiceEnrollmentAndCalibrationTest.kt): Personalized acoustic wake-word enrollment and multi-sample calibration wizard. Validates vocal RMS energy calculation, duration gating ($\ge 0.4$s), clipping ratio rejection ($< 3\%$), personalized detection threshold adaptation based on user SNR, and encrypted SharedPreferences `UserVoiceProfile` serialization.
-- [`PerformanceAndResourceOptimizationTest.kt`](app/src/test/java/com/jarvis/PerformanceAndResourceOptimizationTest.kt): Audio streaming zero-allocation hot-path verification (`RollingPcmBuffer` direct offset/length writes, `WakeWordEngine` detection-triggered snapshotting), `DeviceGuardian` dynamic battery (<10% discharging) and active call invariants, reactive `BatteryStateChanged` and `NetworkStateChanged` event flow, flat 2-row Levenshtein distance correctness, and bitmap memory recycling.
-- [`ControlPlaneAndAutonomyAuditTest.kt`](app/src/test/java/com/jarvis/ControlPlaneAndAutonomyAuditTest.kt): Reactive event bus dispatching, world state store atomic updates & snapshot history, device guardian hardware checks (battery/call/network), goal manager priority queue & state machine, closed-loop execution pipeline with rollback, outcome verifier state diffing, self-learning failure journal & strategy adaptation, 4D autonomy risk tiering, 3-state wake-word detection (`NEURAL_READY`, `DEGRADED_ACOUSTIC`, `UNAVAILABLE`), and media alias parameter preservation.
 - [`BluetoothAndWearableCompanionTest.kt`](app/src/test/java/com/jarvis/BluetoothAndWearableCompanionTest.kt): Bluetooth SCO audio routing, earbud media hook button click interception (`KEYCODE_HEADSETHOOK`), physical barge-in speech interruption, WearOS broadcast intent bridge (`WEAR_WAKE`, `WEAR_COMMAND`, `WEAR_STOP`), and preference roundtrip serialization.
 - [`ProactiveContextIntelligenceTest.kt`](app/src/test/java/com/jarvis/ProactiveContextIntelligenceTest.kt): Autonomous calendar event pre-briefings within lead window, duplicate alert suppression, critical low-battery voice announcements (<15%), 30-minute cooldown protection, full-charge alerts, and preference roundtrip serialization.
 - [`FullDuplexBargeInAndDuckingTest.kt`](app/src/test/java/com/jarvis/FullDuplexBargeInAndDuckingTest.kt): Real-time speech interruption, energy burst thresholding, interrupt keyword spotting, and media ducking calculations.
@@ -427,7 +425,6 @@ The project includes an extensive test suite of **474 automated unit tests** wit
 - [`AutonomousExecutionAndLogsTest.kt`](app/src/test/java/com/jarvis/AutonomousExecutionAndLogsTest.kt): Zero-approval policy evaluation, logcat streaming, telemetry ring buffer.
 - [`WhatsAppMessagingTest.kt`](app/src/test/java/com/jarvis/WhatsAppMessagingTest.kt): 3-tier messaging dispatch, auto-reply modes, unread aggregation.
 - [`CameraVisionTest.kt`](app/src/test/java/com/jarvis/CameraVisionTest.kt): Edge classification, lighting heuristics, multimodal vision tool execution.
-- [`RagPipelineTest.kt`](app/src/test/java/com/jarvis/RagPipelineTest.kt): Document chunking, SQLite vector storage, hybrid retrieval.
 - [`P0HonestyRegressionTest.kt`](app/src/test/java/com/jarvis/P0HonestyRegressionTest.kt): Multi-turn compound decomposition, safety bounds, deterministic execution.
 
 ---
@@ -439,13 +436,13 @@ J.A.R.V.I.S. is architected using strict **Clean Architecture** boundaries, cate
 | Layer # | Clean Architecture Layer Name | Architectural Scope & Core Components |
 |:---:|---|---|
 | **1** | **Presentation Layer** | Google Stitch Material 3 HUD, cyber-slate navigation screens, interactive `JarvisOrbView` & `JarvisWaveformView`. |
-| **2** | **Application & Control Plane** | High-priority `JarvisForegroundService`, `AssistantRuntime` coordinator, `SubsystemManager`, and `JarvisEventBus`. |
+| **2** | **Application & Runtime** | High-priority `JarvisForegroundService`, `AssistantRuntime` coordinator, `SubsystemManager`, and `JarvisEventBus`. |
 | **3** | **Domain Core & Autonomous Reasoning** | `MultiTaskDecomposer` planning engine, `HallucinationFirewall` safety bounds, and `AutonomousDaemon` supervisor. |
 | **4** | **Device Tools & OS Automation** | 44+ automated capabilities, Android Accessibility Services, synthetic UI automation, WhatsApp, and telephony drivers. |
 | **5** | **Voice & Acoustic Perception** | Zero-dependency pure Kotlin acoustic detector, quantized INT8 TFLite keyword spotter ("Hey Jarvis"), and Bluetooth SCO. |
 | **6** | **AI Inference & Computer Vision** | Multi-provider LLM client (Groq `openai/gpt-oss-20b`/`120b`, Gemini `gemini-2.5-flash`, OpenRouter, local Ollama) and Camera2 perception (`qwen/qwen3.6-27b`). |
 | **7** | **Neural Memory & Vector RAG** | Dense vector embeddings, BM25 relevance re-ranking, half-life decay garbage collection, and AES-GCM-256 Keystore encryption. |
-| **8** | **Test & Verification Suite** | 75 test suites containing 474 automated unit and integration tests with a 100% pass rate. |
+| **8** | **Test & Verification Suite** | 98 test suites containing 430 automated unit and integration tests with a 100% pass rate. |
 | **9** | **Build & Infrastructure** | Gradle R8 code/resource shrinking, ProGuard optimizations, and native binary compression. |
 
 ---

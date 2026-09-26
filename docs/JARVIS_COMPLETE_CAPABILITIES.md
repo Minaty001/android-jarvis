@@ -170,7 +170,7 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 2. *"Priya ko WhatsApp karo 5 minute me aa raha hoon"* $\to$ Auto-dispatches chat in Hindi selector.
 3. *"Send WhatsApp to Work Group Meeting started"* $\to$ Types & auto-taps Send button.
 4. Auto-returns to home screen (`GLOBAL_ACTION_HOME`) immediately after dispatching message.
-5. Logs execution status in `FailureJournal` if button is obscured.
+5. Logs execution status if button is obscured.
 
 #### C. In-App WhatsApp Search Fallback:
 1. Contact not in recent chats $\to$ Jarvis opens WhatsApp, taps Search icon, types contact name.
