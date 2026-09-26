@@ -3,8 +3,8 @@ package com.jarvis.earbuds
 import android.content.Context
 import android.util.Log
 import com.jarvis.bluetooth.BluetoothHeadsetManager
-import com.jarvis.controlplane.JarvisEvent
-import com.jarvis.controlplane.JarvisEventBus
+import com.jarvis.runtime.JarvisEvent
+import com.jarvis.runtime.JarvisEventBus
 import com.jarvis.messaging.WhatsAppMessagingEngine
 import com.jarvis.telecom.CallAndSmsAgent
 import com.jarvis.telecom.ContactResolver

@@ -1,4 +1,4 @@
-package com.jarvis.controlplane
+package com.jarvis.runtime
 
 import com.jarvis.wakeword.WakeDetectorMode
 import kotlinx.coroutines.flow.Flow
@@ -45,7 +45,7 @@ sealed class JarvisEvent(val timestamp: Long = System.currentTimeMillis()) {
 }
 
 /**
- * Thread-safe asynchronous Kotlin Flow event bus for the autonomous control plane.
+ * Thread-safe asynchronous Kotlin Flow event bus for the runtime.
  */
 class JarvisEventBus(bufferCapacity: Int = 64) {
     private val _events = MutableSharedFlow<JarvisEvent>(

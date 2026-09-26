@@ -20,8 +20,8 @@ class PhoneCallReceiver : BroadcastReceiver() {
 
         Log.d(TAG, "Phone state changed: $stateStr, number: $incomingNumber")
 
-        com.jarvis.controlplane.JarvisEventBus.shared.post(
-            com.jarvis.controlplane.JarvisEvent.CallStateChanged(stateStr, incomingNumber)
+        com.jarvis.runtime.JarvisEventBus.shared.post(
+            com.jarvis.runtime.JarvisEvent.CallStateChanged(stateStr, incomingNumber)
         )
 
         val agent = CallAndSmsAgent.instance
@@ -30,8 +30,8 @@ class PhoneCallReceiver : BroadcastReceiver() {
                 val callerName = if (context != null && incomingNumber.isNotBlank()) {
                     runCatching { ContactResolver(context).resolveContact(incomingNumber)?.name }.getOrNull()
                 } else null
-                com.jarvis.controlplane.JarvisEventBus.shared.post(
-                    com.jarvis.controlplane.JarvisEvent.IncomingCall(incomingNumber, callerName)
+                com.jarvis.runtime.JarvisEventBus.shared.post(
+                    com.jarvis.runtime.JarvisEvent.IncomingCall(incomingNumber, callerName)
                 )
                 agent?.onIncomingCallRinging(incomingNumber) { announcement ->
                     Log.i(TAG, "Announcing incoming call: $announcement")

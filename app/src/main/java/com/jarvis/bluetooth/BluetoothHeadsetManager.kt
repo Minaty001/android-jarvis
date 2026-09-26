@@ -63,8 +63,8 @@ class BluetoothHeadsetManager(
                             isHeadsetConnected = true
                             connectedDeviceName = name
                             onHeadsetStateChanged?.invoke(true, name)
-                            com.jarvis.controlplane.JarvisEventBus.shared.post(
-                                com.jarvis.controlplane.JarvisEvent.BluetoothStateChanged(name, true, isScoActive)
+                            com.jarvis.runtime.JarvisEventBus.shared.post(
+                                com.jarvis.runtime.JarvisEvent.BluetoothStateChanged(name, true, isScoActive)
                             )
                         }
                         BluetoothProfile.STATE_DISCONNECTED -> {
@@ -84,8 +84,8 @@ class BluetoothHeadsetManager(
                             isHeadsetConnected = true
                             connectedDeviceName = name
                             onHeadsetStateChanged?.invoke(true, name)
-                            com.jarvis.controlplane.JarvisEventBus.shared.post(
-                                com.jarvis.controlplane.JarvisEvent.BluetoothStateChanged(name, true, isScoActive)
+                            com.jarvis.runtime.JarvisEventBus.shared.post(
+                                com.jarvis.runtime.JarvisEvent.BluetoothStateChanged(name, true, isScoActive)
                             )
                         }
                         BluetoothProfile.STATE_DISCONNECTED -> {
@@ -113,8 +113,8 @@ class BluetoothHeadsetManager(
                     if (isScoActive) {
                         onHeadsetStateChanged?.invoke(true, connectedDeviceName)
                     }
-                    com.jarvis.controlplane.JarvisEventBus.shared.post(
-                        com.jarvis.controlplane.JarvisEvent.BluetoothStateChanged(connectedDeviceName, isHeadsetConnected, isScoActive)
+                    com.jarvis.runtime.JarvisEventBus.shared.post(
+                        com.jarvis.runtime.JarvisEvent.BluetoothStateChanged(connectedDeviceName, isHeadsetConnected, isScoActive)
                     )
                 }
                 BluetoothHeadset.ACTION_AUDIO_STATE_CHANGED -> {
@@ -238,8 +238,8 @@ class BluetoothHeadsetManager(
                         connectedDeviceName = null
                         isScoActive = false
                         onHeadsetStateChanged?.invoke(false, null)
-                        com.jarvis.controlplane.JarvisEventBus.shared.post(
-                            com.jarvis.controlplane.JarvisEvent.BluetoothStateChanged(null, false, false)
+                        com.jarvis.runtime.JarvisEventBus.shared.post(
+                            com.jarvis.runtime.JarvisEvent.BluetoothStateChanged(null, false, false)
                         )
                     }
                 }

@@ -5,7 +5,7 @@ import android.content.Context
 import android.util.Log
 import com.jarvis.camera.CameraPerceptionEngine
 import com.jarvis.camera.TfLiteVisionDetector
-import com.jarvis.controlplane.JarvisEventBus
+import com.jarvis.runtime.JarvisEventBus
 import com.jarvis.execution.VerificationEngine
 import com.jarvis.files.FileManager
 import com.jarvis.foundation.PolicyEngine

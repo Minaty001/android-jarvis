@@ -5,8 +5,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.util.Log
 import com.jarvis.bluetooth.BluetoothHeadsetManager
-import com.jarvis.controlplane.JarvisEvent
-import com.jarvis.controlplane.JarvisEventBus
+import com.jarvis.runtime.JarvisEvent
+import com.jarvis.runtime.JarvisEventBus
 import com.jarvis.ui.data.UiPreferencesStore
 import com.jarvis.voice.TtsEngine
 import kotlinx.coroutines.CoroutineScope

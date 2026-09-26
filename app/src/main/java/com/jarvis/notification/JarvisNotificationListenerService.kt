@@ -107,8 +107,8 @@ class JarvisNotificationListenerService : NotificationListenerService() {
 
         if (pkg.contains("whatsapp", ignoreCase = true)) {
             val platformLabel = if (pkg == "com.whatsapp.w4b") "WhatsApp Business" else "WhatsApp"
-            com.jarvis.controlplane.JarvisEventBus.shared.post(
-                com.jarvis.controlplane.JarvisEvent.WhatsAppNotification(
+            com.jarvis.runtime.JarvisEventBus.shared.post(
+                com.jarvis.runtime.JarvisEvent.WhatsAppNotification(
                     sender = title.trim(),
                     message = text.trim(),
                     isDirectReplyAvailable = replyAction != null,

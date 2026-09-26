@@ -38,16 +38,16 @@ class NetworkStateMonitor(
                 }
 
                 override fun onLost(network: Network) {
-                    com.jarvis.controlplane.JarvisEventBus.shared.emit(
-                        com.jarvis.controlplane.JarvisEvent.NetworkStateChanged(isOnline = false, isMetered = false)
+                    com.jarvis.runtime.JarvisEventBus.shared.emit(
+                        com.jarvis.runtime.JarvisEvent.NetworkStateChanged(isOnline = false, isMetered = false)
                     )
                 }
 
                 override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
                     val isOnline = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                     val isMetered = !networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
-                    com.jarvis.controlplane.JarvisEventBus.shared.emit(
-                        com.jarvis.controlplane.JarvisEvent.NetworkStateChanged(isOnline = isOnline, isMetered = isMetered)
+                    com.jarvis.runtime.JarvisEventBus.shared.emit(
+                        com.jarvis.runtime.JarvisEvent.NetworkStateChanged(isOnline = isOnline, isMetered = isMetered)
                     )
                 }
             }
@@ -104,8 +104,8 @@ class NetworkStateMonitor(
         val caps = connectivityManager?.getNetworkCapabilities(network)
         val isOnline = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         val isMetered = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) != true
-        com.jarvis.controlplane.JarvisEventBus.shared.emit(
-            com.jarvis.controlplane.JarvisEvent.NetworkStateChanged(isOnline = isOnline, isMetered = isMetered)
+        com.jarvis.runtime.JarvisEventBus.shared.emit(
+            com.jarvis.runtime.JarvisEvent.NetworkStateChanged(isOnline = isOnline, isMetered = isMetered)
         )
     }
 

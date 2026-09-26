@@ -29,8 +29,8 @@ class SmsReceiver : BroadcastReceiver() {
             for ((sender, bodyBuilder) in combinedBySender) {
                 val fullBody = bodyBuilder.toString()
                 val otp = agent?.extractOtp(fullBody)
-                com.jarvis.controlplane.JarvisEventBus.shared.post(
-                    com.jarvis.controlplane.JarvisEvent.SmsReceived(sender, fullBody, otp)
+                com.jarvis.runtime.JarvisEventBus.shared.post(
+                    com.jarvis.runtime.JarvisEvent.SmsReceived(sender, fullBody, otp)
                 )
                 agent?.onSmsReceived(sender, fullBody)
                 Log.d(TAG, "Processed incoming SMS (length: ${fullBody.length}, hasOtp: ${otp != null})")

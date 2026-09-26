@@ -1,10 +1,10 @@
 # 🤖 J.A.R.V.I.S. — Autonomous Android AI Super-Agent & Voice Assistant
 
 [![Build Status](https://img.shields.io/badge/Build-Passing-00E676?style=flat-square&logo=android)](https://github.com/1209codex/android-jarvis)
-[![Unit Tests](https://img.shields.io/badge/Unit%20Tests-430%20Passed-00E676?style=flat-square)](https://github.com/1209codex/android-jarvis)
+[![Unit Tests](https://img.shields.io/badge/Unit%20Tests-503%20Passed-00E676?style=flat-square)](https://github.com/1209codex/android-jarvis)
 [![Safety](https://img.shields.io/badge/Safety-4D%20Autonomy%20Policy%20(Tiers%200--10)-00E676?style=flat-square)](https://github.com/1209codex/android-jarvis)
 [![Platform](https://img.shields.io/badge/Platform-Android%209.0%2B%20(API%2028%2B)-00E5FF?style=flat-square)](https://github.com/1209codex/android-jarvis)
-[![Release APK](https://img.shields.io/badge/Release%20APK-30%20MB-blue?style=flat-square&logo=googleplay)](dist/jarvis-v1.0-release.apk)
+[![Release APK](https://img.shields.io/badge/Release%20APK-9.7%20MB-blue?style=flat-square&logo=googleplay)](dist/jarvis-v1.1-release.apk)
 
 **J.A.R.V.I.S.** (*Just A Rather Very Intelligent System*) is a fully autonomous, closed-loop Android AI super-agent and personal voice assistant. Built for privacy-first, on-device intelligence, J.A.R.V.I.S. integrates continuous on-device wake-word detection (quantized INT8 TFLite keyword spotter), multi-provider LLM reasoning (Groq `openai/gpt-oss-20b` / `openai/gpt-oss-120b`, Gemini `gemini-2.5-flash`, OpenRouter, and local Ollama), Bluetooth earbud SCO routing with physical button hook interception, WearOS companion synchronization with signature security, fail-closed policy execution, computer vision perception (`qwen/qwen3.6-27b`), on-device hybrid RAG memory, and deep OS-level accessibility automation.
 
@@ -391,13 +391,13 @@ adb shell am start -n com.jarvis/.ui.MainActivity
 
 ### Build Commands
 ```bash
-# Run the automated unit test suite (430 tests)
+# Run the automated unit test suite (503 tests)
 ./gradlew testDebugUnitTest
 
 # Build Debug APK
 ./gradlew assembleDebug
 
-# Build Optimized Release APK (30 MB)
+# Build Optimized Release APK (9.7 MB)
 ./gradlew assembleRelease
 ```
 
@@ -405,14 +405,13 @@ adb shell am start -n com.jarvis/.ui.MainActivity
 
 ## 🧪 Testing & Verification
 
-The project includes an extensive test suite of **430 automated unit tests** with a **100% pass rate**:
+The project includes an extensive test suite of **503 automated unit tests** across **91 test suites** with a **100% pass rate**:
 ```bash
 ./gradlew testDebugUnitTest
 ```
 
 ### Key Verified Test Suites:
 - [`MasterSystemFunctionVerificationTest.kt`](app/src/test/java/com/jarvis/MasterSystemFunctionVerificationTest.kt): Exhaustive verification of all 44 tools and agent functions across 8 functional domains: Calculator, Hardware (Flashlight/Battery/Location/DeviceSettings), App Lifecycle (Open/Close/CloseAll), Media (Playback/YouTube/YMusic), Storage & Files (FileManager/FileSearch/StorageBreakdown), Security & Calendar (SecurityAuditor/Calendar), Memory & Speech (Note/SearchMemory/Speak), and OS Accessibility & UI (Scroll/Click/Back/Home/Browser).
-- [`EndToEndAutonomousWorkflowTest.kt`](app/src/test/java/com/jarvis/EndToEndAutonomousWorkflowTest.kt): End-to-end multi-step autonomous workflows: compound request parsing & sub-goal decomposition (English & Hinglish), proactive contextual alert cooldown (30-min window) & calendar pre-briefings, dynamic acoustic voice wake-word calibration, durable memory superseding & half-life garbage collection, and deferred subsystem allocation & OS memory pressure eviction.
 - [`SubsystemContainerAndMemoryOptimizationTest.kt`](app/src/test/java/com/jarvis/SubsystemContainerAndMemoryOptimizationTest.kt): Lazy subsystem container and cold-start RAM footprint optimization. Verifies boot-critical segregation (`SubsystemManager`), `LazyTool` parameter and policy metadata discovery without delegate instantiation, on-demand deferred initialization, `ToolRegistry.evictIdleLazyTools()`, Android `ComponentCallbacks2.onTrimMemory()` memory warning handling (`TRIM_MEMORY_UI_HIDDEN`, `TRIM_MEMORY_RUNNING_CRITICAL`), automatic RAG dense vector cache flushing, and live memory diagnostics reporting.
 - [`VoiceEnrollmentAndCalibrationTest.kt`](app/src/test/java/com/jarvis/VoiceEnrollmentAndCalibrationTest.kt): Personalized acoustic wake-word enrollment and multi-sample calibration wizard. Validates vocal RMS energy calculation, duration gating ($\ge 0.4$s), clipping ratio rejection ($< 3\%$), personalized detection threshold adaptation based on user SNR, and encrypted SharedPreferences `UserVoiceProfile` serialization.
 - [`BluetoothAndWearableCompanionTest.kt`](app/src/test/java/com/jarvis/BluetoothAndWearableCompanionTest.kt): Bluetooth SCO audio routing, earbud media hook button click interception (`KEYCODE_HEADSETHOOK`), physical barge-in speech interruption, WearOS broadcast intent bridge (`WEAR_WAKE`, `WEAR_COMMAND`, `WEAR_STOP`), and preference roundtrip serialization.
@@ -442,7 +441,7 @@ J.A.R.V.I.S. is architected using strict **Clean Architecture** boundaries, cate
 | **5** | **Voice & Acoustic Perception** | Zero-dependency pure Kotlin acoustic detector, quantized INT8 TFLite keyword spotter ("Hey Jarvis"), and Bluetooth SCO. |
 | **6** | **AI Inference & Computer Vision** | Multi-provider LLM client (Groq `openai/gpt-oss-20b`/`120b`, Gemini `gemini-2.5-flash`, OpenRouter, local Ollama) and Camera2 perception (`qwen/qwen3.6-27b`). |
 | **7** | **Neural Memory & Vector RAG** | Dense vector embeddings, BM25 relevance re-ranking, half-life decay garbage collection, and AES-GCM-256 Keystore encryption. |
-| **8** | **Test & Verification Suite** | 98 test suites containing 430 automated unit and integration tests with a 100% pass rate. |
+| **8** | **Test & Verification Suite** | 91 test suites containing 503 automated unit and integration tests with a 100% pass rate. |
 | **9** | **Build & Infrastructure** | Gradle R8 code/resource shrinking, ProGuard optimizations, and native binary compression. |
 
 ---
