@@ -37,3 +37,5 @@
     public static ** valueOf(java.lang.String);
     <fields>;
 }
+-dontwarn org.osgi.framework.**
+-dontwarn opennlp.**
