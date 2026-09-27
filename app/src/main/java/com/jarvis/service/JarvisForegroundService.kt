@@ -165,16 +165,23 @@ class JarvisForegroundService : Service() {
                 bluetoothHeadsetManager = com.jarvis.bluetooth.BluetoothHeadsetManager(applicationContext)
                 bluetoothHeadsetManager?.onHeadsetStateChanged = { connected, deviceName ->
                     Log.i(TAG, "Bluetooth headset connected=$connected ($deviceName)")
+                    val engine = voiceEngine
                     val settings = com.jarvis.ui.data.UiPreferencesStore(applicationContext).loadSettings()
-                    if (connected && settings.bluetoothScoRoutingEnabled) {
+                    val isInteractionActive = engine != null && (
+                        engine.conversationManager.currentStateValue == com.jarvis.voice.VoiceState.LISTENING ||
+                        engine.conversationManager.currentStateValue == com.jarvis.voice.VoiceState.SPEAKING
+                    )
+                    if (connected && settings.bluetoothScoRoutingEnabled && isInteractionActive) {
                         val ok = bluetoothHeadsetManager?.startScoRouting() == true
                         Log.i(TAG, "Bluetooth headset connected: startScoRouting result=$ok")
-                        voiceEngine?.updateBluetoothScoState(true)
-                        voiceEngine?.continuousAudioStream?.updatePreferredDevice()
+                        engine?.updateBluetoothScoState(true)
+                        engine?.continuousAudioStream?.updatePreferredDevice()
                     } else if (!connected) {
                         bluetoothHeadsetManager?.stopScoRouting()
-                        voiceEngine?.updateBluetoothScoState(false)
-                        voiceEngine?.continuousAudioStream?.updatePreferredDevice()
+                        engine?.updateBluetoothScoState(false)
+                        engine?.continuousAudioStream?.updatePreferredDevice()
+                    } else {
+                        engine?.continuousAudioStream?.updatePreferredDevice()
                     }
                 }
             }

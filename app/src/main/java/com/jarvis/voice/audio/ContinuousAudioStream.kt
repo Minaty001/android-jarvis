@@ -151,15 +151,6 @@ class ContinuousAudioStream(
                         if (currentDev != btInput) {
                             val ok = currentRecord.setPreferredDevice(btInput)
                             Log.i(TAG, "Dynamic updatePreferredDevice applied (device=${btInput?.productName ?: "Built-in Mic"}): $ok")
-                            if (isRunning.get() && !isSuspended.get()) {
-                                try {
-                                    releaseAudioEffects()
-                                    currentRecord.stop()
-                                    currentRecord.release()
-                                } catch (_: Exception) {}
-                                audioRecord = createAndStartAudioRecord()
-                                Log.i(TAG, "AudioRecord refreshed for device=${btInput?.productName ?: "Built-in Mic"}")
-                            }
                         }
                     }
                 }

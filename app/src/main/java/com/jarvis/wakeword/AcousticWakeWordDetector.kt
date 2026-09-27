@@ -158,12 +158,12 @@ class AcousticWakeWordDetector(
         val minSubRms = rmsValues.minOrNull() ?: 1.0
         val maxSubRms = rmsValues.maxOrNull() ?: 1.0
         val dynamicRatio = maxSubRms / max(minSubRms, 1.0)
-        // Rejection 1: Flat/stationary sound (fans, air conditioning, white noise)
-        if (dynamicRatio < 1.7) {
+        // Rejection 1: Flat/stationary sound (fans, air conditioning, white noise, steady music)
+        if (dynamicRatio < 2.0) {
             return 0.0f
         }
 
-        val baselineRms = noiseFloorRms.coerceAtLeast(10.0)
+        val baselineRms = noiseFloorRms.coerceAtLeast(12.0)
 
         // Syllable 1 ("JAR"): windows 1 and 2 should show vocalic energy peak and moderate ZCR
         val jarRms = maxOf(rmsValues[1], rmsValues[2])
@@ -176,18 +176,21 @@ class AcousticWakeWordDetector(
         val sibilantHf = hfRatios[4]
 
         // Condition 1: Energy must exceed background baseline significantly
-        val hasSpeechEnergy = jarRms > baselineRms * 1.3 && (visRms > baselineRms * 1.05 || sibilantRms > baselineRms * 1.05)
+        val hasSpeechEnergy = jarRms > baselineRms * 1.4 && (visRms > baselineRms * 1.1 || sibilantRms > baselineRms * 1.1)
         if (!hasSpeechEnergy) return 0.0f
 
+        // Condition 1b: Primary trochaic accent: "JAR" syllable has higher vocalic energy than "vis" coda
+        if (jarRms < visRms * 1.1) return 0.0f
+
         // Rejection 2: Vowel / voiced core cannot have high ZCR (speech vowels have ZCR < 0.15)
-        if (jarZcr > 0.18) return 0.0f
+        if (jarZcr > 0.17) return 0.0f
 
         // Condition 2: Sibilant coda "S" exhibits high zero-crossing rate compared to vocalic core "JAR"
         // In speech: /s/ has ZCR > 0.20, vowels have ZCR < 0.12
-        val hasSibilantTail = sibilantZcr > 0.18 && (sibilantZcr > jarZcr * 1.3)
+        val hasSibilantTail = sibilantZcr > 0.19 && (sibilantZcr > jarZcr * 1.4)
         val sibilantScore = when {
-            sibilantZcr >= 0.22 && sibilantHf > 0.60 -> 1.0f
-            sibilantZcr >= 0.18 && hasSibilantTail -> 0.85f
+            sibilantZcr >= 0.23 && sibilantHf > 0.60 -> 1.0f
+            sibilantZcr >= 0.19 && hasSibilantTail -> 0.85f
             hasSibilantTail -> 0.70f
             else -> 0.10f
         }
@@ -195,14 +198,14 @@ class AcousticWakeWordDetector(
 
         // Condition 3: Vocalic core has strong voiced energy and lower ZCR (periodicity)
         val vowelScore = when {
-            jarRms > baselineRms * 1.8 && jarZcr < 0.15 -> 0.95f
-            jarRms > baselineRms * 1.3 && jarZcr < 0.17 -> 0.80f
-            jarRms > baselineRms * 1.1 -> 0.60f
+            jarRms > baselineRms * 2.0 && jarZcr < 0.14 -> 0.95f
+            jarRms > baselineRms * 1.4 && jarZcr < 0.16 -> 0.80f
+            jarRms > baselineRms * 1.15 -> 0.60f
             else -> 0.20f
         }
 
         // Condition 4: Bimodal energy envelope (two syllable peaks: "JAR" and "VIS")
-        val isTwoSyllables = (jarRms > baselineRms * 1.2) && (visRms > baselineRms * 1.05 || sibilantRms > baselineRms * 1.05)
+        val isTwoSyllables = (jarRms > baselineRms * 1.3) && (visRms > baselineRms * 1.1 || sibilantRms > baselineRms * 1.1)
         val envelopeScore = if (isTwoSyllables) 0.90f else 0.40f
 
         // Composite acoustic confidence score

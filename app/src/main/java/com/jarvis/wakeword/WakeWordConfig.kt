@@ -40,9 +40,12 @@ data class WakeWordConfig(
         require(detectionCooldownMs >= 0L)
     }
 
-    fun effectiveThreshold(): Float = when (sensitivity) {
-        WakeSensitivity.LOW -> (detectionThreshold + 0.08f).coerceAtMost(0.95f)
-        WakeSensitivity.BALANCED -> detectionThreshold
-        WakeSensitivity.HIGH -> (detectionThreshold - 0.10f).coerceAtLeast(0.48f)
+    fun effectiveThreshold(isMediaActive: Boolean = false): Float {
+        val base = when (sensitivity) {
+            WakeSensitivity.LOW -> (detectionThreshold + 0.08f).coerceAtMost(0.95f)
+            WakeSensitivity.BALANCED -> detectionThreshold
+            WakeSensitivity.HIGH -> (detectionThreshold - 0.10f).coerceAtLeast(0.50f)
+        }
+        return if (isMediaActive) (base + 0.06f).coerceAtMost(0.95f) else base
     }
 }

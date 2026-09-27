@@ -95,29 +95,9 @@ class HybridWakeWordDetector(
                 return neuralScore
             }
 
-            // Keep the neural path primary, but allow the independently confirmed acoustic
-            // detector to recover when a compact/device-specific model misses a real voice.
-            // AcousticWakeWordDetector has its own multi-window confirmation and energy gates.
-            if (neuralScore >= 0.38f) {
-                val acousticScore = acousticDetector.pushAudio(samples)
-                if (acousticScore >= 0.45f) {
-                    val blended = 0.55f * neuralScore + 0.45f * acousticScore
-                    if (blended >= (config.effectiveThreshold() - 0.06f)) {
-                        Log.i(TAG, "Wake detected via Hybrid ensemble (neural=$neuralScore, acoustic=$acousticScore, blended=$blended)")
-                        return blended
-                    }
-                }
-            } else {
-                val acousticScore = acousticDetector.pushAudio(samples)
-                if (acousticScore >= config.effectiveThreshold()) {
-                    Log.i(TAG, "Wake detected via confirmed acoustic fallback (neural=$neuralScore, acoustic=$acousticScore)")
-                    return acousticScore
-                }
-            }
-
-            return neuralScore
+            return 0.0f
         } else {
-            // DEGRADED_ACOUSTIC mode: only active if allowDegradedFallback is true
+            // DEGRADED_ACOUSTIC mode: only active if allowDegradedFallback is true and neural model is unavailable
             return acousticDetector.pushAudio(samples)
         }
     }

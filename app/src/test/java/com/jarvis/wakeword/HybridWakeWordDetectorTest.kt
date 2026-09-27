@@ -67,8 +67,8 @@ class HybridWakeWordDetectorTest {
     }
 
     @Test
-    fun testLowNeuralConfidence_canRecoverWithConfirmedAcousticWake() {
-        val hybrid = HybridWakeWordDetector(customPrimary = MockPrimaryDetector(scoreToReturn = 0.0f))
+    fun testPrimaryActive_blocksAcousticNoiseWhenNeuralReportsNonDetection() {
+        val hybrid = HybridWakeWordDetector(customPrimary = MockPrimaryDetector(available = true, scoreToReturn = 0.0f))
         val audio = ShortArray(16000)
         for (i in 3200 until 9600) {
             val t = i.toDouble() / 16000
@@ -87,17 +87,17 @@ class HybridWakeWordDetectorTest {
                 score = maxOf(score, hybrid.pushAudio(audio.copyOfRange(start, start + 1600)))
             }
         }
-        assertTrue("Acoustic fallback should recover a missed neural wake", score >= 0.65f)
+        assertEquals("Neural active detector should block acoustic false detection", 0.0f, score, 0.001f)
     }
 
     @Test
-    fun testEnsemble_triggersWhenBothAgree() {
+    fun testPrimaryDetection_triggersAboveThreshold() {
         val mockPrimary = MockPrimaryDetector(available = true, scoreToReturn = 0.85f)
         val hybrid = HybridWakeWordDetector(customPrimary = mockPrimary)
 
         val frame = ShortArray(1600) { 1000 }
         val score = hybrid.pushAudio(frame)
-        assertTrue(score >= 0.82f)
+        assertEquals(0.85f, score, 0.001f)
     }
 
     @Test
