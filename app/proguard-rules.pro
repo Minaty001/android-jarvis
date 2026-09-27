@@ -45,3 +45,8 @@
 # ---------------------------------------------------------------------------
 -keep class dev.langchain4j.spi.** { *; }
 -keep class com.jarvis.ai.AndroidPromptTemplateFactory { *; }
+-keep interface com.jarvis.ai.Assistant { *; }
+-keep class dev.langchain4j.** { *; }
+-keep interface dev.langchain4j.** { *; }
+-dontwarn dev.langchain4j.**
+-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod

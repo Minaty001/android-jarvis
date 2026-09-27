@@ -372,14 +372,18 @@ class AssistantRuntime(
             )
             // Initialize LangChain Assistant for Memory and RAG
             if (effectiveGroqKey.isNotBlank()) {
-                val lcAssistant = com.jarvis.ai.LangChainAssistant(
-                    context = context,
-                    apiKey = effectiveGroqKey,
-                    modelName = groqModel,
-                    baseUrl = "https://api.groq.com/openai/v1"
-                )
-                lcAssistant.ingestUserProfile(activeUserProfile)
-                llmPlanner?.langchainAssistant = lcAssistant
+                try {
+                    val lcAssistant = com.jarvis.ai.LangChainAssistant(
+                        context = context,
+                        apiKey = effectiveGroqKey,
+                        modelName = groqModel,
+                        baseUrl = "https://api.groq.com/openai/v1"
+                    )
+                    lcAssistant.ingestUserProfile(activeUserProfile)
+                    llmPlanner?.langchainAssistant = lcAssistant
+                } catch (e: Throwable) {
+                    android.util.Log.e("AssistantRuntime", "Failed to initialize LangChainAssistant: ${e.message}", e)
+                }
             }
         }
         toolRegistry.registerLazy(

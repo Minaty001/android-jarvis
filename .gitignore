@@ -43,5 +43,6 @@ __pycache__/
 
 # IDE / workspace metadata
 .opencode/
+.kotlin/
 
 
