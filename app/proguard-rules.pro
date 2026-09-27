@@ -39,6 +39,8 @@
 }
 -dontwarn org.osgi.framework.**
 -dontwarn opennlp.**
+-keep class opennlp.** { *; }
+-keep interface opennlp.** { *; }
 
 # ---------------------------------------------------------------------------
 # 7. LangChain4j SPI and Android PromptTemplateFactory override

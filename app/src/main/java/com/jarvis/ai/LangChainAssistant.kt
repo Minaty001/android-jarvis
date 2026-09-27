@@ -71,16 +71,20 @@ class LangChainAssistant(
      * Call this function to add personal notes or documents to the RAG store.
      */
     fun ingestDocument(text: String) {
-        val document = Document.from(text)
-        val documentSplitter = DocumentSplitters.recursive(500, 50)
-        val segments = documentSplitter.split(document)
-        
-        // Generate embeddings and store them
-        val embeddings = embeddingModel.embedAll(segments).content()
-        embeddingStore.addAll(embeddings, segments)
-        
-        // Persist to disk
-        embeddingStore.serializeToFile(storeFile)
+        try {
+            val document = Document.from(text)
+            val documentSplitter = DocumentSplitters.recursive(500, 50)
+            val segments = documentSplitter.split(document)
+            
+            // Generate embeddings and store them
+            val embeddings = embeddingModel.embedAll(segments).content()
+            embeddingStore.addAll(embeddings, segments)
+            
+            // Persist to disk
+            embeddingStore.serializeToFile(storeFile)
+        } catch (e: Throwable) {
+            android.util.Log.e("LangChainAssistant", "Failed to ingest document into RAG: ${e.message}", e)
+        }
     }
 
     /**
