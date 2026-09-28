@@ -6,7 +6,8 @@ import com.jarvis.agent.AgentWorkingMemory
 data class SkillContext(
     val goal: String,
     val workingMemory: AgentWorkingMemory,
-    val userPreferences: Map<String, String> = emptyMap()
+    val userPreferences: Map<String, String> = emptyMap(),
+    val activeAppSession: String? = null
 )
 
 data class SkillResult(

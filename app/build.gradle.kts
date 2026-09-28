@@ -112,4 +112,7 @@ dependencies {
     // LangChain4j for Android integration
     implementation("dev.langchain4j:langchain4j:0.30.0")
     implementation("dev.langchain4j:langchain4j-open-ai:0.30.0")
+
+    // Sherpa-ONNX for Speaker Verification
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
 }

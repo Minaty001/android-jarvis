@@ -15,6 +15,7 @@ import androidx.annotation.RequiresApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.atomic.AtomicReference
+import java.util.Locale
 import kotlin.coroutines.resume
 
 data class UiNodeInfo(
@@ -41,10 +42,10 @@ class JarvisAccessibilityService : AccessibilityService() {
         val pkg = event.packageName?.toString()
         if (!pkg.isNullOrBlank()) {
             _currentForegroundPackage = pkg
-        }
-        val cls = event.className?.toString()
-        if (!cls.isNullOrBlank()) {
-            _currentActivityName = cls
+            val cls = event.className?.toString()
+            if (!cls.isNullOrBlank()) {
+                _currentActivityName = cls
+            }
         }
     }
 
@@ -55,6 +56,8 @@ class JarvisAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         instanceRef.compareAndSet(this, null)
+        _currentForegroundPackage = null
+        _currentActivityName = null
         Log.i(TAG, "JarvisAccessibilityService destroyed")
     }
 
@@ -239,6 +242,55 @@ class JarvisAccessibilityService : AccessibilityService() {
         val width = displayMetrics.widthPixels.toFloat()
         val height = displayMetrics.heightPixels.toFloat()
         return swipeAsync(width / 2f, height * 0.25f, width / 2f, height * 0.75f, 300)
+    }
+
+    suspend fun searchForegroundApp(query: String): Boolean {
+        if (query.isBlank()) return false
+        val pkg = currentForegroundPackage?.lowercase(Locale.ROOT) ?: return false
+        val searchFieldId = when {
+            pkg.contains("whatsapp") -> "$pkg:id/search_src_text"
+            pkg.contains("instagram") -> "$pkg:id/action_bar_search_edit_text"
+            pkg.contains("telegram") -> "$pkg:id/search_field"
+            pkg.contains("youtube") -> "$pkg:id/search_edit_text"
+            pkg.contains("chrome") -> "$pkg:id/url_bar"
+            else -> null
+        }
+
+        var field = searchFieldId?.let(::findNodeByViewId)
+        if (field == null && pkg.contains("chrome")) return false
+        if (field == null && !pkg.contains("chrome")) {
+            val searchButton = when {
+                pkg.contains("whatsapp") -> findNodeByViewId("$pkg:id/menuitem_search")
+                pkg.contains("instagram") -> findNodeByViewId("$pkg:id/search_tab")
+                pkg.contains("telegram") -> findNodeByViewId("$pkg:id/search")
+                pkg.contains("youtube") -> findNodeByViewId("$pkg:id/menu_item_1")
+                else -> null
+            } ?: findNodeByContentDescription("Search")
+                ?: findNodeByText("Search")
+            if (searchButton == null || !clickNode(searchButton)) return false
+            delay(500)
+            field = searchFieldId?.let(::findNodeByViewId) ?: findFirstEditableNode()
+        }
+
+        val input = field ?: return false
+        if (!input.isFocused) clickNode(input)
+        if (!setNodeText(input, query)) return false
+        if (android.os.Build.VERSION.SDK_INT >= 34 &&
+            input.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+        ) return true
+
+        val keyboardRoot = windows.firstOrNull {
+            it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD
+        }?.root ?: return false
+        // ponytail: IME labels cover English and Hindi; add device-locale labels if needed.
+        val submitButton = listOf("search", "go", "enter", "done", "खोजें", "खोज", "जाएं", "दर्ज करें").firstNotNullOfOrNull { label ->
+            dfsFind(keyboardRoot) { node ->
+                val text = node.text?.toString()?.trim()
+                val description = node.contentDescription?.toString()?.trim()
+                node.isClickable && (text.equals(label, ignoreCase = true) || description.equals(label, ignoreCase = true))
+            }
+        }
+        return submitButton?.let(::clickNode) ?: false
     }
 
     /**
@@ -563,7 +615,9 @@ class JarvisAccessibilityService : AccessibilityService() {
     companion object {
         private const val TAG = "JarvisAccessibility"
         private val instanceRef = AtomicReference<JarvisAccessibilityService?>(null)
+        @Volatile
         private var _currentForegroundPackage: String? = null
+        @Volatile
         private var _currentActivityName: String? = null
 
         val instance: JarvisAccessibilityService?
@@ -573,7 +627,11 @@ class JarvisAccessibilityService : AccessibilityService() {
             get() = instanceRef.get() != null
 
         val currentForegroundPackage: String?
-            get() = instance?.rootInActiveWindow?.packageName?.toString() ?: _currentForegroundPackage
+            get() {
+                val service = instance ?: return _currentForegroundPackage
+                return service.rootInActiveWindow?.packageName?.toString()
+                    ?: _currentForegroundPackage
+            }
 
         val currentActivityName: String?
             get() = _currentActivityName

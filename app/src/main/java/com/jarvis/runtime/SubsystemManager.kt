@@ -83,7 +83,17 @@ class SubsystemManager(private val context: Context? = null) {
     val verificationEngine by lazy { VerificationEngine(requireNotNull(context) { "Context required for VerificationEngine" }) }
     val checkpointManager by lazy { CheckpointManager(requireNotNull(context) { "Context required for CheckpointManager" }) }
 
-    val wakeEngine: WakeWordEngine by lazy { WakeWordEngine(requireNotNull(context) { "Context required for WakeWordEngine" }) }
+    val wakeEngine: WakeWordEngine by lazy {
+        val ctx = requireNotNull(context) { "Context required for WakeWordEngine" }
+        val engine = WakeWordEngine(ctx)
+        val verifier = com.jarvis.voice.OwnerVoiceVerifier(ctx)
+        engine.wakeGate = com.jarvis.voice.JarvisWakeGate(
+            ownerVerificationAvailable = verifier::isAvailableAndEnrolled,
+            verifyOwner = verifier::verifyOwner,
+            updateOwnerProfile = verifier::setOwnerProfile
+        )
+        engine
+    }
     val vadEngine: VadEngine by lazy { VadEngine() }
     val conversationManager: ConversationManager = ConversationManager()
 

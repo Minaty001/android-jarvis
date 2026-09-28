@@ -20,6 +20,8 @@ class AgentContextRouter(
     private val stateProvider: com.jarvis.autonomous.AndroidStateProvider? = null,
     private val raphaelRetrievalManager: RaphaelRetrievalManager? = null
 ) {
+    fun activeAppSession(): String? = stateProvider?.snapshot()?.activeAppSession
+
     fun routeNeeds(goal: String): Set<ContextNeed> {
         val lower = goal.trim().lowercase(Locale.ROOT)
         val needs = mutableSetOf<ContextNeed>()
@@ -64,7 +66,7 @@ class AgentContextRouter(
 
         // Always include device state if there is an active foreground app session,
         // so the LLM knows which app is currently open for contextual routing.
-        if (stateProvider?.snapshot()?.activeAppSession != null) {
+        if (activeAppSession() != null) {
             needs.add(ContextNeed.DEVICE_STATE)
             needs.remove(ContextNeed.NONE)
         }

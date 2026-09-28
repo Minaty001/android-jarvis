@@ -43,10 +43,20 @@ class SecureCredentialStore(context: Context) {
 
     fun delete(id: String) { prefs.edit().remove(id).apply() }
 
+    companion object {
+        private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+        private const val KEY_ALIAS = "jarvis_ui_credentials"
+        private var cachedKey: SecretKey? = null
+    }
+
     private fun getOrCreateKey(): SecretKey {
+        cachedKey?.let { return it }
         val ks = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         val existing = ks.getKey(KEY_ALIAS, null) as? SecretKey
-        if (existing != null) return existing
+        if (existing != null) {
+            cachedKey = existing
+            return existing
+        }
 
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
         generator.init(
@@ -58,11 +68,8 @@ class SecureCredentialStore(context: Context) {
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .build()
         )
-        return generator.generateKey()
-    }
-
-    companion object {
-        private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        private const val KEY_ALIAS = "jarvis_ui_credentials"
+        val newKey = generator.generateKey()
+        cachedKey = newKey
+        return newKey
     }
 }

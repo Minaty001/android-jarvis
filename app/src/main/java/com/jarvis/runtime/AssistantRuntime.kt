@@ -7,6 +7,7 @@ import com.jarvis.ai.*
 import com.jarvis.conversation.ConversationManager
 import com.jarvis.execution.VerificationEngine
 import com.jarvis.foundation.*
+import com.jarvis.foundation.worldstate.ForegroundAppSession
 import com.jarvis.interaction.BrowserDomTool
 import com.jarvis.interaction.OsSystemInspectionTool
 import com.jarvis.memory.AugmentedMemoryPipeline
@@ -379,8 +380,14 @@ class AssistantRuntime(
                         modelName = groqModel,
                         baseUrl = "https://api.groq.com/openai/v1"
                     )
-                    lcAssistant.ingestUserProfile(activeUserProfile)
                     llmPlanner?.langchainAssistant = lcAssistant
+                    ensureActiveScope().launch(Dispatchers.IO) {
+                        try {
+                            lcAssistant.ingestUserProfile(activeUserProfile)
+                        } catch (e: Throwable) {
+                            android.util.Log.e("AssistantRuntime", "Failed to ingest profile: ${e.message}", e)
+                        }
+                    }
                 } catch (e: Throwable) {
                     android.util.Log.e("AssistantRuntime", "Failed to initialize LangChainAssistant: ${e.message}", e)
                 }
@@ -615,13 +622,17 @@ class AssistantRuntime(
     ): RuntimeExecutionResult {
         Log.i(TAG, "Runtime executing command: '$utterance'")
         clearRecentlySpoken()
-        worldStateService.fresh()
+        val currentWorldState = worldStateService.fresh()
         conversationManager.addMessage("user", utterance)
 
         // 1. Check local fast-path intent resolver first for sub-millisecond offline execution.
         //    Actions with real-world side effects (or whose outcome needs verification) are
         //    NEVER fast-pathed — they must go through the closed loop so they can be verified.
-        val resolvedIntent = IntentResolver.resolve(utterance)
+        val resolvedIntent = IntentResolver.resolve(utterance).let { intent ->
+            if (intent?.intent == AssistantIntent.SEARCH_WEB &&
+                ForegroundAppSession.contextualSearchQuery(utterance, currentWorldState.activeAppSession) != null
+            ) null else intent
+        }
 
         // Cancel is a runtime control, not a tool: handle it before the busy gate and the
         // clarification routing, so "cancel" always works while a task is in flight or
@@ -874,4 +885,3 @@ object MemoryNamespaces {
     const val LONG_TERM = "long_term"
     const val PREFERENCES = "preferences"
 }
-

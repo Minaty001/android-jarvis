@@ -19,7 +19,8 @@ class SettingsScreen(
     initial: AppSettings,
     private val onDirtyChanged: (Boolean) -> Unit,
     private val onSaved: (() -> Unit)? = null,
-    private val voiceEngine: com.jarvis.voice.VoiceEngine? = null
+    private val voiceEngine: com.jarvis.voice.VoiceEngine? = null,
+    private val onOpenWakeWordSetup: (() -> Unit)? = null
 ) : ScrollView(context) {
     private var settings = initial
     private var voiceProfile: UserVoiceProfile = store.loadVoiceProfile()
@@ -695,10 +696,7 @@ class SettingsScreen(
         wakeAckSpinner.adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, ackOptions)
         val selectedAck = ackOptions.indexOf(initial.wakeAcknowledgment.uppercase()).coerceAtLeast(0)
         wakeAckSpinner.setSelection(selectedAck)
-        wakeAckSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) { markDirty() }
-            override fun onNothingSelected(p0: AdapterView<*>?) {}
-        }
+        wakeAckSpinner.onItemSelectedListener = simpleSpinnerListener { markDirty() }
         val ackRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
@@ -717,10 +715,7 @@ class SettingsScreen(
         val ttsProviders = listOf("Groq Neural (PlayAI)", "Android Platform TTS")
         ttsProviderSpinner.adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, ttsProviders)
         ttsProviderSpinner.setSelection(if (initial.ttsProvider.equals("android", ignoreCase = true)) 1 else 0)
-        ttsProviderSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) { markDirty() }
-            override fun onNothingSelected(p0: AdapterView<*>?) {}
-        }
+        ttsProviderSpinner.onItemSelectedListener = simpleSpinnerListener { markDirty() }
         val ttsProviderRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
@@ -740,10 +735,7 @@ class SettingsScreen(
         ttsVoiceSpinner.adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, ttsVoices)
         val selectedVoiceIdx = ttsVoices.indexOf(initial.ttsVoice).coerceAtLeast(0)
         ttsVoiceSpinner.setSelection(selectedVoiceIdx)
-        ttsVoiceSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) { markDirty() }
-            override fun onNothingSelected(p0: AdapterView<*>?) {}
-        }
+        ttsVoiceSpinner.onItemSelectedListener = simpleSpinnerListener { markDirty() }
         val ttsVoiceRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
@@ -848,6 +840,35 @@ class SettingsScreen(
         }
         wakeInner.addView(profileDivider)
 
+        // Voice Training Guide Instructions Card
+        val guideCard = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 8)
+            setPadding(Ui.dp(context, 12), Ui.dp(context, 10), Ui.dp(context, 12), Ui.dp(context, 10))
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = Ui.dp(context, 4)
+                bottomMargin = Ui.dp(context, 10)
+            }
+        }
+        guideCard.addView(TextView(context).apply {
+            text = "💡 HOW TO TRAIN YOUR VOICE"
+            textSize = 10.5f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Ui.CYAN)
+            letterSpacing = 0.05f
+            setPadding(0, 0, 0, Ui.dp(context, 4))
+        })
+        guideCard.addView(TextView(context).apply {
+            text = "1. Hold device 12–18 inches away in your normal position.\n" +
+                   "2. Speak 'Jarvis' naturally at your regular pace and volume.\n" +
+                   "3. Record 3 to 5 samples (more samples = higher recognition accuracy).\n" +
+                   "4. You can re-record individual samples if interrupted by noise."
+            textSize = 10.5f
+            setTextColor(Ui.TEXT)
+            setLineSpacing(0f, 1.15f)
+        })
+        wakeInner.addView(guideCard)
+
         val profileHeaderRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
@@ -881,7 +902,7 @@ class SettingsScreen(
         }
 
         val enrollVoiceBtn = com.google.android.material.button.MaterialButton(context).apply {
-            text = "🎙 ENROLL / RE-CALIBRATE"
+            text = "🎙 RECORD & START TRAINING"
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.BG)
@@ -905,14 +926,16 @@ class SettingsScreen(
         }
 
         fun updateVoiceProfileCard() {
+            val ownerProf = store.loadOwnerVoiceProfile()
             if (voiceProfile.isEnrolled) {
+                val ownerStatus = if (ownerProf != null) " • Owner ID Active" else ""
                 profileBadge.text = "ENROLLED • ${(voiceProfile.averageScore * 100).toInt()}% MATCH"
                 profileBadge.textSize = 9.5f
                 profileBadge.typeface = Typeface.DEFAULT_BOLD
                 profileBadge.setTextColor(Ui.CYAN)
                 profileBadge.background = Ui.rounded(context, Ui.SURFACE_2, Ui.CYAN, 6)
                 profileBadge.setPadding(Ui.dp(context, 8), Ui.dp(context, 3), Ui.dp(context, 8), Ui.dp(context, 3))
-                profileDetailsView.text = "Calibrated Threshold: ${String.format(java.util.Locale.US, "%.2f", voiceProfile.calibratedThreshold)} • ${voiceProfile.sampleCount} Samples • RMS Floor: ${voiceProfile.calibratedMinEnergyRms.toInt()}"
+                profileDetailsView.text = "Calibrated Threshold: ${String.format(java.util.Locale.US, "%.2f", voiceProfile.calibratedThreshold)} • ${voiceProfile.sampleCount} Samples • RMS Floor: ${voiceProfile.calibratedMinEnergyRms.toInt()}$ownerStatus"
                 resetVoiceBtn.visibility = View.VISIBLE
             } else {
                 profileBadge.text = "FACTORY DEFAULT"
@@ -927,25 +950,50 @@ class SettingsScreen(
         }
 
         enrollVoiceBtn.setOnClickListener {
-            VoiceEnrollmentDialog(context, voiceEngine = voiceEngine) { newProfile ->
-                store.saveVoiceProfile(newProfile)
-                voiceProfile = newProfile
-                updateVoiceProfileCard()
-                voiceEngine?.applyVoiceProfile(newProfile)
-                onSaved?.invoke()
-            }.show()
+            VoiceEnrollmentDialog(
+                context = context,
+                voiceEngine = voiceEngine,
+                onOwnerEnrolled = { ownerProfile ->
+                    store.saveOwnerVoiceProfile(ownerProfile)
+                    voiceEngine?.applyOwnerVoiceProfile(ownerProfile)
+                },
+                onProfileEnrolled = { newProfile ->
+                    store.saveVoiceProfile(newProfile)
+                    voiceProfile = newProfile
+                    updateVoiceProfileCard()
+                    voiceEngine?.applyVoiceProfile(newProfile)
+                    onSaved?.invoke()
+                }
+            ).show()
         }
 
         resetVoiceBtn.setOnClickListener {
             store.resetVoiceProfile()
+            voiceEngine?.applyOwnerVoiceProfile(null)
             voiceProfile = store.loadVoiceProfile()
             updateVoiceProfileCard()
             voiceEngine?.applyVoiceProfile(voiceProfile)
             onSaved?.invoke()
         }
 
+        val customSetupBtn = com.google.android.material.button.MaterialButton(context).apply {
+            text = "⚡ WAKE WORD SETUP (3 TEMPLATES)"
+            textSize = 11f
+            setTextColor(Ui.CYAN)
+            strokeColor = android.content.res.ColorStateList.valueOf(Ui.CYAN_DIM)
+            strokeWidth = Ui.dp(context, 1)
+            cornerRadius = Ui.dp(context, 8)
+            backgroundTintList = android.content.res.ColorStateList.valueOf(Ui.SURFACE_2)
+            setPadding(Ui.dp(context, 12), Ui.dp(context, 6), Ui.dp(context, 12), Ui.dp(context, 6))
+            layoutParams = LinearLayout.LayoutParams(-2, -2).apply {
+                marginStart = Ui.dp(context, 8)
+            }
+            setOnClickListener { onOpenWakeWordSetup?.invoke() }
+        }
+
         updateVoiceProfileCard()
         profileButtonsRow.addView(enrollVoiceBtn)
+        profileButtonsRow.addView(customSetupBtn)
         profileButtonsRow.addView(resetVoiceBtn)
         wakeInner.addView(profileButtonsRow)
 
@@ -1305,13 +1353,26 @@ class SettingsScreen(
         preBriefingMinutesBtn.text = "$currentPreBriefingMinutes min before"
     }
 
-    private fun markDirty() { if (suppressDirty) return; save() }
+    private val saveHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val saveRunnable = Runnable { save() }
+
+    private fun markDirty() {
+        if (suppressDirty) return
+        dirty = true
+        onDirtyChanged(true)
+        saveHandler.removeCallbacks(saveRunnable)
+        saveHandler.postDelayed(saveRunnable, 1500)
+    }
     fun hasUnsavedChanges(): Boolean = false
 
     fun saveSettings() = save()
 
     private fun simpleSpinnerListener(action: () -> Unit) = object : AdapterView.OnItemSelectedListener {
+        private var isFirst = true
         override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) { action() }
+        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+            if (isFirst) { isFirst = false; return }
+            action()
+        }
     }
 }

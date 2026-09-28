@@ -16,10 +16,21 @@ flowchart TD
         CAS[ContinuousAudioStream]
         VR[VoiceRouter]
         WWE[WakeWordEngine]
+        JWG[Optional JarvisWakeGate]
+        OVV[TFLite Owner Voice Verifier]
         ASR[AsrEngine]
         TTS[TtsEngine]
         BID[BargeInDetector]
         LCC[LiveConversationController]
+    end
+
+    subgraph Optional Screen-local DTW Setup
+        WWS[WakeWordSetupScreen]
+        DBLS[DtwBackgroundListeningService]
+        DTM[DtwMatcher]
+        WTS[WakeWordTemplateStore]
+        WWS --> DBLS --> DTM --> WTS
+        WWS --> WTS
     end
 
     subgraph Runtime & Control Plane Layer
@@ -42,6 +53,10 @@ flowchart TD
     FS --> CAS
     CAS --> VR
     VR --> WWE
+    WWE --> JWG
+    JWG -->|when owner profile and model are available| OVV
+    JWG --> AR
+    PS --> JWG
     VR --> ASR
     AR --> AK
     AR --> WS
@@ -62,14 +77,16 @@ flowchart TD
 ### 2. Real-Time Streaming Voice Pipeline (`com.jarvis.voice`)
 - **`ContinuousAudioStream`**: Low-latency 16kHz PCM audio stream reader managing `AudioRecord` hardware, echo cancellation (AEC), noise suppression (NS), and hardware suspend/resume during voice enrollment or external audio capture.
 - **`VoiceRouter`**: High-performance audio frame dispatcher that routes continuous PCM samples between `WakeWordEngine`, `BargeInDetector`, and `AsrEngine`.
-- **`WakeWordEngine`**: Real-time wake-word engine running TFLite DS-CNN acoustic detection with user-specific voice calibration profiles (`UserVoiceProfile`).
+- **`WakeWordEngine`**: Real-time wake-word engine running TFLite DS-CNN detection with user-specific acoustic calibration (`UserVoiceProfile`). Its optional `JarvisWakeGate` checks the persisted `OwnerVoiceProfile` through the TFLite speaker encoder when both enrollment and model are available; wake activation remains available when either is missing.
+- **`WakeWordSetupScreen` / `DtwBackgroundListeningService`**: Records three validated local templates and matches them with DTW only while the setup screen is open. These templates are separate from the normal TFLite wake detector.
 - **`AsrEngine` / `TtsEngine`**: Speech-to-text (Whisper / Android SpeechRecognizer) and Text-to-Speech (Groq TTS / Android TTS / PlayAI) modules.
 - **`BargeInDetector` & `LiveConversationController`**: Sub-50ms full-duplex speech interruption detector and continuous turn-taking controller. Halts TTS playback when incoming human speech or interruption controls (`stop`, `mute`, `pause`) are detected.
 
 ### 3. Assistant Runtime & Agent Coordinator (`com.jarvis.runtime`, `com.jarvis.agent`)
 - **`AssistantRuntime`**: Central coordinator holding subsystem references (`SubsystemManager`), memory engines, tool registries, and execution loops.
 - **`AgentKernel`**: Intent classifier and task planner decomposing natural language queries into executable tool actions.
-- **`AndroidStateProvider`**: Thread-safe reactive state model tracking device state (battery, Wi-Fi, unread notifications, call states, active media).
+- **`AndroidStateProvider`**: Thread-safe device state model tracking battery, Wi-Fi, unread notifications, call states, active media, and the foreground app session (WhatsApp, Instagram, Chrome, Telegram, or YouTube). The session is refreshed from the accessibility service and is supplied to command routing.
+- **Foreground app controls**: Contextual scroll and search requests use `APP_AUTOPILOT`; screen-reading requests use `SCREEN_VISION`. Foreground detection and in-app UI controls require Jarvis Accessibility Service to be enabled in Android settings. YouTube's dedicated playback tool remains available alongside shared UI controls.
 - **`ToolExecutor` & `PolicyEngine`**: Safety policy enforcement engine and sandbox executor for system tools, messaging, device settings, and automation.
 
 ### 4. Notifications & Telecom Interception (`com.jarvis.notification`, `com.jarvis.earbuds`)
@@ -77,7 +94,7 @@ flowchart TD
 - **`EarbudsAssistantEngine`**: Manages hands-free Bluetooth headset call screening and notification routing without forcing unprompted spoken TTS announcements.
 
 ### 5. Settings Persistence & UI (`com.jarvis.ui`)
-- **`UiPreferencesStore`**: Encapsulates `SharedPreferences` for `AppSettings`, LLM provider keys, custom voice profiles, and system configurations.
+- **`UiPreferencesStore`**: Encapsulates `SharedPreferences` for `AppSettings`, LLM provider keys, acoustic calibration profiles, and the optional owner speaker template.
 - **`SettingsScreen`**: User interface providing immediate persistence upon setting changes, hot-reloading configurations in `JarvisForegroundService` dynamically.
 
 ### 6. Local Routine Learning & Memory (`com.jarvis.habit`, `com.jarvis.memory`, `com.jarvis.routine`)

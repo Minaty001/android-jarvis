@@ -94,8 +94,10 @@ class ApiManagerScreen(
         if (savedIndex >= 0) modelSpinner.setSelection(savedIndex)
         
         modelSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            private var isFirst = true
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (isFirst) { isFirst = false; return }
                 val selectedModel = adapter.getItem(position) ?: return
                 uiStore.saveSettings(uiStore.loadSettings().copy(preferredLlmModel = selectedModel))
                 onChanged?.invoke()
@@ -122,7 +124,9 @@ class ApiManagerScreen(
         val selectedWakeWordIndex = wakeWordOptions.indexOfFirst { it.equals(initialSettings.wakeWord, ignoreCase = true) }.coerceAtLeast(0)
         wakeWordSpinner.setSelection(selectedWakeWordIndex)
         wakeWordSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            private var isFirst = true
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
+                if (isFirst) { isFirst = false; return }
                 val newWord = wakeWordOptions[position]
                 uiStore.saveSettings(uiStore.loadSettings().copy(wakeWord = newWord))
                 voiceEngine?.wakeEngine?.setActiveWakeWord(newWord)
@@ -142,7 +146,9 @@ class ApiManagerScreen(
         val selectedAck = ackOptions.indexOf(initialSettings.wakeAcknowledgment.uppercase()).coerceAtLeast(0)
         wakeAckSpinner.setSelection(selectedAck)
         wakeAckSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            private var isFirst = true
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
+                if (isFirst) { isFirst = false; return }
                 uiStore.saveSettings(uiStore.loadSettings().copy(wakeAcknowledgment = ackOptions[position]))
                 onChanged?.invoke()
             }

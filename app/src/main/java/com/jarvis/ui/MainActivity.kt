@@ -29,6 +29,7 @@ import com.jarvis.ui.screens.LogsScreen
 import com.jarvis.ui.screens.MemoryScreen
 import com.jarvis.ui.screens.SettingsScreen
 import com.jarvis.ui.screens.SkillsScreen
+import com.jarvis.ui.screens.WakeWordSetupScreen
 import com.jarvis.ui.security.SecureCredentialStore
 
 class MainActivity : AppCompatActivity() {
@@ -126,7 +127,8 @@ class MainActivity : AppCompatActivity() {
             }
             "Memory" -> MemoryScreen(this)
             "Brain" -> ApiManagerScreen(this, this, apiManager, service?.voiceEngine) { service?.reloadConfig() }
-            "Settings" -> SettingsScreen(this, store, store.loadSettings(), { dirty = it }, { service?.reloadConfig() }, service?.voiceEngine)
+            "WakeWordSetup" -> WakeWordSetupScreen(this) { showRoute("Dashboard") }
+            "Settings" -> SettingsScreen(this, store, store.loadSettings(), { dirty = it }, { service?.reloadConfig() }, service?.voiceEngine, onOpenWakeWordSetup = { showRoute("WakeWordSetup") })
             "Logs" -> LogsScreen(this, store)
             else -> DashboardScreen(
                 this, this, runner, store::loadSettings,

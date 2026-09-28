@@ -161,31 +161,31 @@ class VoiceEnrollmentAndCalibrationTest {
         assertEquals(3, profile.sampleCount)
         assertEquals(0.92f, profile.averageScore, 0.001f)
 
-        // Expected calibrated threshold: bounded in [0.55, 0.75]
-        assertEquals(0.75f, profile.calibratedThreshold, 0.01f)
+        // Expected calibrated threshold: 0.92 * 0.86 = 0.7912, bounded in [0.70, 0.88]
+        assertEquals(0.79f, profile.calibratedThreshold, 0.01f)
 
-        // Expected min energy: bounded in [12.0, 45.0]
-        assertEquals(45.0, profile.calibratedMinEnergyRms, 0.5)
+        // Expected min energy: bounded in [150.0, 600.0] -> 300*0.35=105 clamped to 150
+        assertEquals(150.0, profile.calibratedMinEnergyRms, 0.5)
 
-        // Expected ambient noise: 45.0 * 0.55 = 24.75
-        assertEquals(24.75, profile.ambientNoiseRms, 0.5)
+        // Expected ambient noise: 150.0 * 0.55 = 82.5 -> bounded in [80.0, 300.0]
+        assertEquals(82.5, profile.ambientNoiseRms, 0.5)
     }
 
     @Test
     fun testCalibrateEnforcesSafetyBoundsOnExtremeValues() {
         val calibrator = VoiceEnrollmentCalibrator()
 
-        // Case 1: Very low score and energy should clamp to safe lower bounds (0.55f and 14.0)
+        // Case 1: Very low score and energy should clamp to safe lower bounds (0.70f and 150.0)
         val lowSample = ValidatedSample(ShortArray(640), rmsEnergy = 40.0, score = 0.40f, speechDurationMs = 500L)
         val lowProfile = calibrator.calibrate(listOf(lowSample))
-        assertEquals(0.55f, lowProfile.calibratedThreshold, 0.001f)
-        assertEquals(14.0, lowProfile.calibratedMinEnergyRms, 0.001)
+        assertEquals(0.70f, lowProfile.calibratedThreshold, 0.001f)
+        assertEquals(150.0, lowProfile.calibratedMinEnergyRms, 0.001)
 
-        // Case 2: Very high score and loud energy should clamp to safe upper bounds (0.75f and 45.0)
+        // Case 2: Very high score and loud energy should clamp to safe upper bounds (0.88f and 600.0)
         val highSample = ValidatedSample(ShortArray(640), rmsEnergy = 2000.0, score = 1.0f, speechDurationMs = 1200L)
         val highProfile = calibrator.calibrate(listOf(highSample))
-        assertTrue(highProfile.calibratedThreshold <= 0.75f)
-        assertEquals(45.0, highProfile.calibratedMinEnergyRms, 0.001)
+        assertTrue(highProfile.calibratedThreshold <= 0.88f)
+        assertEquals(600.0, highProfile.calibratedMinEnergyRms, 0.001)
     }
 
     @Test
@@ -259,5 +259,36 @@ class VoiceEnrollmentAndCalibrationTest {
         assertFalse(engine.getVoiceProfile().isEnrolled)
 
         engine.close()
+    }
+
+    @Test
+    fun testMultiSampleCalibrationWithFiveSamples() {
+        val calibrator = VoiceEnrollmentCalibrator()
+        val samples = (1..5).map { idx ->
+            ValidatedSample(
+                pcm = ShortArray(640),
+                rmsEnergy = 250.0 + (idx * 10),
+                score = 0.88f + (idx * 0.01f),
+                speechDurationMs = 800L
+            )
+        }
+
+        val profile = calibrator.calibrate(samples)
+        assertTrue(profile.isEnrolled)
+        assertEquals(5, profile.sampleCount)
+        assertTrue(profile.averageScore >= 0.90f)
+        assertTrue(profile.calibratedThreshold in 0.70f..0.88f)
+    }
+
+    @Test
+    fun testOwnerVoiceProfileFromMultipleEmbeddings() {
+        val emb1 = FloatArray(com.jarvis.wakeword.OwnerVoiceProfile.EMBEDDING_SIZE) { 0.5f }
+        val emb2 = FloatArray(com.jarvis.wakeword.OwnerVoiceProfile.EMBEDDING_SIZE) { 0.6f }
+        val emb3 = FloatArray(com.jarvis.wakeword.OwnerVoiceProfile.EMBEDDING_SIZE) { 0.55f }
+
+        val ownerProfile = com.jarvis.wakeword.OwnerVoiceProfile.fromEmbeddings(listOf(emb1, emb2, emb3))
+        assertNotNull(ownerProfile)
+        assertEquals(256, ownerProfile.toFloatArray().size)
+        assertTrue(ownerProfile.matches(emb1))
     }
 }

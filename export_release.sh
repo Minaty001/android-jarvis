@@ -7,9 +7,6 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 GRADLE_CMD="./gradlew"
-if command -v gradle >/dev/null 2>&1; then
-    GRADLE_CMD="gradle"
-fi
 
 echo "=== Building Production Release APK ==="
 "$GRADLE_CMD" assembleRelease --no-daemon

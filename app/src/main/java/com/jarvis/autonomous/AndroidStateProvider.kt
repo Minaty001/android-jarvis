@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.NotificationManager
 import android.content.Context
 import com.jarvis.foundation.TaskStateManager
+import com.jarvis.foundation.worldstate.ForegroundAppSession
 import com.jarvis.foundation.worldstate.WorldStateSnapshot
 import com.jarvis.media.MediaSessionManager
 
@@ -22,15 +23,7 @@ class AndroidStateProvider(
         val activeTask = taskStateManager.getRecentTasks(10).firstOrNull { it.status in RUNNING_STATES }
         
         val fgPackage = JarvisAccessibilityService.currentForegroundPackage
-        val activeSession = when {
-            fgPackage == null -> null
-            fgPackage.contains("youtube", ignoreCase = true) -> "YouTube"
-            fgPackage.contains("instagram", ignoreCase = true) -> "Instagram"
-            fgPackage.contains("chrome", ignoreCase = true) -> "Chrome"
-            fgPackage.contains("whatsapp", ignoreCase = true) -> "WhatsApp"
-            fgPackage.contains("spotify", ignoreCase = true) -> "Spotify"
-            else -> fgPackage.substringAfterLast('.')
-        }
+        val activeSession = ForegroundAppSession.fromPackage(fgPackage)
 
         return WorldStateSnapshot(
             batteryPercent = ambient.batteryPercent,

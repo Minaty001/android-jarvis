@@ -288,8 +288,31 @@ class UiPreferencesStore(context: Context) {
         prefs.edit().putString(KEY_VOICE_PROFILE, json.toString()).apply()
     }
 
+    fun saveOwnerVoiceProfile(profile: com.jarvis.wakeword.OwnerVoiceProfile) {
+        val json = JSONObject().apply {
+            val templateArr = org.json.JSONArray()
+            profile.toFloatArray().forEach { templateArr.put(it.toDouble()) }
+            put("template", templateArr)
+            put("threshold", profile.threshold.toDouble())
+            put("enrolledAt", profile.enrolledAt)
+        }
+        prefs.edit().putString(KEY_OWNER_VOICE_PROFILE, json.toString()).apply()
+    }
+
+    fun loadOwnerVoiceProfile(): com.jarvis.wakeword.OwnerVoiceProfile? {
+        val raw = prefs.getString(KEY_OWNER_VOICE_PROFILE, null) ?: return null
+        return runCatching {
+            val json = JSONObject(raw)
+            val templateArr = json.getJSONArray("template")
+            val template = FloatArray(templateArr.length()) { i -> templateArr.getDouble(i).toFloat() }
+            val threshold = json.optDouble("threshold", 0.80).toFloat()
+            val enrolledAt = json.optLong("enrolledAt", System.currentTimeMillis())
+            com.jarvis.wakeword.OwnerVoiceProfile.fromTemplate(template, threshold, enrolledAt)
+        }.getOrNull()
+    }
+
     fun resetVoiceProfile() {
-        prefs.edit().remove(KEY_VOICE_PROFILE).apply()
+        prefs.edit().remove(KEY_VOICE_PROFILE).remove(KEY_OWNER_VOICE_PROFILE).apply()
     }
 
     companion object {
@@ -298,5 +321,6 @@ class UiPreferencesStore(context: Context) {
         private const val KEY_CUSTOM_VARIABLES = "custom_variables"
         private const val KEY_LOGS = "logs"
         private const val KEY_VOICE_PROFILE = "user_voice_profile"
+        private const val KEY_OWNER_VOICE_PROFILE = "owner_voice_profile"
     }
 }

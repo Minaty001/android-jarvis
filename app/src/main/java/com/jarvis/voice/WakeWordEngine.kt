@@ -32,7 +32,9 @@ enum class WakeWordState {
 class WakeWordEngine(
     private val context: Context? = null,
     private var config: WakeWordConfig = WakeWordConfig(),
-    private val customDetector: WakeWordDetector? = null
+    private val customDetector: WakeWordDetector? = null,
+    var rollingBuffer: com.jarvis.voice.audio.RollingPcmBuffer? = null,
+    var wakeGate: JarvisWakeGate? = null
 ) {
     private val TAG = "WakeWordEngine"
     private var detector: WakeWordDetector? = customDetector
@@ -145,7 +147,7 @@ class WakeWordEngine(
         lastDetectionAt = 0L
         state = WakeWordState.RUNNING
 
-        Log.i(TAG, "WakeWordEngine started (state=$state, modelAvailable=${isAvailable()})")
+    Log.i(TAG, "WakeWordEngine started (state=$state, modelAvailable=${isAvailable()})")
     }
 
     fun acceptAudio(samples: ShortArray): Boolean {
@@ -159,17 +161,28 @@ class WakeWordEngine(
         val threshold = config.effectiveThreshold()
 
         if (score >= threshold && now - lastDetectionAt >= config.detectionCooldownMs) {
+            val candidateAudio = rollingBuffer?.getRecentAudio() ?: samples
+            val isVerified = wakeGate?.processWakeScore(score, candidateAudio) ?: true
+
+            if (!isVerified) {
+                return false
+            }
+
             if (detectionGate.compareAndSet(false, true)) {
                 trailingAudioBuffer = samples.copyOf()
                 state = WakeWordState.TRIGGERED
                 lastDetectionAt = now
                 val phrase = config.profiles.getOrNull(activeProfileIndex)?.phrase ?: "Jarvis"
-                Log.i(TAG, "Wake word '$phrase' detected in PCM stream with score: $score")
+                Log.i(TAG, "Wake word '$phrase' detected and VERIFIED in PCM stream with score: $score")
                 onDetectedCallback?.invoke(phrase)
                 return true
             }
         }
         return false
+    }
+
+    fun applyOwnerVoiceProfile(profile: com.jarvis.wakeword.OwnerVoiceProfile?) {
+        wakeGate?.setOwnerProfile(profile)
     }
 
     fun stop() {

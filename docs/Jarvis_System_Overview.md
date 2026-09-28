@@ -40,7 +40,8 @@ The LLM Agent powering Jarvis has access to an extensive "Tool Registry". These 
 
 ### Device Control & Automation
 *   **App Autopilot & Macro Workflow:** Opens apps and autonomously clicks, swipes, and enters text to achieve a goal.
-*   **DeviceSettingsTool:** Toggles Wi-Fi, Bluetooth, Airplane mode, Brightness, DND, etc.
+*   **Foreground App Sessions:** Tracks WhatsApp, Instagram, Chrome, Telegram, and YouTube from accessibility window events. Follow-up scroll and search commands use the active app, while screen reading inspects that same foreground screen. Enable Jarvis Accessibility Service in Android settings for session detection and in-app UI controls; YouTube playback commands remain available.
+*   **DeviceSettingsTool:** Reads media-volume and ringer status; changes media volume, mute state, and ringer mode; opens Jarvis's app permission settings when requested.
 *   **FlashlightTool & BatteryStatusTool:** Hardware control and monitoring.
 *   **SystemSwitchboardTool:** Deep integration for hardware state changes.
 
@@ -71,7 +72,9 @@ Users can customize Jarvis heavily via the `UiPreferencesStore` and Settings Scr
 *   **Wake Word & Voice Profile:**
     *   `wakeWord`: The custom phrase used to trigger Jarvis (e.g., "Hey Jarvis").
     *   `wakeSensitivity`: Threshold (0.0 to 1.0) balancing false positives against responsiveness.
-    *   Voice enrollment and calibration data for specific user voices.
+    *   Acoustic calibration data and an optional enrolled owner speaker template. The normal wake path uses owner verification when both the profile and speaker model are available; otherwise it keeps wake activation enabled.
+    *   The three-template DTW setup is a separate, screen-local matcher. Its templates do not modify the normal TFLite wake detector.
+*   **Android Permission Shortcuts:** The Settings screen can open Android's default-assistant, overlay, accessibility, and notification-access settings. Users enable those permissions in Android settings.
 *   **Safety & Security Rules:**
     *   `requireConfirmationForMediumRisk` / `HighRisk`: Forces Jarvis to ask permission before taking actions like sending emails or deleting files.
     *   `lockScreenVoiceEnabled`: Toggles lock-screen functionality.

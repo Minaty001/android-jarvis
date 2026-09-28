@@ -785,6 +785,8 @@ class AgentKernel(
                     lower.contains("youtube") -> "youtube"
                     lower.contains("insta") -> "instagram"
                     lower.contains("chrome") -> "chrome"
+                    lower.contains("whatsapp") -> "whatsapp"
+                    lower.contains("telegram") -> "telegram"
                     else -> "youtube"
                 }
                 return AgentDecision(
@@ -797,7 +799,7 @@ class AgentKernel(
                 val dir = if (lower.contains("up") || lower.contains("uper")) "up" else "down"
                 return AgentDecision(
                     type = DecisionType.ACT,
-                    action = AgentAction("UI_SCROLL", mapOf("direction" to dir)),
+                    action = AgentAction("APP_AUTOPILOT", mapOf("action" to "scroll", "direction" to dir)),
                     reasonCode = "STEP_2_SCROLL",
                     successCriteria = listOf("feed scrolled")
                 )
@@ -808,7 +810,8 @@ class AgentKernel(
         val skillContext = SkillContext(
             goal = goal,
             workingMemory = workingMemory,
-            userPreferences = workingMemory.facts
+            userPreferences = workingMemory.facts,
+            activeAppSession = contextRouter.activeAppSession()
         )
         val matchedSkill = skillRegistry.findSkill(goal, skillContext)
         if (matchedSkill != null) {

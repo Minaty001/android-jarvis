@@ -81,7 +81,9 @@ The app is organized into **5 core navigation tabs** along with a persistent HUD
 - **Active Endpoints & Ping Testing**: Live endpoint status with real-time latency ping verification (`TEST PING`).
 
 ### 5. ⚙️ System Settings & Diagnostics (`CONFIG`)
-- **Voice & Acoustic Customization**: Personal Voice Wake-Word Enrollment & Calibration Wizard, custom wake-word string, wake acknowledgment sounds (*"Yes Sir"*, *"At your service"*, *"Ready"*, Chime), continuous conversation toggle, full-duplex barge-in switch, and offline ASR toggle.
+- **Voice & Acoustic Customization**: Personal Wake-Word Calibration Wizard, optional owner voice verification, custom wake-word templates for screen-local DTW matching, wake acknowledgment sounds (*"Yes Sir"*, *"At your service"*, *"Ready"*, Chime), continuous conversation toggle, full-duplex barge-in switch, and offline ASR toggle.
+- **Android System Access**: Shortcuts open Android's default assistant, overlay permission, accessibility service, and notification access settings. Jarvis reports whether the required access is enabled; Android owns the final permission switch.
+- **Audio Device Controls**: `DEVICE_SETTINGS` reads media volume and ringer status and can change media volume, mute/unmute media, or set the ringer mode. It can also open Jarvis's app permission page.
 - **Proactive Contextual Intelligence**: Battery warning toggles, calendar pre-briefing lead time picker (5m, 10m, 15m, 30m), and interactive Daily Morning Briefing time picker (`HH:mm`).
 - **Bluetooth & Wearables**: Bluetooth SCO earbud audio routing toggle, earbud hook button interception toggle, and WearOS sync toggle.
 - **Automation Behaviors**: Lock-screen voice HUD overlay toggle, WhatsApp auto-return home toggle, and media ducking level selector (10%, 20%, 30%, 50%).
@@ -103,21 +105,25 @@ The app is organized into **5 core navigation tabs** along with a persistent HUD
 ---
 
 ### 1.1 🎚️ Personal Voice Wake-Word Enrollment & Acoustic Calibration
-- **What it does**: Calibrates the on-device keyword spotter directly to your unique vocal timbre, accent, articulation clarity, and ambient microphone noise floor. Rather than relying solely on a fixed generic detection threshold, J.A.R.V.I.S. tailors a personalized `UserVoiceProfile` using 3 guided utterances.
+- **What it does**: Calibrates the on-device keyword spotter's sensitivity using guided recordings and saves a personalized `UserVoiceProfile`. When the speaker encoder is available, the wizard also creates an optional owner voice profile used by the normal wake pipeline. Calibration does not retrain the TFLite keyword-spotting model.
 - **How to use via Settings (`CONFIG`)**:
   - Go to the **CONFIG** tab and scroll to **Wake Engine & Audio Contract**.
-  - Under **Personal Acoustic Calibration**, tap `🎙 ENROLL / RE-CALIBRATE`.
+  - Under **Personal Acoustic Calibration**, tap `🎙 RECORD & START TRAINING`.
   - The **Voice Calibration Wizard** modal opens:
     1. Tap `RECORD SAMPLE 1`, speak *"Jarvis"* clearly at your normal speaking distance (real-time cyan speech energy meter visualizes volume).
-    2. The engine instantly validates duration ($\ge 0.4$s), speech energy ($\text{RMS} \ge 70.0$), microphone clipping distortion ($< 3\%$), and model confidence.
+    2. The engine validates duration ($\ge 0.4$s), speech energy ($\text{RMS} \ge 70.0$), microphone clipping distortion ($< 3\%$), and keyword-model confidence when that model is available.
     3. Repeat for `SAMPLE 2` and `SAMPLE 3`.
-    4. Upon completion, view your **Average Wake Confidence**, **Calibrated Detection Threshold**, and **Calibrated Noise Floor**.
-    5. Tap `SAVE & ACTIVATE` to apply your personalized profile immediately into the live detection pipeline without restarting the service.
-  - **Revert anytime**: Tap `↺ RESET TO DEFAULT` to restore the factory TFLite acoustic profile instantly.
+    4. Upon completion, review the calibrated detection profile and whether an owner speaker profile was created.
+    5. Tap `SAVE & ACTIVATE` to apply the profiles to the live detection pipeline. If the speaker model or owner profile is unavailable, normal wake-word activation remains enabled without owner verification.
+  - **Revert anytime**: Tap `↺ RESET TO DEFAULT` to restore factory acoustic settings and clear the optional owner voice profile.
 
----
+### 1.2 ⚡ Custom Wake-Word Templates (DTW)
+- Open **WAKE WORD SETUP (3 TEMPLATES)** from the wake settings in CONFIG.
+- Record three samples. Rejected samples show the validation reason and can be retried without replacing a saved template.
+- Choose **NORMAL (0.80)** or **STRICT (0.88)** to set the DTW match threshold.
+- DTW listening runs only while the setup screen is open and matches these saved templates. It does not train or replace the normal TFLite wake detector.
 
-### 1.2 ⚡ Lazy Subsystem Container & Cold-Start RAM Optimization
+### 1.3 ⚡ Lazy Subsystem Container & Cold-Start RAM Optimization
 - **What it does**: Segregates core boot-critical subsystems (Wake-Word Engine, Event Bus, World State Store, Device Guardian) from heavy, memory-intensive modules (Camera2 Perception, TFLite Vision Detectors, SQLite Knowledge Vaults, RAG dense vector stores, WhatsApp accessibility automations, Telephony, and Sherpa-ONNX/TTS).
 - **Zero Cold-Start Lag**: Only lightweight audio wake-word detection and reactive coordination are loaded at service startup, reducing foreground service memory consumption by up to ~65% and eliminating boot-time ANR risks.
 - **LazyTool Metadata Discovery**: All autonomous planning engines discover tool parameters, names, risk levels, and confirmation policies at startup without instantiating underlying hardware drivers.
@@ -293,6 +299,8 @@ The app is organized into **5 core navigation tabs** along with a persistent HUD
   - *"check battery percentage"*, *"battery kitni hai"*
   - *"open YouTube"*, *"open Chrome"*, *"close all apps"*
   - *"take screenshot"*
+- **Foreground App Sessions**: Jarvis tracks the active WhatsApp, Instagram, Chrome, Telegram, or YouTube screen. Follow-ups such as *"scroll down"*, *"search for hiking boots"*, and *"read the screen"* use that app; YouTube playback commands remain available.
+- **Accessibility Requirement**: Enable **Jarvis Accessibility Service** in Android's Accessibility settings for foreground app detection and in-app scrolling, search, and other UI actions.
 - **Natural Language Calculator**:
   - Voice: *"calculate 18 percent of 5400"*, *"what is 125 multiplied by 48"*
   - Touch: Type arithmetic or conversational math into the `NL_CALC` box on the **SKILLS** screen and tap `CALC`.

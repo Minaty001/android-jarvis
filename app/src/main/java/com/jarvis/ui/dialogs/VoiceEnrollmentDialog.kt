@@ -13,6 +13,8 @@ import androidx.appcompat.app.AlertDialog
 import com.google.android.material.button.MaterialButton
 import com.jarvis.ui.components.Ui
 import com.jarvis.voice.audio.AcousticFeedbackEngine
+import com.jarvis.wakeword.OwnerVoiceProfile
+import com.jarvis.wakeword.TfliteOwnerVoiceVerifier
 import com.jarvis.wakeword.UserVoiceProfile
 import com.jarvis.wakeword.VoiceEnrollmentCalibrator
 import com.jarvis.wakeword.VoiceSampleRecorder
@@ -22,20 +24,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 /**
- * Google Stitch Material 3 Cyber-Slate Dialog for guided voice wake-word enrollment
- * and personal acoustic calibration.
+ * Unified Voice Training & Multi-Sample Calibration Wizard.
  *
- * Guides the user through 3 clean audio recordings of "Jarvis", validates acoustic parameters,
- * visualizes real-time speech energy levels, and calibrates an individualized detection threshold.
+ * Guides the user through 3 to 5 clean audio recordings of "Jarvis", validates acoustic parameters,
+ * visualizes real-time speech energy levels, extracts TFLite 256-dim speaker embeddings,
+ * and calibrates both personalized acoustic thresholds and owner voice verification templates.
  */
 class VoiceEnrollmentDialog(
     private val context: Context,
     private val detector: WakeWordDetector? = null,
     private val calibrator: VoiceEnrollmentCalibrator = VoiceEnrollmentCalibrator(),
     private val voiceEngine: com.jarvis.voice.VoiceEngine? = null,
+    private val onOwnerEnrolled: ((OwnerVoiceProfile) -> Unit)? = null,
     private val onProfileEnrolled: (UserVoiceProfile) -> Unit
 ) {
     private val recorder = VoiceSampleRecorder()
@@ -43,8 +47,14 @@ class VoiceEnrollmentDialog(
     private val dialogScope = CoroutineScope(Dispatchers.Main + Job())
     private var recordJob: Job? = null
 
+    private var targetSampleCount = 3
+    private val maxSampleCount = 5
     private val recordedSamples = mutableListOf<VoiceEnrollmentCalibrator.ValidatedSample>()
-    private var calibratedProfile: UserVoiceProfile? = null
+    private val recordedEmbeddings = mutableListOf<FloatArray?>()
+
+    private var calibratedUserProfile: UserVoiceProfile? = null
+    private var calibratedOwnerProfile: OwnerVoiceProfile? = null
+    private var verifier: TfliteOwnerVoiceVerifier? = null
 
     private var alertDialog: AlertDialog? = null
 
@@ -67,7 +77,7 @@ class VoiceEnrollmentDialog(
             setPadding(0, 0, Ui.dp(context, 8), 0)
         }
         val titleView = TextView(context).apply {
-            text = "VOICE CALIBRATION WIZARD"
+            text = "UNIFIED VOICE TRAINING WIZARD"
             textSize = 15f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
@@ -78,29 +88,58 @@ class VoiceEnrollmentDialog(
         headerRow.addView(titleView)
         root.addView(headerRow)
 
-        // Subtitle
+        // Subtitle & Instructions
         val subtitleView = TextView(context).apply {
-            text = "Record 3 clean samples saying 'Jarvis' to calibrate detection sensitivity to your voice and room acoustics."
+            text = "Record 3 to 5 clean samples saying 'Jarvis' to train your owner voice embedding and calibrate wake-word sensitivity to your room acoustics."
             textSize = 12f
             setTextColor(Ui.MUTED)
             setLineSpacing(0f, 1.15f)
-            setPadding(0, 0, 0, Ui.dp(context, 16))
+            setPadding(0, 0, 0, Ui.dp(context, 14))
         }
         root.addView(subtitleView)
 
-        // Step Indicator Chips Row
+        // Step Indicator Chips Container
         val stepChipsRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, Ui.dp(context, 14))
+            setPadding(0, 0, 0, Ui.dp(context, 12))
         }
-        val chip1 = createStepChip(context, "1. SAMPLE 1")
-        val chip2 = createStepChip(context, "2. SAMPLE 2")
-        val chip3 = createStepChip(context, "3. SAMPLE 3")
-        stepChipsRow.addView(chip1)
-        stepChipsRow.addView(chip2)
-        stepChipsRow.addView(chip3)
         root.addView(stepChipsRow)
+
+        fun renderStepChips() {
+            stepChipsRow.removeAllViews()
+            val currentIdx = recordedSamples.size
+            for (i in 0 until targetSampleCount) {
+                val chip = TextView(context).apply {
+                    text = "${i + 1}. SAMPLE ${i + 1}"
+                    textSize = 9.5f
+                    typeface = Typeface.DEFAULT_BOLD
+                    letterSpacing = 0.04f
+                    gravity = Gravity.CENTER
+                    setPadding(Ui.dp(context, 6), Ui.dp(context, 4), Ui.dp(context, 6), Ui.dp(context, 4))
+                    layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply {
+                        marginEnd = Ui.dp(context, 4)
+                    }
+
+                    when {
+                        i < currentIdx -> {
+                            setTextColor(Ui.SUCCESS)
+                            background = Ui.rounded(context, Ui.SURFACE_2, Ui.SUCCESS, 6)
+                        }
+                        i == currentIdx && currentIdx < targetSampleCount -> {
+                            setTextColor(Ui.CYAN)
+                            background = Ui.rounded(context, Ui.SURFACE_2, Ui.CYAN, 6)
+                        }
+                        else -> {
+                            setTextColor(Ui.MUTED)
+                            background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 6)
+                        }
+                    }
+                }
+                stepChipsRow.addView(chip)
+            }
+        }
+        renderStepChips()
 
         // Real-time Audio Level Bar Container
         val levelLabel = TextView(context).apply {
@@ -120,7 +159,7 @@ class VoiceEnrollmentDialog(
             progressTintList = ColorStateList.valueOf(Ui.CYAN)
             progressBackgroundTintList = ColorStateList.valueOf(Ui.SURFACE_2)
             layoutParams = LinearLayout.LayoutParams(-1, Ui.dp(context, 8)).apply {
-                bottomMargin = Ui.dp(context, 16)
+                bottomMargin = Ui.dp(context, 14)
             }
         }
         root.addView(levelBar)
@@ -131,7 +170,7 @@ class VoiceEnrollmentDialog(
             background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER_GLOW, 10)
             setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
-                bottomMargin = Ui.dp(context, 18)
+                bottomMargin = Ui.dp(context, 14)
             }
         }
         val statusTitle = TextView(context).apply {
@@ -152,18 +191,25 @@ class VoiceEnrollmentDialog(
         statusCard.addView(statusMessage)
         root.addView(statusCard)
 
-        // Summary Details Card (Hidden until all 3 samples are completed)
+        // Samples Progress List Container (shows captured samples with per-sample re-record buttons)
+        val samplesListContainer = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 0, 0, Ui.dp(context, 10))
+        }
+        root.addView(samplesListContainer)
+
+        // Summary Details Card (Hidden until all target samples are completed)
         val summaryCard = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
             background = Ui.rounded(context, Ui.SURFACE_2, Ui.CYAN_DIM, 10)
             setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
-                bottomMargin = Ui.dp(context, 18)
+                bottomMargin = Ui.dp(context, 14)
             }
         }
         val summaryTitle = TextView(context).apply {
-            text = "CALIBRATION ANALYSIS COMPLETE"
+            text = "UNIFIED TRAINING COMPLETE"
             textSize = 10.5f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.SUCCESS)
@@ -185,6 +231,22 @@ class VoiceEnrollmentDialog(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.END or Gravity.CENTER_VERTICAL
         }
+
+        val addSampleBtn = MaterialButton(context).apply {
+            text = "+ ADD EXTRA SAMPLE"
+            textSize = 10f
+            setTextColor(Ui.CYAN)
+            strokeColor = ColorStateList.valueOf(Ui.CYAN_DIM)
+            strokeWidth = Ui.dp(context, 1)
+            cornerRadius = Ui.dp(context, 8)
+            backgroundTintList = ColorStateList.valueOf(Ui.SURFACE_2)
+            setPadding(Ui.dp(context, 10), Ui.dp(context, 6), Ui.dp(context, 10), Ui.dp(context, 6))
+            visibility = View.VISIBLE
+            layoutParams = LinearLayout.LayoutParams(-2, -2).apply {
+                marginEnd = Ui.dp(context, 8)
+            }
+        }
+
         val cancelButton = MaterialButton(context).apply {
             text = "CANCEL"
             textSize = 11f
@@ -201,6 +263,7 @@ class VoiceEnrollmentDialog(
                 alertDialog?.dismiss()
             }
         }
+
         val actionButton = MaterialButton(context).apply {
             text = "RECORD SAMPLE 1"
             textSize = 11.5f
@@ -213,50 +276,166 @@ class VoiceEnrollmentDialog(
                 marginStart = Ui.dp(context, 8)
             }
         }
+
+        buttonRow.addView(addSampleBtn)
         buttonRow.addView(cancelButton)
         buttonRow.addView(actionButton)
         root.addView(buttonRow)
 
-        fun updateChips() {
-            val chips = listOf(chip1, chip2, chip3)
-            val currentIdx = recordedSamples.size
-            for (i in 0 until 3) {
-                val chip = chips[i]
-                when {
-                    i < currentIdx -> {
-                        chip.setTextColor(Ui.SUCCESS)
-                        chip.background = Ui.rounded(context, Ui.SURFACE_2, Ui.SUCCESS, 6)
-                    }
-                    i == currentIdx && currentIdx < 3 -> {
-                        chip.setTextColor(Ui.CYAN)
-                        chip.background = Ui.rounded(context, Ui.SURFACE_2, Ui.CYAN, 6)
-                    }
-                    else -> {
-                        chip.setTextColor(Ui.MUTED)
-                        chip.background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 6)
-                    }
+        addSampleBtn.setOnClickListener {
+            if (targetSampleCount < maxSampleCount) {
+                targetSampleCount++
+                if (targetSampleCount >= maxSampleCount) {
+                    addSampleBtn.visibility = View.GONE
+                }
+                renderStepChips()
+                if (recordedSamples.size < targetSampleCount) {
+                    summaryCard.visibility = View.GONE
+                    statusCard.visibility = View.VISIBLE
+                    val nextIdx = recordedSamples.size + 1
+                    actionButton.text = "RECORD SAMPLE $nextIdx"
+                    actionButton.backgroundTintList = ColorStateList.valueOf(Ui.CYAN)
+                    actionButton.isEnabled = true
                 }
             }
         }
-        updateChips()
+
+        fun updateSamplesListUI() {
+            samplesListContainer.removeAllViews()
+            if (recordedSamples.isEmpty()) return
+
+            for (idx in recordedSamples.indices) {
+                val sample = recordedSamples[idx]
+                val itemRow = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 6)
+                    setPadding(Ui.dp(context, 10), Ui.dp(context, 6), Ui.dp(context, 10), Ui.dp(context, 6))
+                    layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                        bottomMargin = Ui.dp(context, 4)
+                    }
+                }
+
+                val matchPct = (sample.score * 100).toInt()
+                val infoText = TextView(context).apply {
+                    text = "Sample ${idx + 1}: $matchPct% Match • ${sample.rmsEnergy.toInt()} RMS"
+                    textSize = 11f
+                    setTextColor(Ui.TEXT)
+                    layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+                }
+
+                val retryBtn = MaterialButton(context).apply {
+                    text = "↺ RE-RECORD"
+                    textSize = 9.5f
+                    setTextColor(Ui.WARNING)
+                    strokeColor = ColorStateList.valueOf(Ui.BORDER)
+                    strokeWidth = Ui.dp(context, 1)
+                    cornerRadius = Ui.dp(context, 6)
+                    backgroundTintList = ColorStateList.valueOf(Ui.SURFACE)
+                    setPadding(Ui.dp(context, 8), Ui.dp(context, 2), Ui.dp(context, 8), Ui.dp(context, 2))
+                    setOnClickListener {
+                        // Re-record this specific sample index
+                        actionButton.isEnabled = false
+                        statusTitle.text = "RE-RECORDING SAMPLE ${idx + 1}"
+                        statusTitle.setTextColor(Ui.WARNING)
+                        statusMessage.text = "🎙 Listening... Say 'Jarvis' clearly."
+                        feedbackEngine?.playListeningTone()
+
+                        recordJob?.cancel()
+                        recordJob = dialogScope.launch {
+                            val pcm = recorder.recordSample(durationMs = 2000L) { rms ->
+                                levelBar.progress = (rms * 100).toInt()
+                            }
+                            levelBar.progress = 0
+
+                            if (pcm != null && pcm.isNotEmpty()) {
+                                val validation = calibrator.validateSample(pcm, detector)
+                                if (validation is VoiceEnrollmentCalibrator.ValidationResult.Valid) {
+                                    feedbackEngine?.playSuccessTone()
+                                    recordedSamples[idx] = VoiceEnrollmentCalibrator.ValidatedSample(
+                                        pcm = pcm,
+                                        rmsEnergy = validation.rmsEnergy,
+                                        score = validation.score,
+                                        speechDurationMs = validation.speechDurationMs
+                                    )
+
+                                    if (verifier == null) {
+                                        verifier = withContext(Dispatchers.IO) { runCatching { TfliteOwnerVoiceVerifier(context) }.getOrNull() }
+                                    }
+                                    val emb = verifier?.let { v -> withContext(Dispatchers.IO) { v.embed(pcm) } }
+                                    if (idx < recordedEmbeddings.size) {
+                                        recordedEmbeddings[idx] = emb
+                                    }
+
+                                    updateSamplesListUI()
+                                    renderStepChips()
+                                    statusTitle.text = "SAMPLE ${idx + 1} REPLACED"
+                                    statusTitle.setTextColor(Ui.SUCCESS)
+                                    statusMessage.text = "Updated sample ${idx + 1} with new recording."
+                                } else if (validation is VoiceEnrollmentCalibrator.ValidationResult.Rejected) {
+                                    statusTitle.text = "RE-RECORD FAILED"
+                                    statusTitle.setTextColor(Ui.ERROR)
+                                    statusMessage.text = validation.message
+                                }
+                            }
+                            actionButton.isEnabled = true
+                        }
+                    }
+                }
+
+                itemRow.addView(infoText)
+                itemRow.addView(retryBtn)
+                samplesListContainer.addView(itemRow)
+            }
+        }
+
+        fun finalizeTrainingAndShowSummary() {
+            // Acoustic Calibration
+            val userProfile = calibrator.calibrate(recordedSamples)
+            calibratedUserProfile = userProfile
+
+            // Speaker Embedding Fusion
+            val validEmbeddings = recordedEmbeddings.filterNotNull()
+            if (validEmbeddings.isNotEmpty()) {
+                calibratedOwnerProfile = runCatching { OwnerVoiceProfile.fromEmbeddings(validEmbeddings) }.getOrNull()
+            }
+
+            statusCard.visibility = View.GONE
+            summaryCard.visibility = View.VISIBLE
+            summaryDetails.text = buildString {
+                append("• Keyword Recognition Match: ${(userProfile.averageScore * 100).toInt()}%\n")
+                append("• Calibrated Threshold: ${String.format(Locale.US, "%.2f", userProfile.calibratedThreshold)}\n")
+                append("• Min Energy Floor: ${userProfile.calibratedMinEnergyRms.toInt()} RMS\n")
+                append("• Audio Samples Captured: ${userProfile.sampleCount}\n")
+                append("• Owner Speaker Model: ${if (calibratedOwnerProfile != null) "TFLite 256-dim Vector Generated" else "Not Available"}\n")
+                append("• Status: Ready to activate")
+            }
+
+            actionButton.text = "SAVE & ACTIVATE"
+            actionButton.backgroundTintList = ColorStateList.valueOf(Ui.SUCCESS)
+            actionButton.isEnabled = true
+        }
 
         actionButton.setOnClickListener {
             val currentSampleIdx = recordedSamples.size
-            if (currentSampleIdx >= 3) {
-                // Save and activate profile
-                calibratedProfile?.let { prof ->
-                    onProfileEnrolled(prof)
-                    feedbackEngine?.playSuccessTone()
+            if (currentSampleIdx >= targetSampleCount) {
+                // Save and activate profiles
+                calibratedUserProfile?.let { userProf ->
+                    onProfileEnrolled(userProf)
                 }
+                calibratedOwnerProfile?.let { ownerProf ->
+                    onOwnerEnrolled?.invoke(ownerProf)
+                }
+                feedbackEngine?.playSuccessTone()
                 dialogScope.cancel()
                 alertDialog?.dismiss()
                 return@setOnClickListener
             }
 
-            // Start recording sample
+            // Start recording next sample
             actionButton.isEnabled = false
             actionButton.text = "RECORDING (2s)..."
-            statusTitle.text = "RECORDING SAMPLE ${currentSampleIdx + 1}/3"
+            statusTitle.text = "RECORDING SAMPLE ${currentSampleIdx + 1}/$targetSampleCount"
             statusTitle.setTextColor(Ui.WARNING)
             statusMessage.text = "🎙 Listening... Please say 'Jarvis' now."
             feedbackEngine?.playListeningTone()
@@ -277,10 +456,11 @@ class VoiceEnrollmentDialog(
                     return@launch
                 }
 
-                statusTitle.text = "ANALYZING ACOUSTICS"
+                statusTitle.text = "ANALYZING ACOUSTICS & EMBEDDING"
                 statusTitle.setTextColor(Ui.CYAN)
-                statusMessage.text = "Validating vocal envelope, speech energy, and confidence..."
+                statusMessage.text = "Validating vocal envelope, speech energy, and neural speaker embedding..."
 
+                // Run acoustic validation
                 val validation = calibrator.validateSample(pcm, detector)
                 when (validation) {
                     is VoiceEnrollmentCalibrator.ValidationResult.Valid -> {
@@ -292,34 +472,28 @@ class VoiceEnrollmentDialog(
                             speechDurationMs = validation.speechDurationMs
                         )
                         recordedSamples.add(validSample)
-                        updateChips()
 
-                        if (recordedSamples.size < 3) {
+                        // Run TFLite speaker encoder in background
+                        if (verifier == null) {
+                            verifier = withContext(Dispatchers.IO) { runCatching { TfliteOwnerVoiceVerifier(context) }.getOrNull() }
+                        }
+                        val emb = verifier?.let { v -> withContext(Dispatchers.IO) { v.embed(pcm) } }
+                        recordedEmbeddings.add(emb)
+                        pcm.fill(0) // Privacy clear PCM
+
+                        renderStepChips()
+                        updateSamplesListUI()
+
+                        if (recordedSamples.size < targetSampleCount) {
                             val nextIdx = recordedSamples.size + 1
                             val matchPct = (validation.score * 100).toInt()
                             statusTitle.text = "SAMPLE ${recordedSamples.size} ACCEPTED ($matchPct% MATCH)"
                             statusTitle.setTextColor(Ui.SUCCESS)
-                            statusMessage.text = "Great! Clean sample captured. Ready for Sample $nextIdx of 3."
+                            statusMessage.text = "Great! Clean sample captured. Ready for Sample $nextIdx of $targetSampleCount."
                             actionButton.text = "RECORD SAMPLE $nextIdx"
                             actionButton.isEnabled = true
                         } else {
-                            // All 3 samples gathered, perform final calibration!
-                            val profile = calibrator.calibrate(recordedSamples)
-                            calibratedProfile = profile
-
-                            statusCard.visibility = View.GONE
-                            summaryCard.visibility = View.VISIBLE
-                            summaryDetails.text = buildString {
-                                append("• Average Wake Confidence: ${(profile.averageScore * 100).toInt()}%\n")
-                                append("• Calibrated Threshold: ${String.format(Locale.US, "%.2f", profile.calibratedThreshold)}\n")
-                                append("• Calibrated Energy Floor: ${profile.calibratedMinEnergyRms.toInt()} RMS\n")
-                                append("• Estimated Room Noise: ${profile.ambientNoiseRms.toInt()} RMS\n")
-                                append("• Status: Ready to activate")
-                            }
-
-                            actionButton.text = "SAVE & ACTIVATE"
-                            actionButton.backgroundTintList = ColorStateList.valueOf(Ui.SUCCESS)
-                            actionButton.isEnabled = true
+                            finalizeTrainingAndShowSummary()
                         }
                     }
                     is VoiceEnrollmentCalibrator.ValidationResult.Rejected -> {
@@ -339,7 +513,9 @@ class VoiceEnrollmentDialog(
             .setView(root)
             .setCancelable(false)
             .setOnDismissListener {
-                voiceEngine?.resumeContinuousAudioAndReArm(calibratedProfile)
+                verifier?.close()
+                verifier = null
+                voiceEngine?.resumeContinuousAudioAndReArm(calibratedUserProfile)
             }
             .create().apply {
                 window?.setBackgroundDrawable(
@@ -352,19 +528,5 @@ class VoiceEnrollmentDialog(
             }
 
         alertDialog?.show()
-    }
-
-    private fun createStepChip(context: Context, label: String): TextView = TextView(context).apply {
-        text = label
-        textSize = 10f
-        typeface = Typeface.DEFAULT_BOLD
-        letterSpacing = 0.04f
-        gravity = Gravity.CENTER
-        setTextColor(Ui.MUTED)
-        background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 6)
-        setPadding(Ui.dp(context, 8), Ui.dp(context, 4), Ui.dp(context, 8), Ui.dp(context, 4))
-        layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply {
-            marginEnd = Ui.dp(context, 6)
-        }
     }
 }

@@ -20,14 +20,14 @@ class AppAutopilotTool(private val context: Context? = null) : Tool {
 
     override val name: String = "APP_AUTOPILOT"
     override val description: String =
-        "Autonomously interacts with on-screen UI across any app. Actions: 'click', 'type', 'fill_form', 'scroll', 'read_screen', 'like_instagram', 'next_reel', 'comment_instagram', 'dismiss_popup'. Params: action, target, text, direction."
+        "Autonomously interacts with on-screen UI across any app. Actions: 'click', 'type', 'fill_form', 'scroll', 'search', 'read_screen', 'like_instagram', 'next_reel', 'comment_instagram', 'dismiss_popup'. Params: action, target, text, direction."
     override val policy: ToolPolicy = ToolPolicy(idempotent = false, retryable = true, riskLevel = RiskLevel.MEDIUM)
 
     val metadata = ToolMetadata(
         name = "APP_AUTOPILOT",
         description = "Navigates and drives third-party application user interfaces via accessibility tree.",
         parameters = listOf(
-            com.jarvis.foundation.ParameterSchema("action", "string", "Action to perform: click, type, fill_form, scroll, read_screen, like_instagram, next_reel, comment_instagram, dismiss_popup", required = true),
+            com.jarvis.foundation.ParameterSchema("action", "string", "Action to perform: click, type, fill_form, scroll, search, read_screen, like_instagram, next_reel, comment_instagram, dismiss_popup", required = true),
             com.jarvis.foundation.ParameterSchema("target", "string", "Button, field label, hint, or view ID to interact with", required = false),
             com.jarvis.foundation.ParameterSchema("text", "string", "Text to type or form data key-value JSON", required = false),
             com.jarvis.foundation.ParameterSchema("direction", "string", "Scroll direction: 'down' or 'up'", required = false)
@@ -48,6 +48,15 @@ class AppAutopilotTool(private val context: Context? = null) : Tool {
         Log.i(TAG, "Executing UI Autopilot: action='$action', target='$target', text='$text'")
 
         return when (action) {
+            "search" -> {
+                if (text.isBlank()) return ToolResult.Failed("Specify what to search for.")
+                if (service.searchForegroundApp(text)) {
+                    ToolResult.Success("Searched the foreground app for '$text'.")
+                } else {
+                    ToolResult.Failed("Could not find or submit a search field in the foreground app.")
+                }
+            }
+
             "read_screen", "read_page" -> {
                 val nodes = service.dumpInteractiveTree()
                 val textNodes = nodes.filter { !it.text.isNullOrBlank() || !it.contentDescription.isNullOrBlank() }
@@ -307,4 +316,3 @@ class AppAutopilotTool(private val context: Context? = null) : Tool {
 }
 
 typealias YouTubeScrollTool = AppAutopilotTool
-

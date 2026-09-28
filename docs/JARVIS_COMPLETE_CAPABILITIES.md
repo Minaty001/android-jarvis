@@ -29,7 +29,9 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 ### Features & Functions:
 * **Continuous Wake-Word Detection**: Listens 24/7 for `"Hey Jarvis"` or `"Jarvis"`.
 * **Lock-Screen HUD Overlay**: Displays cyber-slate HUD on lock screen without unlocking.
-* **Personal Acoustic Calibration**: Trains wake-word model to your vocal timbre and noise floor.
+* **Personal Acoustic Calibration**: Tunes the on-device wake-word detector's thresholds from validated voice samples; it does not retrain the TFLite model.
+* **Optional Owner Voice Verification**: Uses an enrolled speaker profile during normal wake detection when the profile and TFLite speaker model are available. If either is unavailable, wake-word activation continues without the owner check.
+* **Custom DTW Templates**: A screen-local setup flow records three templates for DTW matching. They remain separate from normal wake-word detection.
 * **Full-Duplex Acoustic Barge-In**: Silence Jarvis mid-speech by speaking over it.
 * **Bluetooth Earbud SCO Routing**: Bidirectional earbud audio routing and headset hook button activation.
 
@@ -50,11 +52,13 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 5. Speak *"Jarvis, read latest SMS"* when screen is off.
 
 #### C. Personal Voice Calibration (`CONFIG` screen):
-1. Tap `🎙 ENROLL / RE-CALIBRATE` and say *"Jarvis"* sample 1 clearly.
-2. Record sample 2 in noisy room to calibrate RMS noise floor threshold.
-3. Record sample 3 from 2 meters away to optimize low-volume timbre match.
-4. Tap `SAVE & ACTIVATE` to deploy personalized user acoustic profile.
-5. Tap `↺ RESET TO DEFAULT` anytime to restore factory TFLite profile.
+1. Tap `🎙 RECORD & START TRAINING` and say *"Jarvis"* sample 1 clearly.
+2. Record sample 2 in a quiet place, at your normal distance and speaking volume.
+3. Record sample 3 under similar conditions.
+4. Review the generated acoustic profile and whether an owner speaker profile was created.
+5. Tap `SAVE & ACTIVATE` to apply the profiles. Tap `↺ RESET TO DEFAULT` to clear enrollment and restore factory acoustic settings.
+
+The **WAKE WORD SETUP (3 TEMPLATES)** screen has a separate DTW matcher. It validates and stores three audio templates, offers NORMAL (0.80) and STRICT (0.88) thresholds, and listens only while that screen is active; it does not replace the normal TFLite wake detector.
 
 #### D. Full-Duplex Acoustic Barge-In (Interrupting Jarvis):
 1. While Jarvis reads a long briefing, say *"Jarvis, stop"* $\to$ Mutes TTS in <50ms.
@@ -232,6 +236,11 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 3. *"Scroll down"* $\to$ Executes swipe gesture down screen.
 4. *"Open YouTube and search for Lo-Fi"* $\to$ Taps search bar, types text, presses enter.
 5. *"Go home"* $\to$ Executes `GLOBAL_ACTION_HOME`.
+
+#### C. Foreground App Sessions:
+- Jarvis refreshes its active-app context from Android's accessibility window events and current active window for WhatsApp, Instagram, Chrome, Telegram, and YouTube.
+- Follow-ups like *"scroll down"* and *"search for hiking boots"* use the foreground app's accessibility UI. *"Read the screen"* captures the currently displayed screen.
+- Enable **Jarvis Accessibility Service** in Android Accessibility settings for app detection and shared UI controls. YouTube playback commands continue to use the dedicated playback action.
 
 ---
 

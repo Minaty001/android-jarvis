@@ -2,6 +2,7 @@ package com.jarvis
 
 import com.jarvis.agent.skills.SkillContext
 import com.jarvis.agent.skills.VisionSkill
+import com.jarvis.agent.AgentWorkingMemory
 import com.jarvis.ai.AssistantIntent
 import com.jarvis.ai.IntentResolver
 import com.jarvis.ai.LlmClient
@@ -10,6 +11,7 @@ import com.jarvis.ai.Message
 import com.jarvis.tools.ScreenVisionTool
 import com.jarvis.tools.ToolRegistry
 import com.jarvis.tools.ToolResult
+import com.jarvis.foundation.worldstate.ForegroundAppSession
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -55,6 +57,16 @@ class ScreenVisionTest {
         assertNotNull(result.proposedAction)
         assertEquals("SCREEN_VISION", result.proposedAction?.type)
         assertEquals(query, result.proposedAction?.params?.get("query"))
+    }
+
+    @Test
+    fun readScreenRoutesThroughLiveScreenVisionForAllSupportedAppSessions() = runBlocking {
+        val skill = VisionSkill()
+        for (app in ForegroundAppSession.sharedUiApps) {
+            val context = SkillContext("read the screen", AgentWorkingMemory("read the screen"), activeAppSession = app)
+            val result = skill.execute("read the screen", context)
+            assertEquals("SCREEN_VISION", result.proposedAction?.type)
+        }
     }
 
     @Test

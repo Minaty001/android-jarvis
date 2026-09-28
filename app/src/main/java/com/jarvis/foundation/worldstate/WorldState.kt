@@ -1,5 +1,43 @@
 package com.jarvis.foundation.worldstate
 
+import java.util.Locale
+
+object ForegroundAppSession {
+    val sharedUiApps = setOf("WhatsApp", "Instagram", "Chrome", "Telegram", "YouTube")
+
+    fun fromPackage(packageName: String?): String? {
+        val pkg = packageName?.takeIf { it.isNotBlank() } ?: return null
+        val lower = pkg.lowercase(Locale.ROOT)
+        return when {
+            "whatsapp" in lower -> "WhatsApp"
+            "instagram" in lower -> "Instagram"
+            "chrome" in lower -> "Chrome"
+            "telegram" in lower -> "Telegram"
+            "youtube" in lower -> "YouTube"
+            "spotify" in lower -> "Spotify"
+            else -> pkg.substringAfterLast('.')
+        }
+    }
+
+    fun supportsSharedUi(session: String?): Boolean = session in sharedUiApps
+
+    fun contextualSearchQuery(goal: String, session: String?): String? {
+        if (!supportsSharedUi(session)) return null
+        val command = goal.trim()
+        val lower = command.lowercase(Locale.ROOT)
+        if (!lower.startsWith("search ")) return null
+        if (Regex("^search\\s+(?:(?:in)\\s+)?(?:the\\s+)?(?:web|online|internet)\\b|^search\\s+(?:in\\s+)?(?:documents?|notes?|files?|memory|knowledge)\\b")
+                .containsMatchIn(lower)
+        ) return null
+
+        return command
+            .replace(Regex("(?i)^search\\s+(?:(?:in|on)\\s+)?(?:(?:this|the|current)\\s+)?app\\s+(?:for\\s+)?|^search\\s+(?:for\\s+)?"), "")
+            .replace(Regex("(?i)\\s+(?:in\\s+(?:this|the)\\s+app|here|on this screen)$"), "")
+            .trim()
+            .takeIf { it.isNotBlank() }
+    }
+}
+
 data class WorldStateSnapshot(
     val timestamp: Long = System.currentTimeMillis(),
     val batteryPercent: Int = -1,

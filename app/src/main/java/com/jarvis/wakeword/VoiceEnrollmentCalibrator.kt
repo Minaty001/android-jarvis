@@ -204,14 +204,14 @@ class VoiceEnrollmentCalibrator(
         val avgScore = samples.map { it.score }.average().toFloat()
         val avgRms = samples.map { it.rmsEnergy }.average()
 
-        // Calibrate dynamic threshold: 86% of mean confidence score, safely bounded between [0.55, 0.75]
-        val calibratedThreshold = (avgScore * 0.86f).coerceIn(0.55f, 0.75f)
+        // Calibrate dynamic threshold: 86% of mean confidence score, safely bounded between [0.70, 0.88]
+        val calibratedThreshold = (avgScore * 0.86f).coerceIn(0.70f, 0.88f)
 
-        // Calibrate minimum energy gate: 35% of mean speech RMS, safely bounded between [12.0, 45.0]
-        val calibratedMinEnergy = (avgRms * 0.35).coerceIn(12.0, 45.0)
+        // Calibrate minimum energy gate: 35% of mean speech RMS, safely bounded between [150.0, 600.0]
+        val calibratedMinEnergy = (avgRms * 0.35).coerceIn(150.0, 600.0)
 
         // Ambient noise floor estimate: conservative fraction of energy gate
-        val ambientNoise = (calibratedMinEnergy * 0.55).coerceIn(8.0, 25.0)
+        val ambientNoise = (calibratedMinEnergy * 0.55).coerceIn(80.0, 300.0)
 
         return UserVoiceProfile(
             isEnrolled = true,

@@ -6,14 +6,14 @@ This document outlines the architectural and feature differences between two var
 
 ---
 
-## 1. Major Feature Modules Added in Desktop Version
+## 1. Feature Modules & Parity
 
-The `/home/shanu/Desktop/android-jarvis` repository contains several high-level experimental or standalone modules that are completely missing from the current `main` branch.
+The `/home/shanu/Desktop/android-jarvis` repository contains several high-level experimental or standalone modules. Owner voice verification is now present in both codebases; Stitch, Emergency, and Meeting remain Desktop-specific in this comparison.
 
-### 1.1 Owner Voice Verification (Biometrics)
-The Desktop project includes a dedicated on-device TFLite model to verify the exact speaker's voice, preventing unauthorized users from triggering JARVIS.
-*   **Added Files:** `OwnerVoiceProfile.kt`, `TfliteOwnerVoiceVerifier.kt`, `OwnerVoiceEnrollmentDialog.kt`
-*   **Impact:** The `main` project relies on simpler Wake Word Confidence tuning, whereas the Desktop version does active speaker biometric rejection.
+### 1.1 Owner Voice Verification (present in both)
+Owner voice verification is now present in the current `main` project as well as the Desktop implementation. The current enrollment flow saves an `OwnerVoiceProfile`; the normal wake gate uses the TFLite speaker encoder when both that profile and the model are available. If either is unavailable, wake-word activation falls back to keyword detection without the owner check.
+
+The three-template DTW setup is a separate screen-local matcher and is not connected to normal wake detection.
 
 ### 1.2 "Stitch" UI Module
 *   **Added Files:** `com.jarvis.stitch.*`
@@ -48,9 +48,9 @@ The `main` branch abstracts concrete classes into interfaces to improve testabil
 | :--- | :--- | :--- |
 | **Architecture** | Clean, direct implementation (YAGNI-audited) | Monolithic, concrete classes |
 | **Procedural Memory** | **Persistent** (survives app reboots) | **Volatile** (in-memory only) |
-| **Voice Security** | Standard Wake Word matching | **Advanced Biometric** (`TfliteOwnerVoiceVerifier`) |
+| **Voice Security** | Optional owner verification with wake-word fallback (`TfliteOwnerVoiceVerifier`) | Owner verification (`TfliteOwnerVoiceVerifier`) |
 | **Experimental Modes** | None | **Emergency**, **Meeting**, & **Stitch** modules |
 
 ### Conclusion & Recommendation
-The `main` branch is cleaner, better abstracted, and more stable (e.g., fixes applied to memory persistence). However, the Desktop branch holds highly valuable experimental features (Voice Biometrics, Emergency, Meeting). 
-**Recommendation:** Perform a targeted `git merge` or port the `emergency`, `meeting`, and `wakeword` biometric classes from Desktop into Main, rather than swapping repositories wholesale.
+The `main` branch is cleaner, better abstracted, and more stable (e.g., fixes applied to memory persistence). The Desktop branch still holds experimental Emergency and Meeting modules.
+**Recommendation:** The owner-verification path no longer needs to be ported from Desktop. Consider porting the `emergency` and `meeting` modules only if those features are needed.

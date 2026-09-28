@@ -1,6 +1,7 @@
 package com.jarvis.agent.skills
 
 import com.jarvis.agent.AgentAction
+import com.jarvis.foundation.worldstate.ForegroundAppSession
 
 class AppControlSkill : Skill {
     override val id: String = "app_control"
@@ -22,6 +23,8 @@ class AppControlSkill : Skill {
     override suspend fun canHandle(goal: String, context: SkillContext): Boolean {
         val lower = goal.lowercase().trim()
 
+        if (ForegroundAppSession.contextualSearchQuery(goal, context.activeAppSession) != null) return true
+
         // Yield to social/specialized skills or multi-step execution if compound/specialized intent detected
         if (lower.contains("instagram") || lower.contains("insta")) {
             val hasSpecialized = lower.contains("message") || lower.contains("massage") ||
@@ -39,6 +42,19 @@ class AppControlSkill : Skill {
 
     override suspend fun execute(goal: String, context: SkillContext): SkillResult {
         val lower = goal.lowercase().trim()
+        val searchQuery = ForegroundAppSession.contextualSearchQuery(goal, context.activeAppSession)
+        if (searchQuery != null) {
+            return SkillResult(
+                handled = true,
+                proposedAction = AgentAction(
+                    "APP_AUTOPILOT",
+                    mapOf("action" to "search", "text" to searchQuery),
+                    "Searching ${context.activeAppSession} for $searchQuery"
+                ),
+                explanation = "Searching the foreground ${context.activeAppSession} app"
+            )
+        }
+
         return when {
             // App Scanning / Listing
             lower.contains("scan apps") || lower.contains("scan all apps") ||
@@ -84,9 +100,16 @@ class AppControlSkill : Skill {
             }
             lower.contains("scroll") || lower.contains("swipe") || lower.contains("niche karo") || lower.contains("uper karo") -> {
                 val direction = if (lower.contains("up") || lower.contains("uper")) "up" else "down"
+                val session = context.activeAppSession
+                val action = if (ForegroundAppSession.supportsSharedUi(session)) "APP_AUTOPILOT" else "UI_SCROLL"
+                val params = if (action == "APP_AUTOPILOT") {
+                    mapOf("action" to "scroll", "direction" to direction)
+                } else {
+                    mapOf("direction" to direction)
+                }
                 SkillResult(
                     handled = true,
-                    proposedAction = AgentAction("UI_SCROLL", mapOf("direction" to direction), "Scrolling $direction"),
+                    proposedAction = AgentAction(action, params, "Scrolling $direction"),
                     explanation = "Scrolling active screen $direction"
                 )
             }
