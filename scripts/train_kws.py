@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -26,7 +27,24 @@ def build_parser():
     return parser
 
 
+def tensorflow_cpu_compatibility_error(cpuinfo_text: str, system: str, machine: str) -> str | None:
+    if system.lower() != "linux" or machine.lower() not in {"x86_64", "amd64"}:
+        return None
+    flag_lines = [line.split(":", 1)[1].lower().split() for line in cpuinfo_text.splitlines()
+                  if line.lower().startswith("flags") and ":" in line]
+    if flag_lines and any("avx" not in flags for flags in flag_lines):
+        return "TensorFlow 2.16.2 cannot run: this Linux x86_64 host does not expose AVX. Use an AVX-capable training host."
+    return None
+
+
 def require_tensorflow():
+    try:
+        cpuinfo = Path("/proc/cpuinfo").read_text()
+    except OSError:
+        cpuinfo = ""
+    compatibility_error = tensorflow_cpu_compatibility_error(cpuinfo, sys.platform, platform.machine())
+    if compatibility_error:
+        raise RuntimeError(compatibility_error)
     try:
         import tensorflow as tf
     except ImportError as error:

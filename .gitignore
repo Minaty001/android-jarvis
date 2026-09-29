@@ -48,4 +48,4 @@ __pycache__/
 
 # Private wake-word recordings are local training data and must stay out of Git.
 /data/wakeword/**/*.wav
-
+/data/wakeword/manifest.json

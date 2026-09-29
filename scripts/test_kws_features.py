@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from kws_features import AudioFile, discover_dataset, extract_mfcc, split_by_file
+from train_kws import tensorflow_cpu_compatibility_error
 
 
 class KwsFeatureTests(unittest.TestCase):
@@ -39,6 +40,13 @@ class KwsFeatureTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             with self.assertRaisesRegex(ValueError, "No positive Jarvis recordings found"):
                 discover_dataset(Path(root))
+
+    def test_tensorflow_preflight_reports_missing_avx(self):
+        cpuinfo = "processor : 0\nflags : fpu sse4_2\nprocessor : 1\nflags : fpu sse4_2\n"
+        error = tensorflow_cpu_compatibility_error(cpuinfo, "linux", "x86_64")
+        self.assertIn("does not expose AVX", error)
+        self.assertIsNone(tensorflow_cpu_compatibility_error("flags : fpu avx sse4_2", "linux", "x86_64"))
+        self.assertIsNone(tensorflow_cpu_compatibility_error(cpuinfo, "darwin", "x86_64"))
 
 
 if __name__ == "__main__":
