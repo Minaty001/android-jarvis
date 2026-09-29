@@ -9,6 +9,7 @@ import com.jarvis.wakeword.UserVoiceProfile
 import com.jarvis.wakeword.WakeWordConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -41,9 +42,9 @@ class VoiceReliabilityPlanVerificationTest {
     }
 
     @Test
-    fun testWakeProfileImmediateDynamicApplication() {
+    fun testEnrollmentProfileCannotCreateOrOverrideModelThreshold() {
         val engine = WakeWordEngine(config = WakeWordConfig())
-        val defaultThreshold = engine.getEffectiveThreshold()
+        assertNull(engine.getEffectiveThreshold())
 
         val customProfile = UserVoiceProfile(
             isEnrolled = true,
@@ -52,11 +53,11 @@ class VoiceReliabilityPlanVerificationTest {
             calibratedMinEnergyRms = 25.0
         )
         engine.applyVoiceProfile(customProfile)
-        assertEquals(0.72f, engine.getEffectiveThreshold(), 0.001f)
+        assertNull(engine.getEffectiveThreshold())
         assertEquals(customProfile, engine.getVoiceProfile())
 
         engine.applyVoiceProfile(UserVoiceProfile.DEFAULT)
-        assertEquals(defaultThreshold, engine.getEffectiveThreshold(), 0.001f)
+        assertNull(engine.getEffectiveThreshold())
     }
 
     @Test

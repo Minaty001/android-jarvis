@@ -4,6 +4,7 @@ import android.content.Context
 import com.jarvis.ui.model.ApiConfig
 import com.jarvis.ui.model.AppSettings
 import com.jarvis.ui.model.AuthMethod
+import com.jarvis.wakeword.WakeWordModelMetadata
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -16,7 +17,7 @@ class UiPreferencesStore(context: Context) {
     }
 
     fun saveSettings(settings: AppSettings) {
-        prefs.edit().putString(KEY_SETTINGS, settings.toJson().toString()).apply()
+        prefs.edit().putString(KEY_SETTINGS, settings.copy(wakeWord = WakeWordModelMetadata.SUPPORTED_PHRASE).toJson().toString()).apply()
     }
 
     fun loadApis(): List<ApiConfig> {
@@ -180,7 +181,7 @@ class UiPreferencesStore(context: Context) {
             defaultTimeoutMs = json.optLong("defaultTimeoutMs", d.defaultTimeoutMs),
             maxRetryAttempts = json.optInt("maxRetryAttempts", d.maxRetryAttempts),
             logVerbosity = json.optString("logVerbosity", d.logVerbosity),
-            wakeWord = json.optString("wakeWord", d.wakeWord),
+            wakeWord = WakeWordModelMetadata.SUPPORTED_PHRASE,
             preferredLlmModel = json.optString("preferredLlmModel", d.preferredLlmModel),
             developerMode = json.optBoolean("developerMode", d.developerMode),
             continuousConversation = json.optBoolean("continuousConversation", d.continuousConversation),
@@ -264,10 +265,10 @@ class UiPreferencesStore(context: Context) {
                 enrolledAt = json.optLong("enrolledAt", 0L),
                 wakeWordPhrase = json.optString("wakeWordPhrase", "Jarvis"),
                 sampleCount = json.optInt("sampleCount", 0),
-                averageScore = json.optDouble("averageScore", 0.0).toFloat(),
-                calibratedThreshold = json.optDouble("calibratedThreshold", 0.65).toFloat(),
-                calibratedMinEnergyRms = json.optDouble("calibratedMinEnergyRms", 15.0),
-                ambientNoiseRms = json.optDouble("ambientNoiseRms", 12.0)
+                datasetVersion = json.optInt("datasetVersion", 1),
+                datasetSha256 = json.optString("datasetSha256", ""),
+                modelVersion = json.optString("modelVersion", ""),
+                modelSha256 = json.optString("modelSha256", "")
             )
         } catch (e: Exception) {
             com.jarvis.wakeword.UserVoiceProfile.DEFAULT
@@ -280,10 +281,10 @@ class UiPreferencesStore(context: Context) {
             put("enrolledAt", profile.enrolledAt)
             put("wakeWordPhrase", profile.wakeWordPhrase)
             put("sampleCount", profile.sampleCount)
-            put("averageScore", profile.averageScore.toDouble())
-            put("calibratedThreshold", profile.calibratedThreshold.toDouble())
-            put("calibratedMinEnergyRms", profile.calibratedMinEnergyRms)
-            put("ambientNoiseRms", profile.ambientNoiseRms)
+            put("datasetVersion", profile.datasetVersion)
+            put("datasetSha256", profile.datasetSha256)
+            put("modelVersion", profile.modelVersion)
+            put("modelSha256", profile.modelSha256)
         }
         prefs.edit().putString(KEY_VOICE_PROFILE, json.toString()).apply()
     }

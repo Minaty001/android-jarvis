@@ -1,532 +1,326 @@
 package com.jarvis.ui.dialogs
 
+import android.Manifest
+import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.ColorStateList
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
+import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import com.google.android.material.button.MaterialButton
 import com.jarvis.ui.components.Ui
-import com.jarvis.voice.audio.AcousticFeedbackEngine
-import com.jarvis.wakeword.OwnerVoiceProfile
-import com.jarvis.wakeword.TfliteOwnerVoiceVerifier
+import com.jarvis.voice.VoiceEngine
 import com.jarvis.wakeword.UserVoiceProfile
 import com.jarvis.wakeword.VoiceEnrollmentCalibrator
 import com.jarvis.wakeword.VoiceSampleRecorder
-import com.jarvis.wakeword.WakeWordDetector
+import com.jarvis.wakeword.WakeWordDatasetStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.Locale
 
-/**
- * Unified Voice Training & Multi-Sample Calibration Wizard.
- *
- * Guides the user through 3 to 5 clean audio recordings of "Jarvis", validates acoustic parameters,
- * visualizes real-time speech energy levels, extracts TFLite 256-dim speaker embeddings,
- * and calibrates both personalized acoustic thresholds and owner voice verification templates.
- */
+/** Collects real positive WAVs; all neural training happens offline. */
 class VoiceEnrollmentDialog(
     private val context: Context,
-    private val detector: WakeWordDetector? = null,
-    private val calibrator: VoiceEnrollmentCalibrator = VoiceEnrollmentCalibrator(),
-    private val voiceEngine: com.jarvis.voice.VoiceEngine? = null,
-    private val onOwnerEnrolled: ((OwnerVoiceProfile) -> Unit)? = null,
-    private val onProfileEnrolled: (UserVoiceProfile) -> Unit
+    private val voiceEngine: VoiceEngine,
+    private val onDatasetUpdated: (UserVoiceProfile) -> Unit
 ) {
+    private val store = WakeWordDatasetStore(context)
     private val recorder = VoiceSampleRecorder()
-    private val feedbackEngine = runCatching { AcousticFeedbackEngine(context) }.getOrNull()
-    private val dialogScope = CoroutineScope(Dispatchers.Main + Job())
+    private val calibrator = VoiceEnrollmentCalibrator()
+    private val scope = CoroutineScope(Dispatchers.Main + Job())
     private var recordJob: Job? = null
-
-    private var targetSampleCount = 3
-    private val maxSampleCount = 5
-    private val recordedSamples = mutableListOf<VoiceEnrollmentCalibrator.ValidatedSample>()
-    private val recordedEmbeddings = mutableListOf<FloatArray?>()
-
-    private var calibratedUserProfile: UserVoiceProfile? = null
-    private var calibratedOwnerProfile: OwnerVoiceProfile? = null
-    private var verifier: TfliteOwnerVoiceVerifier? = null
-
-    private var alertDialog: AlertDialog? = null
+    private var dialog: AlertDialog? = null
+    private var targetCount = WakeWordDatasetStore.TARGET_SAMPLES
 
     fun show() {
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Ui.SURFACE_CONTAINER)
-            setPadding(Ui.dp(context, 20), Ui.dp(context, 20), Ui.dp(context, 20), Ui.dp(context, 20))
+            setPadding(Ui.dp(context, 18), Ui.dp(context, 14), Ui.dp(context, 18), Ui.dp(context, 10))
         }
-
-        // Header: Icon + Title
-        val headerRow = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+        val title = TextView(context).apply {
+            text = "PERSONAL WAKE WORD DATASET"
+            textSize = 16f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(Ui.CYAN)
+            gravity = Gravity.CENTER
             setPadding(0, 0, 0, Ui.dp(context, 8))
         }
-        val iconView = TextView(context).apply {
-            text = "🎙"
-            textSize = 20f
-            setPadding(0, 0, Ui.dp(context, 8), 0)
-        }
-        val titleView = TextView(context).apply {
-            text = "UNIFIED VOICE TRAINING WIZARD"
-            textSize = 15f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.CYAN)
-            letterSpacing = 0.06f
-            layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
-        }
-        headerRow.addView(iconView)
-        headerRow.addView(titleView)
-        root.addView(headerRow)
-
-        // Subtitle & Instructions
-        val subtitleView = TextView(context).apply {
-            text = "Record 3 to 5 clean samples saying 'Jarvis' to train your owner voice embedding and calibrate wake-word sensitivity to your room acoustics."
+        val explanation = TextView(context).apply {
+            text = "Record real 16 kHz WAV samples saying only ‘Jarvis’. Recording adds data; it does not train model weights. Export the dataset and run offline training with positive, unknown, and background audio."
             textSize = 12f
-            setTextColor(Ui.MUTED)
+            setTextColor(Ui.TEXT)
             setLineSpacing(0f, 1.15f)
-            setPadding(0, 0, 0, Ui.dp(context, 14))
-        }
-        root.addView(subtitleView)
-
-        // Step Indicator Chips Container
-        val stepChipsRow = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
             setPadding(0, 0, 0, Ui.dp(context, 12))
         }
-        root.addView(stepChipsRow)
-
-        fun renderStepChips() {
-            stepChipsRow.removeAllViews()
-            val currentIdx = recordedSamples.size
-            for (i in 0 until targetSampleCount) {
-                val chip = TextView(context).apply {
-                    text = "${i + 1}. SAMPLE ${i + 1}"
-                    textSize = 9.5f
-                    typeface = Typeface.DEFAULT_BOLD
-                    letterSpacing = 0.04f
-                    gravity = Gravity.CENTER
-                    setPadding(Ui.dp(context, 6), Ui.dp(context, 4), Ui.dp(context, 6), Ui.dp(context, 4))
-                    layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply {
-                        marginEnd = Ui.dp(context, 4)
-                    }
-
-                    when {
-                        i < currentIdx -> {
-                            setTextColor(Ui.SUCCESS)
-                            background = Ui.rounded(context, Ui.SURFACE_2, Ui.SUCCESS, 6)
-                        }
-                        i == currentIdx && currentIdx < targetSampleCount -> {
-                            setTextColor(Ui.CYAN)
-                            background = Ui.rounded(context, Ui.SURFACE_2, Ui.CYAN, 6)
-                        }
-                        else -> {
-                            setTextColor(Ui.MUTED)
-                            background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 6)
-                        }
-                    }
-                }
-                stepChipsRow.addView(chip)
-            }
-        }
-        renderStepChips()
-
-        // Real-time Audio Level Bar Container
-        val levelLabel = TextView(context).apply {
-            text = "SPEECH ENERGY LEVEL"
-            textSize = 9.5f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.MUTED)
-            letterSpacing = 0.08f
-            setPadding(0, 0, 0, Ui.dp(context, 4))
-        }
-        root.addView(levelLabel)
-
-        val levelBar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
-            isIndeterminate = false
-            max = 100
-            progress = 0
-            progressTintList = ColorStateList.valueOf(Ui.CYAN)
-            progressBackgroundTintList = ColorStateList.valueOf(Ui.SURFACE_2)
-            layoutParams = LinearLayout.LayoutParams(-1, Ui.dp(context, 8)).apply {
-                bottomMargin = Ui.dp(context, 14)
-            }
-        }
-        root.addView(levelBar)
-
-        // Status Card / Instruction Text
-        val statusCard = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER_GLOW, 10)
-            setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
-                bottomMargin = Ui.dp(context, 14)
-            }
-        }
-        val statusTitle = TextView(context).apply {
-            text = "READY TO ENROLL"
-            textSize = 10f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.CYAN)
-            letterSpacing = 0.08f
-            setPadding(0, 0, 0, Ui.dp(context, 4))
-        }
-        val statusMessage = TextView(context).apply {
-            text = "Tap 'RECORD SAMPLE 1' below and say 'Jarvis' clearly at your normal speaking distance."
+        val progressText = TextView(context).apply {
             textSize = 12f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
             setTextColor(Ui.TEXT)
-            setLineSpacing(0f, 1.15f)
+            setPadding(0, 0, 0, Ui.dp(context, 4))
         }
-        statusCard.addView(statusTitle)
-        statusCard.addView(statusMessage)
-        root.addView(statusCard)
-
-        // Samples Progress List Container (shows captured samples with per-sample re-record buttons)
-        val samplesListContainer = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
+        val progress = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = targetCount
+            layoutParams = LinearLayout.LayoutParams(-1, Ui.dp(context, 8)).apply { bottomMargin = Ui.dp(context, 10) }
+            progressTintList = ColorStateList.valueOf(Ui.CYAN)
+        }
+        val modelInfo = TextView(context).apply {
+            textSize = 11f
+            setTextColor(Ui.WARNING)
             setPadding(0, 0, 0, Ui.dp(context, 10))
         }
-        root.addView(samplesListContainer)
-
-        // Summary Details Card (Hidden until all target samples are completed)
-        val summaryCard = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = View.GONE
-            background = Ui.rounded(context, Ui.SURFACE_2, Ui.CYAN_DIM, 10)
-            setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
-                bottomMargin = Ui.dp(context, 14)
-            }
+        val prompt = TextView(context).apply {
+            textSize = 12f
+            setTextColor(Ui.MUTED)
+            setPadding(0, 0, 0, Ui.dp(context, 8))
         }
-        val summaryTitle = TextView(context).apply {
-            text = "UNIFIED TRAINING COMPLETE"
-            textSize = 10.5f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.SUCCESS)
-            letterSpacing = 0.08f
-            setPadding(0, 0, 0, Ui.dp(context, 4))
+        val meter = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            layoutParams = LinearLayout.LayoutParams(-1, Ui.dp(context, 7)).apply { bottomMargin = Ui.dp(context, 10) }
+            progressTintList = ColorStateList.valueOf(Ui.CYAN)
         }
-        val summaryDetails = TextView(context).apply {
-            text = ""
-            textSize = 11.5f
+        val status = TextView(context).apply {
+            textSize = 12f
             setTextColor(Ui.TEXT)
-            setLineSpacing(0f, 1.2f)
+            setPadding(Ui.dp(context, 10), Ui.dp(context, 8), Ui.dp(context, 10), Ui.dp(context, 8))
+            background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 8)
         }
-        summaryCard.addView(summaryTitle)
-        summaryCard.addView(summaryDetails)
-        root.addView(summaryCard)
-
-        // Action Buttons Row
-        val buttonRow = LinearLayout(context).apply {
+        val targetRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, Ui.dp(context, 8), 0, Ui.dp(context, 8))
         }
-
-        val addSampleBtn = MaterialButton(context).apply {
-            text = "+ ADD EXTRA SAMPLE"
+        val recordButton = MaterialButton(context).apply {
+            text = "RECORD SAMPLE"
+            textSize = 11f
+            setTextColor(Ui.BG)
+            cornerRadius = Ui.dp(context, 8)
+            backgroundTintList = ColorStateList.valueOf(Ui.CYAN)
+        }
+        val testButton = MaterialButton(context).apply {
+            text = "TEST LAST RECORDING"
             textSize = 10f
             setTextColor(Ui.CYAN)
             strokeColor = ColorStateList.valueOf(Ui.CYAN_DIM)
             strokeWidth = Ui.dp(context, 1)
             cornerRadius = Ui.dp(context, 8)
             backgroundTintList = ColorStateList.valueOf(Ui.SURFACE_2)
-            setPadding(Ui.dp(context, 10), Ui.dp(context, 6), Ui.dp(context, 10), Ui.dp(context, 6))
-            visibility = View.VISIBLE
-            layoutParams = LinearLayout.LayoutParams(-2, -2).apply {
-                marginEnd = Ui.dp(context, 8)
-            }
         }
-
-        val cancelButton = MaterialButton(context).apply {
-            text = "CANCEL"
-            textSize = 11f
-            setTextColor(Ui.MUTED)
-            strokeColor = ColorStateList.valueOf(Ui.BORDER)
+        val exportButton = MaterialButton(context).apply {
+            text = "EXPORT WAKE WORD DATASET"
+            textSize = 10f
+            setTextColor(Ui.CYAN)
+            strokeColor = ColorStateList.valueOf(Ui.CYAN_DIM)
             strokeWidth = Ui.dp(context, 1)
             cornerRadius = Ui.dp(context, 8)
-            backgroundTintList = ColorStateList.valueOf(Ui.SURFACE)
-            setPadding(Ui.dp(context, 14), Ui.dp(context, 8), Ui.dp(context, 14), Ui.dp(context, 8))
-            setOnClickListener {
-                recorder.stop()
-                recordJob?.cancel()
-                dialogScope.cancel()
-                alertDialog?.dismiss()
-            }
+            backgroundTintList = ColorStateList.valueOf(Ui.SURFACE_2)
         }
 
-        val actionButton = MaterialButton(context).apply {
-            text = "RECORD SAMPLE 1"
-            textSize = 11.5f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.BG)
-            cornerRadius = Ui.dp(context, 8)
-            backgroundTintList = ColorStateList.valueOf(Ui.CYAN)
-            setPadding(Ui.dp(context, 16), Ui.dp(context, 8), Ui.dp(context, 16), Ui.dp(context, 8))
-            layoutParams = LinearLayout.LayoutParams(-2, -2).apply {
-                marginStart = Ui.dp(context, 8)
+        root.addView(title)
+        root.addView(explanation)
+        root.addView(progressText)
+        root.addView(progress)
+        root.addView(modelInfo)
+        root.addView(prompt)
+        root.addView(meter)
+        root.addView(status)
+        root.addView(targetRow)
+        root.addView(recordButton)
+        root.addView(testButton)
+        root.addView(exportButton)
+
+        fun updateDatasetUi() {
+            val count = store.getPositiveSampleCount()
+            progress.max = targetCount
+            progress.progress = count.coerceAtMost(targetCount)
+            progressText.text = "Phrase: Jarvis    Samples: $count / $targetCount"
+            val metadata = voiceEngine.wakeEngine.getDiagnostics(count, store.getPositiveDatasetSha256())
+            modelInfo.text = buildString {
+                append("Model: ${when {
+                    metadata.modelStatus == com.jarvis.voice.WakeModelStatus.MODEL_OUTDATED -> "OUTDATED"
+                    metadata.modelAvailable -> "ACTIVE"
+                    else -> "MISSING"
+                }}")
+                append(" • Status: ${metadata.modelStatus.name.replace('_', ' ')}")
+                append("\nModel version: ${metadata.modelVersion ?: "unavailable"}")
+                append(" • SHA-256: ${metadata.modelSha256 ?: "unavailable"}")
+                append("\nModel threshold: ${metadata.threshold?.let { String.format(Locale.US, "%.3f", it) } ?: "unavailable"}")
+                append("\nDataset: ${if (count >= WakeWordDatasetStore.TARGET_SAMPLES) "READY" else "INCOMPLETE"}")
             }
+            prompt.text = promptFor(count)
+            recordButton.text = "RECORD SAMPLE ${count + 1}"
+            testButton.isEnabled = count > 0
+            exportButton.isEnabled = count > 0
         }
 
-        buttonRow.addView(addSampleBtn)
-        buttonRow.addView(cancelButton)
-        buttonRow.addView(actionButton)
-        root.addView(buttonRow)
-
-        addSampleBtn.setOnClickListener {
-            if (targetSampleCount < maxSampleCount) {
-                targetSampleCount++
-                if (targetSampleCount >= maxSampleCount) {
-                    addSampleBtn.visibility = View.GONE
-                }
-                renderStepChips()
-                if (recordedSamples.size < targetSampleCount) {
-                    summaryCard.visibility = View.GONE
-                    statusCard.visibility = View.VISIBLE
-                    val nextIdx = recordedSamples.size + 1
-                    actionButton.text = "RECORD SAMPLE $nextIdx"
-                    actionButton.backgroundTintList = ColorStateList.valueOf(Ui.CYAN)
-                    actionButton.isEnabled = true
-                }
-            }
+        listOf(50, 100, 200).forEach { count ->
+            targetRow.addView(MaterialButton(context).apply {
+                text = "$count"
+                textSize = 10f
+                minWidth = 0
+                setPadding(Ui.dp(context, 7), 0, Ui.dp(context, 7), 0)
+                setOnClickListener { targetCount = count; updateDatasetUi() }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
         }
+        targetRow.addView(MaterialButton(context).apply {
+            text = "+50"
+            textSize = 10f
+            minWidth = 0
+            setOnClickListener { targetCount += 50; updateDatasetUi() }
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        updateDatasetUi()
 
-        fun updateSamplesListUI() {
-            samplesListContainer.removeAllViews()
-            if (recordedSamples.isEmpty()) return
-
-            for (idx in recordedSamples.indices) {
-                val sample = recordedSamples[idx]
-                val itemRow = LinearLayout(context).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 6)
-                    setPadding(Ui.dp(context, 10), Ui.dp(context, 6), Ui.dp(context, 10), Ui.dp(context, 6))
-                    layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
-                        bottomMargin = Ui.dp(context, 4)
-                    }
-                }
-
-                val matchPct = (sample.score * 100).toInt()
-                val infoText = TextView(context).apply {
-                    text = "Sample ${idx + 1}: $matchPct% Match • ${sample.rmsEnergy.toInt()} RMS"
-                    textSize = 11f
-                    setTextColor(Ui.TEXT)
-                    layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
-                }
-
-                val retryBtn = MaterialButton(context).apply {
-                    text = "↺ RE-RECORD"
-                    textSize = 9.5f
-                    setTextColor(Ui.WARNING)
-                    strokeColor = ColorStateList.valueOf(Ui.BORDER)
-                    strokeWidth = Ui.dp(context, 1)
-                    cornerRadius = Ui.dp(context, 6)
-                    backgroundTintList = ColorStateList.valueOf(Ui.SURFACE)
-                    setPadding(Ui.dp(context, 8), Ui.dp(context, 2), Ui.dp(context, 8), Ui.dp(context, 2))
-                    setOnClickListener {
-                        // Re-record this specific sample index
-                        actionButton.isEnabled = false
-                        statusTitle.text = "RE-RECORDING SAMPLE ${idx + 1}"
-                        statusTitle.setTextColor(Ui.WARNING)
-                        statusMessage.text = "🎙 Listening... Say 'Jarvis' clearly."
-                        feedbackEngine?.playListeningTone()
-
-                        recordJob?.cancel()
-                        recordJob = dialogScope.launch {
-                            val pcm = recorder.recordSample(durationMs = 2000L) { rms ->
-                                levelBar.progress = (rms * 100).toInt()
-                            }
-                            levelBar.progress = 0
-
-                            if (pcm != null && pcm.isNotEmpty()) {
-                                val validation = calibrator.validateSample(pcm, detector)
-                                if (validation is VoiceEnrollmentCalibrator.ValidationResult.Valid) {
-                                    feedbackEngine?.playSuccessTone()
-                                    recordedSamples[idx] = VoiceEnrollmentCalibrator.ValidatedSample(
-                                        pcm = pcm,
-                                        rmsEnergy = validation.rmsEnergy,
-                                        score = validation.score,
-                                        speechDurationMs = validation.speechDurationMs
-                                    )
-
-                                    if (verifier == null) {
-                                        verifier = withContext(Dispatchers.IO) { runCatching { TfliteOwnerVoiceVerifier(context) }.getOrNull() }
-                                    }
-                                    val emb = verifier?.let { v -> withContext(Dispatchers.IO) { v.embed(pcm) } }
-                                    if (idx < recordedEmbeddings.size) {
-                                        recordedEmbeddings[idx] = emb
-                                    }
-
-                                    updateSamplesListUI()
-                                    renderStepChips()
-                                    statusTitle.text = "SAMPLE ${idx + 1} REPLACED"
-                                    statusTitle.setTextColor(Ui.SUCCESS)
-                                    statusMessage.text = "Updated sample ${idx + 1} with new recording."
-                                } else if (validation is VoiceEnrollmentCalibrator.ValidationResult.Rejected) {
-                                    statusTitle.text = "RE-RECORD FAILED"
-                                    statusTitle.setTextColor(Ui.ERROR)
-                                    statusMessage.text = validation.message
-                                }
-                            }
-                            actionButton.isEnabled = true
-                        }
-                    }
-                }
-
-                itemRow.addView(infoText)
-                itemRow.addView(retryBtn)
-                samplesListContainer.addView(itemRow)
-            }
-        }
-
-        fun finalizeTrainingAndShowSummary() {
-            // Acoustic Calibration
-            val userProfile = calibrator.calibrate(recordedSamples)
-            calibratedUserProfile = userProfile
-
-            // Speaker Embedding Fusion
-            val validEmbeddings = recordedEmbeddings.filterNotNull()
-            if (validEmbeddings.isNotEmpty()) {
-                calibratedOwnerProfile = runCatching { OwnerVoiceProfile.fromEmbeddings(validEmbeddings) }.getOrNull()
-            }
-
-            statusCard.visibility = View.GONE
-            summaryCard.visibility = View.VISIBLE
-            summaryDetails.text = buildString {
-                append("• Keyword Recognition Match: ${(userProfile.averageScore * 100).toInt()}%\n")
-                append("• Calibrated Threshold: ${String.format(Locale.US, "%.2f", userProfile.calibratedThreshold)}\n")
-                append("• Min Energy Floor: ${userProfile.calibratedMinEnergyRms.toInt()} RMS\n")
-                append("• Audio Samples Captured: ${userProfile.sampleCount}\n")
-                append("• Owner Speaker Model: ${if (calibratedOwnerProfile != null) "TFLite 256-dim Vector Generated" else "Not Available"}\n")
-                append("• Status: Ready to activate")
-            }
-
-            actionButton.text = "SAVE & ACTIVATE"
-            actionButton.backgroundTintList = ColorStateList.valueOf(Ui.SUCCESS)
-            actionButton.isEnabled = true
-        }
-
-        actionButton.setOnClickListener {
-            val currentSampleIdx = recordedSamples.size
-            if (currentSampleIdx >= targetSampleCount) {
-                // Save and activate profiles
-                calibratedUserProfile?.let { userProf ->
-                    onProfileEnrolled(userProf)
-                }
-                calibratedOwnerProfile?.let { ownerProf ->
-                    onOwnerEnrolled?.invoke(ownerProf)
-                }
-                feedbackEngine?.playSuccessTone()
-                dialogScope.cancel()
-                alertDialog?.dismiss()
+        recordButton.setOnClickListener {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                (context as? Activity)?.let { ActivityCompat.requestPermissions(it, arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_AUDIO_PERMISSION) }
+                status.text = "Microphone permission is required to record the dataset."
                 return@setOnClickListener
             }
-
-            // Start recording next sample
-            actionButton.isEnabled = false
-            actionButton.text = "RECORDING (2s)..."
-            statusTitle.text = "RECORDING SAMPLE ${currentSampleIdx + 1}/$targetSampleCount"
-            statusTitle.setTextColor(Ui.WARNING)
-            statusMessage.text = "🎙 Listening... Please say 'Jarvis' now."
-            feedbackEngine?.playListeningTone()
-
-            recordJob?.cancel()
-            recordJob = dialogScope.launch {
-                val pcm = recorder.recordSample(durationMs = 2000L) { normalizedRms ->
-                    levelBar.progress = (normalizedRms * 100).toInt()
-                }
-                levelBar.progress = 0
-
-                if (pcm == null || pcm.isEmpty()) {
-                    statusTitle.text = "RECORDING FAILED"
-                    statusTitle.setTextColor(Ui.ERROR)
-                    statusMessage.text = "Microphone error or permission denied. Tap to retry."
-                    actionButton.isEnabled = true
-                    actionButton.text = "RE-TRY SAMPLE ${currentSampleIdx + 1}"
-                    return@launch
-                }
-
-                statusTitle.text = "ANALYZING ACOUSTICS & EMBEDDING"
-                statusTitle.setTextColor(Ui.CYAN)
-                statusMessage.text = "Validating vocal envelope, speech energy, and neural speaker embedding..."
-
-                // Run acoustic validation
-                val validation = calibrator.validateSample(pcm, detector)
-                when (validation) {
-                    is VoiceEnrollmentCalibrator.ValidationResult.Valid -> {
-                        feedbackEngine?.playSuccessTone()
-                        val validSample = VoiceEnrollmentCalibrator.ValidatedSample(
-                            pcm = pcm,
-                            rmsEnergy = validation.rmsEnergy,
-                            score = validation.score,
-                            speechDurationMs = validation.speechDurationMs
-                        )
-                        recordedSamples.add(validSample)
-
-                        // Run TFLite speaker encoder in background
-                        if (verifier == null) {
-                            verifier = withContext(Dispatchers.IO) { runCatching { TfliteOwnerVoiceVerifier(context) }.getOrNull() }
-                        }
-                        val emb = verifier?.let { v -> withContext(Dispatchers.IO) { v.embed(pcm) } }
-                        recordedEmbeddings.add(emb)
-                        pcm.fill(0) // Privacy clear PCM
-
-                        renderStepChips()
-                        updateSamplesListUI()
-
-                        if (recordedSamples.size < targetSampleCount) {
-                            val nextIdx = recordedSamples.size + 1
-                            val matchPct = (validation.score * 100).toInt()
-                            statusTitle.text = "SAMPLE ${recordedSamples.size} ACCEPTED ($matchPct% MATCH)"
-                            statusTitle.setTextColor(Ui.SUCCESS)
-                            statusMessage.text = "Great! Clean sample captured. Ready for Sample $nextIdx of $targetSampleCount."
-                            actionButton.text = "RECORD SAMPLE $nextIdx"
-                            actionButton.isEnabled = true
-                        } else {
-                            finalizeTrainingAndShowSummary()
+            if (recordJob?.isActive == true) return@setOnClickListener
+            recordButton.isEnabled = false
+            meter.progress = 0
+            status.text = "Recording sample ${store.getPositiveSampleCount() + 1}. ${promptFor(store.getPositiveSampleCount())}"
+            voiceEngine.suspendContinuousAudio()
+            recordJob = scope.launch {
+                try {
+                    val captured = recorder.recordSample(durationMs = RECORDING_DURATION_MS) { rms ->
+                        meter.post { meter.progress = (rms * 100).toInt() }
+                    }
+                    if (captured == null || captured.isEmpty()) {
+                        status.text = "Recording failed. Check microphone permission and retry."
+                        return@launch
+                    }
+                    when (val quality = calibrator.validateAudioQuality(captured)) {
+                        is VoiceEnrollmentCalibrator.ValidationResult.Rejected -> status.text = "Recording rejected: ${quality.message}"
+                        is VoiceEnrollmentCalibrator.ValidationResult.Valid -> {
+                            val pcm = calibrator.trimForDataset(captured)
+                            val file = withContext(Dispatchers.IO) { store.savePositive(pcm) }
+                            val modelScore = voiceEngine.scoreEnrollmentSample(pcm)
+                            val count = store.getPositiveSampleCount()
+                            val metadata = voiceEngine.wakeEngine.getModelMetadata()
+                            val profile = UserVoiceProfile(
+                                isEnrolled = count > 0,
+                                enrolledAt = System.currentTimeMillis(),
+                                wakeWordPhrase = "Jarvis",
+                                sampleCount = count,
+                                datasetVersion = WakeWordDatasetStore.DATASET_VERSION,
+                                datasetSha256 = store.getPositiveDatasetSha256(),
+                                modelVersion = metadata?.version?.toString() ?: "",
+                                modelSha256 = metadata?.modelSha256 ?: ""
+                            )
+                            onDatasetUpdated(profile)
+                            status.text = if (modelScore == null) {
+                                "Recording quality: PASS • Saved: ${file.name}\nMODEL UNAVAILABLE — this recording was not evaluated by the wake-word model. Offline training is still required."
+                            } else {
+                                "Recording quality: PASS • Saved: ${file.name}\nModel score: ${String.format(Locale.US, "%.3f", modelScore.score)} • Threshold: ${String.format(Locale.US, "%.3f", modelScore.threshold)} • ${if (modelScore.passed) "PASS" else "BELOW THRESHOLD; retained for offline training"}"
+                            }
+                            updateDatasetUi()
+                            pcm.fill(0)
+                            captured.fill(0)
                         }
                     }
-                    is VoiceEnrollmentCalibrator.ValidationResult.Rejected -> {
-                        statusTitle.text = "SAMPLE REJECTED"
-                        statusTitle.setTextColor(Ui.ERROR)
-                        statusMessage.text = validation.message
-                        actionButton.text = "RE-TRY SAMPLE ${currentSampleIdx + 1}"
-                        actionButton.isEnabled = true
-                    }
+                } catch (duplicate: IllegalArgumentException) {
+                    status.text = "Recording was not added: ${duplicate.message}"
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    status.text = "Could not save recording: ${error.message ?: error.javaClass.simpleName}"
+                } finally {
+                    recordButton.isEnabled = true
+                    meter.progress = 0
                 }
             }
         }
 
-        voiceEngine?.suspendContinuousAudio()
-
-        alertDialog = AlertDialog.Builder(context)
-            .setView(root)
-            .setCancelable(false)
-            .setOnDismissListener {
-                verifier?.close()
-                verifier = null
-                voiceEngine?.resumeContinuousAudioAndReArm(calibratedUserProfile)
-            }
-            .create().apply {
-                window?.setBackgroundDrawable(
-                    GradientDrawable().apply {
-                        setColor(Ui.SURFACE_CONTAINER)
-                        cornerRadius = Ui.dp(context, 16).toFloat()
-                        setStroke(Ui.dp(context, 1), Ui.BORDER_GLOW)
+        testButton.setOnClickListener {
+            testButton.isEnabled = false
+            status.text = "Scoring the exact latest saved WAV through the active KWS model…"
+            scope.launch {
+                try {
+                    val latest = withContext(Dispatchers.IO) { store.loadLatestPositive() }
+                    if (latest == null) {
+                        status.text = "No saved positive recording is available."
+                    } else {
+                        val result = voiceEngine.scoreEnrollmentSample(latest.second)
+                        status.text = if (result == null) {
+                            "MODEL UNAVAILABLE — the saved recording was not evaluated."
+                        } else {
+                            "Saved: ${latest.first.name}\nModel score: ${String.format(Locale.US, "%.3f", result.score)} • Threshold: ${String.format(Locale.US, "%.3f", result.threshold)} • ${if (result.passed) "PASS" else "FAIL"}"
+                        }
+                        latest.second.fill(0)
                     }
-                )
+                } catch (error: Exception) {
+                    status.text = "Sample test failed: ${error.message ?: error.javaClass.simpleName}"
+                } finally {
+                    testButton.isEnabled = true
+                }
             }
+        }
 
-        alertDialog?.show()
+        exportButton.setOnClickListener {
+            exportButton.isEnabled = false
+            scope.launch {
+                try {
+                    val output = File(context.filesDir, "wake_word_exports/jarvis_dataset_${System.currentTimeMillis()}.zip")
+                    val zip = withContext(Dispatchers.IO) { store.exportZip(output) }
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", zip)
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/zip"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        clipData = android.content.ClipData.newUri(context.contentResolver, "Wake word dataset", uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(Intent.createChooser(send, "Export wake-word dataset"))
+                    status.text = "Dataset ZIP exported (${store.getPositiveSampleCount()} positive WAVs plus manifest)."
+                } catch (error: Exception) {
+                    status.text = "Dataset export failed: ${error.message ?: error.javaClass.simpleName}"
+                } finally {
+                    exportButton.isEnabled = true
+                }
+            }
+        }
+
+        dialog = AlertDialog.Builder(context)
+            .setView(ScrollView(context).apply { addView(root) })
+            .setNegativeButton("CLOSE", null)
+            .create()
+            .apply {
+                setOnDismissListener {
+                    recorder.stop()
+                    recordJob?.cancel()
+                    scope.cancel()
+                    voiceEngine.resumeContinuousAudioAndReArm()
+                }
+                show()
+            }
+    }
+
+    private fun promptFor(sampleIndex: Int): String = when (sampleIndex % 5) {
+        0 -> "Say ‘Jarvis’ naturally."
+        1 -> "Say ‘Jarvis’ slightly louder."
+        2 -> "Say ‘Jarvis’ from a little farther away."
+        3 -> "Say ‘Jarvis’ at your normal volume."
+        else -> "Say ‘Jarvis’ in your usual voice, with a short pause first."
+    }
+
+    companion object {
+        private const val REQUEST_AUDIO_PERMISSION = 4107
+        private const val RECORDING_DURATION_MS = 2_000L
     }
 }

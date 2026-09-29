@@ -2,34 +2,23 @@ package com.jarvis.wakeword
 
 import kotlin.math.sqrt
 
-/**
- * Validates voice audio samples and computes tailored acoustic calibration
- * for personalized wake-word detection.
- *
- * Calibration derives:
- * - Calibrated detection threshold adapted to user's pronunciation clarity.
- * - Calibrated minimum RMS energy floor adapted to microphone characteristics.
- * - Ambient noise floor estimation.
- */
+/** Checks recording quality; model scores are always supplied by a real detector. */
 class VoiceEnrollmentCalibrator(
     private val minDurationMs: Long = 400L,
     private val minSpeechRms: Double = 70.0,
     private val maxClippingRatio: Double = 0.03,
-    private val minConfidenceScore: Float = 0.35f,
-    private val sampleRate: Int = 16000
+    private val sampleRate: Int = KwsFeatureSpec.DEFAULT.sampleRate
 ) {
     sealed class ValidationResult {
         data class Valid(
             val rmsEnergy: Double,
-            val score: Float,
             val speechDurationMs: Long,
-            val clippingRatio: Double
+            val clippingRatio: Double,
+            val score: Float? = null,
+            val threshold: Float? = null
         ) : ValidationResult()
 
-        data class Rejected(
-            val reason: RejectionReason,
-            val message: String
-        ) : ValidationResult()
+        data class Rejected(val reason: RejectionReason, val message: String) : ValidationResult()
     }
 
     enum class RejectionReason {
@@ -37,191 +26,120 @@ class VoiceEnrollmentCalibrator(
         TOO_SHORT,
         TOO_QUIET,
         CLIPPING_DISTORTION,
-        LOW_CONFIDENCE
+        LOW_CONFIDENCE,
+        MODEL_UNAVAILABLE
     }
 
-    data class ValidatedSample(
-        val pcm: ShortArray,
-        val rmsEnergy: Double,
-        val score: Float,
-        val speechDurationMs: Long
-    ) {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is ValidatedSample) return false
-            return pcm.contentEquals(other.pcm) &&
-                    rmsEnergy == other.rmsEnergy &&
-                    score == other.score &&
-                    speechDurationMs == other.speechDurationMs
-        }
-
-        override fun hashCode(): Int {
-            var result = pcm.contentHashCode()
-            result = 31 * result + rmsEnergy.hashCode()
-            result = 31 * result + score.hashCode()
-            result = 31 * result + speechDurationMs.hashCode()
-            return result
-        }
-    }
-
-    /**
-     * Calculates the Root-Mean-Square (RMS) amplitude of audio PCM samples.
-     */
     fun calculateRms(pcm: ShortArray): Double {
         if (pcm.isEmpty()) return 0.0
         var sumSq = 0.0
-        for (sample in pcm) {
-            val v = sample.toDouble()
-            sumSq += v * v
-        }
+        pcm.forEach { sumSq += it.toDouble() * it }
         return sqrt(sumSq / pcm.size)
     }
 
-    /**
-     * Calculates the proportion of samples exceeding the clipping threshold.
-     */
-    fun calculateClippingRatio(pcm: ShortArray, clippingThreshold: Short = 32000): Double {
+    fun calculateClippingRatio(pcm: ShortArray, clippingThreshold: Short = 32_000): Double {
         if (pcm.isEmpty()) return 0.0
-        var clippedCount = 0
-        for (sample in pcm) {
-            if (sample >= clippingThreshold || sample <= -clippingThreshold) {
-                clippedCount++
-            }
-        }
-        return clippedCount.toDouble() / pcm.size
+        return pcm.count { it >= clippingThreshold || it <= -clippingThreshold }.toDouble() / pcm.size
     }
 
-    /**
-     * Estimates active speech duration by evaluating RMS in 40ms frames.
-     */
-    fun estimateSpeechDurationMs(pcm: ShortArray, frameSize: Int = 640): Long {
+    fun estimateSpeechDurationMs(pcm: ShortArray, frameSize: Int = sampleRate / 25): Long {
         if (pcm.isEmpty()) return 0L
-        var activeFrames = 0
-        val frameDurationMs = (frameSize * 1000L) / sampleRate
-
-        for (i in 0 until pcm.size step frameSize) {
-            val len = minOf(frameSize, pcm.size - i)
-            var sumSq = 0.0
-            for (j in 0 until len) {
-                val v = pcm[i + j].toDouble()
-                sumSq += v * v
-            }
-            val frameRms = sqrt(sumSq / len)
-            if (frameRms >= minSpeechRms * 0.70) {
-                activeFrames++
+        var activeSamples = 0
+        for (start in pcm.indices step frameSize) {
+            val end = minOf(start + frameSize, pcm.size)
+            if (calculateRms(pcm.copyOfRange(start, end)) >= minSpeechRms * 0.70) {
+                activeSamples += end - start
             }
         }
-        return activeFrames * frameDurationMs
+        return activeSamples * 1000L / sampleRate
     }
 
-    /**
-     * Validates a recorded utterance against acoustic quality thresholds and optional
-     * wake-word model confidence.
-     */
-    fun validateSample(pcm: ShortArray, detector: WakeWordDetector? = null): ValidationResult {
-        if (pcm.isEmpty()) {
-            return ValidationResult.Rejected(
-                RejectionReason.EMPTY_AUDIO,
-                "No audio captured. Please try recording again."
-            )
-        }
+    /** Audio-only check used for dataset enrollment even when no trained model is installed. */
+    fun validateAudioQuality(pcm: ShortArray): ValidationResult {
+        if (pcm.isEmpty()) return rejected(RejectionReason.EMPTY_AUDIO, "No audio captured. Try recording again.")
 
-        val totalDurationMs = (pcm.size * 1000L) / sampleRate
+        val totalDurationMs = pcm.size * 1000L / sampleRate
         if (totalDurationMs < minDurationMs) {
-            return ValidationResult.Rejected(
-                RejectionReason.TOO_SHORT,
-                "Audio duration too short (${totalDurationMs}ms < ${minDurationMs}ms)."
-            )
+            return rejected(RejectionReason.TOO_SHORT, "Recording is too short (${totalDurationMs} ms).")
         }
 
         val clippingRatio = calculateClippingRatio(pcm)
         if (clippingRatio > maxClippingRatio) {
-            val pct = (clippingRatio * 100).toInt()
-            return ValidationResult.Rejected(
-                RejectionReason.CLIPPING_DISTORTION,
-                "Microphone clipping detected ($pct%). Please speak slightly further from the microphone."
-            )
+            return rejected(RejectionReason.CLIPPING_DISTORTION, "Microphone clipping detected (${(clippingRatio * 100).toInt()}%). Speak farther from the microphone.")
         }
 
-        val overallRms = calculateRms(pcm)
-        if (overallRms < minSpeechRms) {
-            return ValidationResult.Rejected(
-                RejectionReason.TOO_QUIET,
-                "Audio too quiet (RMS ${overallRms.toInt()} < ${minSpeechRms.toInt()}). Please speak louder."
-            )
+        val rms = calculateRms(pcm)
+        if (rms < minSpeechRms) {
+            return rejected(RejectionReason.TOO_QUIET, "Recording is too quiet (RMS ${rms.toInt()}; minimum ${minSpeechRms.toInt()}).")
         }
 
-        val speechDurationMs = estimateSpeechDurationMs(pcm)
-        if (speechDurationMs < minDurationMs) {
-            return ValidationResult.Rejected(
-                RejectionReason.TOO_SHORT,
-                "Speech utterance too brief (${speechDurationMs}ms active speech). Please say 'Jarvis' clearly."
-            )
+        val speechDuration = estimateSpeechDurationMs(pcm)
+        if (speechDuration < minDurationMs) {
+            return rejected(RejectionReason.TOO_SHORT, "Active speech lasted ${speechDuration} ms; say only 'Jarvis' clearly.")
         }
 
-        // Evaluate model confidence if detector is available
-        var peakScore = 0.88f
-        if (detector != null && detector.isModelAvailable()) {
-            detector.resetDetectorState()
-            var maxDetected = 0f
-            val frameSize = 640
-            for (i in 0 until pcm.size step frameSize) {
-                val len = minOf(frameSize, pcm.size - i)
-                val chunk = ShortArray(len)
-                System.arraycopy(pcm, i, chunk, 0, len)
-                val score = detector.pushAudio(chunk)
-                if (score > maxDetected) {
-                    maxDetected = score
-                }
-            }
-            peakScore = maxDetected
-            if (peakScore < minConfidenceScore) {
-                val matchPct = (peakScore * 100).toInt()
-                return ValidationResult.Rejected(
-                    RejectionReason.LOW_CONFIDENCE,
-                    "Keyword 'Jarvis' not recognized clearly (confidence $matchPct%). Please try again."
-                )
-            }
-        }
-
-        return ValidationResult.Valid(
-            rmsEnergy = overallRms,
-            score = peakScore,
-            speechDurationMs = speechDurationMs,
-            clippingRatio = clippingRatio
-        )
+        return ValidationResult.Valid(rms, speechDuration, clippingRatio)
     }
 
-    /**
-     * Calibrates a personalized [UserVoiceProfile] from validated utterance samples.
-     */
-    fun calibrate(
-        samples: List<ValidatedSample>,
-        wakeWordPhrase: String = "Jarvis"
-    ): UserVoiceProfile {
-        require(samples.isNotEmpty()) { "Cannot calibrate voice profile with empty sample set." }
+    /** Detector is mandatory: this result can never fabricate a model score. */
+    fun validateSample(pcm: ShortArray, detector: WakeWordDetector): ValidationResult {
+        val quality = validateAudioQuality(pcm)
+        if (quality !is ValidationResult.Valid) return quality
+        if (!detector.isModelAvailable()) {
+            return rejected(
+                RejectionReason.MODEL_UNAVAILABLE,
+                "Wake-word model is unavailable. This recording was not evaluated by the model."
+            )
+        }
 
-        val avgScore = samples.map { it.score }.average().toFloat()
-        val avgRms = samples.map { it.rmsEnergy }.average()
-
-        // Calibrate dynamic threshold: 86% of mean confidence score, safely bounded between [0.70, 0.88]
-        val calibratedThreshold = (avgScore * 0.86f).coerceIn(0.70f, 0.88f)
-
-        // Calibrate minimum energy gate: 35% of mean speech RMS, safely bounded between [150.0, 600.0]
-        val calibratedMinEnergy = (avgRms * 0.35).coerceIn(150.0, 600.0)
-
-        // Ambient noise floor estimate: conservative fraction of energy gate
-        val ambientNoise = (calibratedMinEnergy * 0.55).coerceIn(80.0, 300.0)
-
-        return UserVoiceProfile(
-            isEnrolled = true,
-            enrolledAt = System.currentTimeMillis(),
-            wakeWordPhrase = wakeWordPhrase,
-            sampleCount = samples.size,
-            averageScore = avgScore,
-            calibratedThreshold = calibratedThreshold,
-            calibratedMinEnergyRms = calibratedMinEnergy,
-            ambientNoiseRms = ambientNoise
-        )
+        val threshold = detector.getModelThreshold()
+        val score = detector.scoreEnrollmentSample(pcm)
+        if (threshold == null || score == null || !threshold.isFinite() || !score.isFinite()) {
+            return rejected(RejectionReason.MODEL_UNAVAILABLE, "Wake-word model scoring is unavailable.")
+        }
+        if (score < threshold) {
+            return rejected(RejectionReason.LOW_CONFIDENCE, "Model score ${"%.3f".format(score)} is below its validated threshold.")
+        }
+        return quality.copy(score = score, threshold = threshold)
     }
+
+    /** Trims leading/trailing low energy and stores a 1.0–1.5 second PCM window. */
+    fun trimForDataset(pcm: ShortArray): ShortArray {
+        require(pcm.isNotEmpty())
+        val frameSize = sampleRate / 100
+        val peakFrameRms = (0 until pcm.size step frameSize).maxOf { start ->
+            calculateRms(pcm.copyOfRange(start, minOf(start + frameSize, pcm.size)))
+        }
+        val activeThreshold = maxOf(minSpeechRms * 0.5, peakFrameRms * 0.08)
+        var first = pcm.size
+        var last = -1
+        for (start in 0 until pcm.size step frameSize) {
+            val end = minOf(start + frameSize, pcm.size)
+            if (calculateRms(pcm.copyOfRange(start, end)) >= activeThreshold) {
+                first = minOf(first, start)
+                last = maxOf(last, end)
+            }
+        }
+
+        val pad = sampleRate / 10
+        val start = (first - pad).coerceAtLeast(0)
+        val end = if (last < 0) pcm.size else (last + pad).coerceAtMost(pcm.size)
+        val maxSamples = sampleRate * 3 / 2
+        val active = if (end - start > maxSamples) {
+            val center = (start + end) / 2
+            val cropStart = (center - maxSamples / 2).coerceAtLeast(0).coerceAtMost(pcm.size - maxSamples)
+            pcm.copyOfRange(cropStart, cropStart + maxSamples)
+        } else {
+            pcm.copyOfRange(start, end)
+        }
+
+        val minSamples = sampleRate
+        if (active.size >= minSamples) return active
+        val padded = ShortArray(minSamples)
+        val offset = (minSamples - active.size) / 2
+        active.copyInto(padded, offset)
+        return padded
+    }
+
+    private fun rejected(reason: RejectionReason, message: String) = ValidationResult.Rejected(reason, message)
 }

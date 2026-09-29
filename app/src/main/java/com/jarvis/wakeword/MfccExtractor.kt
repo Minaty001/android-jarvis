@@ -3,12 +3,13 @@ package com.jarvis.wakeword
 import kotlin.math.*
 
 class MfccExtractor(
-    val sampleRate: Int = 16000,
-    val numMfcc: Int = 10,
-    val numMelFilters: Int = 40,
-    val frameLengthSamples: Int = 400, // 25ms @ 16kHz
-    val frameStrideSamples: Int = 320,  // 20ms @ 16kHz
-    val fftSize: Int = 512
+    val sampleRate: Int = KwsFeatureSpec.DEFAULT.sampleRate,
+    val numMfcc: Int = KwsFeatureSpec.DEFAULT.numMfcc,
+    val numMelFilters: Int = KwsFeatureSpec.DEFAULT.numMelFilters,
+    val frameLengthSamples: Int = KwsFeatureSpec.DEFAULT.frameLengthSamples,
+    val frameStrideSamples: Int = KwsFeatureSpec.DEFAULT.frameStrideSamples,
+    val fftSize: Int = KwsFeatureSpec.DEFAULT.fftSize,
+    private val preEmphasis: Float = KwsFeatureSpec.DEFAULT.preEmphasis
 ) {
     private val hammingWindow = FloatArray(frameLengthSamples) { i ->
         (0.54 - 0.46 * cos(2.0 * PI * i / (frameLengthSamples - 1))).toFloat()
@@ -34,7 +35,7 @@ class MfccExtractor(
             var prev = 0.0f
             for (i in 0 until frameLengthSamples) {
                 val raw = audioSamples[start + i].toFloat() / 32768.0f
-                val emphasized = raw - 0.97f * prev
+                val emphasized = raw - preEmphasis * prev
                 prev = raw
                 frameBuffer[i] = emphasized * hammingWindow[i]
             }

@@ -59,9 +59,7 @@ class VoiceEngine(
     val conversationManager = assistantRuntime.conversationManager
     val continuousAudioStream = com.jarvis.voice.audio.ContinuousAudioStream(context)
     val vadEngine = assistantRuntime.vadEngine
-    val wakeEngine = assistantRuntime.wakeEngine.apply {
-        rollingBuffer = continuousAudioStream.rollingBuffer
-    }
+    val wakeEngine = assistantRuntime.wakeEngine
     @Volatile var asrEngine: AsrEngine = assistantRuntime.asrEngine
     val ttsEngine = assistantRuntime.ttsEngine
     val voiceRouter = com.jarvis.voice.router.VoiceRouter(
@@ -166,7 +164,7 @@ class VoiceEngine(
         val appSettings = runCatching { store.loadSettings() }.getOrDefault(com.jarvis.ui.model.AppSettings())
         isContinuousConversationEnabled = appSettings.continuousConversation
         isBargeInEnabled = appSettings.bargeInEnabled
-        configuredWakeWord = appSettings.wakeWord.ifBlank { "Jarvis" }
+        configuredWakeWord = com.jarvis.wakeword.WakeWordModelMetadata.SUPPORTED_PHRASE
         followUpTimeoutMs = (appSettings.followUpTimeoutSeconds * 1000L).coerceIn(3000L, 15000L)
         voiceRouter.bargeInDetector.setEnabled(appSettings.bargeInEnabled)
         voiceRouter.bargeInDetector.setSensitivity(appSettings.wakeSensitivity)
@@ -175,17 +173,16 @@ class VoiceEngine(
         val voiceProfile = runCatching { store.loadVoiceProfile() }.getOrDefault(com.jarvis.wakeword.UserVoiceProfile.DEFAULT)
         wakeEngine.applyVoiceProfile(voiceProfile)
         wakeEngine.applyOwnerVoiceProfile(runCatching { store.loadOwnerVoiceProfile() }.getOrNull())
-        if (voiceProfile.wakeWordPhrase.isNotBlank()) {
-            configuredWakeWord = voiceProfile.wakeWordPhrase
-        }
+        configuredWakeWord = com.jarvis.wakeword.WakeWordModelMetadata.SUPPORTED_PHRASE
     }
 
     fun applyVoiceProfile(profile: com.jarvis.wakeword.UserVoiceProfile) {
         wakeEngine.applyVoiceProfile(profile)
-        if (profile.wakeWordPhrase.isNotBlank()) {
-            configuredWakeWord = profile.wakeWordPhrase
-        }
+        configuredWakeWord = com.jarvis.wakeword.WakeWordModelMetadata.SUPPORTED_PHRASE
     }
+
+    fun scoreEnrollmentSample(pcm: ShortArray): com.jarvis.voice.WakeWordSampleScore? =
+        wakeEngine.scoreEnrollmentSample(pcm)
 
     fun applyOwnerVoiceProfile(profile: com.jarvis.wakeword.OwnerVoiceProfile?) {
         wakeEngine.applyOwnerVoiceProfile(profile)

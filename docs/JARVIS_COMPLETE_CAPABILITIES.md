@@ -12,7 +12,7 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 ├──────────────────────────────────────┬──────────────────────────────────────┤
 │ 🎙️ Voice & Acoustic Engine           │ 🧠 Multi-Provider AI & LangChain4j   │
 │  • Continuous Wake-Word ("Jarvis")   │  • Groq / Gemini / OpenRouter / Ollama│
-│  • Real-time Acoustic Calibration    │  • LangChain4j RAG & Chat Memory     │
+│  • Wake-Word Dataset & KWS Diagnostics│  • LangChain4j RAG & Chat Memory     │
 │  • Full-Duplex Barge-In Interrupt    │  • ReAct Multi-Step Task Planner     │
 ├──────────────────────────────────────┼──────────────────────────────────────┤
 │ 📱 OS & Hardware Automation          │ 👁️ Vision & Accessibility Automator │
@@ -27,38 +27,34 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 ## 1. 🎙️ Voice Recognition & Acoustic Engine
 
 ### Features & Functions:
-* **Continuous Wake-Word Detection**: Listens 24/7 for `"Hey Jarvis"` or `"Jarvis"`.
+* **Continuous Wake-Word Detection**: A single microphone path runs an INT8 TFLite model for the phrase `"Jarvis"`. The repository has no trained model asset yet, so wake activation stays unavailable until one is trained from real recordings and installed.
 * **Lock-Screen HUD Overlay**: Displays cyber-slate HUD on lock screen without unlocking.
-* **Personal Acoustic Calibration**: Tunes the on-device wake-word detector's thresholds from validated voice samples; it does not retrain the TFLite model.
-* **Optional Owner Voice Verification**: Uses an enrolled speaker profile during normal wake detection when the profile and TFLite speaker model are available. If either is unavailable, wake-word activation continues without the owner check.
-* **Custom DTW Templates**: A screen-local setup flow records three templates for DTW matching. They remain separate from normal wake-word detection.
+* **Personal Dataset Enrollment**: Saves quality-checked positive WAV samples and exports them for offline model training. Recording samples does not change model weights or the model threshold.
+* **Optional Owner Voice Verification**: A separate identity check, disabled by default. If explicitly required, unavailable model assets fail closed.
 * **Full-Duplex Acoustic Barge-In**: Silence Jarvis mid-speech by speaking over it.
 * **Bluetooth Earbud SCO Routing**: Bidirectional earbud audio routing and headset hook button activation.
 
 ### 5 Examples per Feature:
 
 #### A. Wake-Word Activation:
-1. *"Hey Jarvis, good morning"*
+1. *"Jarvis, good morning"*
 2. *"Jarvis, volume set to 70%"*
-3. *"Hey Jarvis, what is the weather today?"*
+3. *"Jarvis, what is the weather today?"*
 4. *"Jarvis, turn on flashlight"*
-5. *"Hey Jarvis, call Mom"*
+5. *"Jarvis, call Mom"*
 
 #### B. Lock-Screen HUD Overlay:
-1. Speak *"Jarvis"* while phone is locked $\to$ Arc Reactor HUD turns screen on and listens.
+1. With a trained model installed, speak *"Jarvis"* while phone is locked $\to$ Arc Reactor HUD turns screen on and listens.
 2. Speak *"What time is it?"* from across the room while phone is on desk locked.
-3. Speak *"Jarvis, turn on driving mode"* while phone is locked in car mount.
-4. Speak *"Jarvis, play music"* without touching the lock screen code.
-5. Speak *"Jarvis, read latest SMS"* when screen is off.
+3. With a trained model installed, speak *"Jarvis, turn on driving mode"* while phone is locked in car mount.
+4. With a trained model installed, speak *"Jarvis, play music"* without touching the lock screen code.
+5. With a trained model installed, speak *"Jarvis, read latest SMS"* when screen is off.
 
-#### C. Personal Voice Calibration (`CONFIG` screen):
-1. Tap `🎙 RECORD & START TRAINING` and say *"Jarvis"* sample 1 clearly.
-2. Record sample 2 in a quiet place, at your normal distance and speaking volume.
-3. Record sample 3 under similar conditions.
-4. Review the generated acoustic profile and whether an owner speaker profile was created.
-5. Tap `SAVE & ACTIVATE` to apply the profiles. Tap `↺ RESET TO DEFAULT` to clear enrollment and restore factory acoustic settings.
-
-The **WAKE WORD SETUP (3 TEMPLATES)** screen has a separate DTW matcher. It validates and stores three audio templates, offers NORMAL (0.80) and STRICT (0.88) thresholds, and listens only while that screen is active; it does not replace the normal TFLite wake detector.
+#### C. Personal Wake-Word Dataset (`CONFIG` screen):
+1. Open `PERSONAL WAKE WORD DATASET` and record the default 50 `Jarvis` samples, varying volume and distance.
+2. The app quality-checks each recording and stores it as 16 kHz mono PCM16 WAV. If a real model is installed, the same runtime detector can score the saved sample; otherwise the UI says `MODEL UNAVAILABLE`.
+3. Export the dataset ZIP. Add real `unknown` and `background` examples on the development machine.
+4. Run `scripts/train_kws.py` and `scripts/validate_kws_model.py`; install the generated INT8 asset and metadata to activate the newly trained model.
 
 #### D. Full-Duplex Acoustic Barge-In (Interrupting Jarvis):
 1. While Jarvis reads a long briefing, say *"Jarvis, stop"* $\to$ Mutes TTS in <50ms.

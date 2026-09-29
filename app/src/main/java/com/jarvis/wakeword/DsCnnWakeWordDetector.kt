@@ -4,414 +4,285 @@ import android.content.Context
 import android.util.Log
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
+import java.io.FileNotFoundException
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
+import java.security.MessageDigest
 import kotlin.math.exp
 import kotlin.math.sqrt
 
-/**
- * Production Depthwise-Separable CNN (DS-CNN) / TFLite Wake Word Detector for "Jarvis".
- *
- * Requirements enforced:
- * 1. Strict TFLite model loading: no fake mathematical or acoustic heuristics.
- * 2. Missing/corrupt model cleanly disables wake detection (score = 0.0f).
- * 3. Dynamic INT8 / FLOAT32 input quantization and output dequantization based on tensor metadata.
- * 4. Multi-window sliding confirmation (e.g., 2 positive inferences in a 3-window history).
- * 5. Adaptive ambient noise-floor gating (calibrated during passive listening).
- * 6. Complete state reset via [resetDetectorState].
- */
+/** INT8 KWS inference. The checked manifest supplies the only production score threshold. */
 class DsCnnWakeWordDetector(
     private val context: Context,
-    val modelAssetPath: String = "jarvis_dscnn_int8.tflite",
+    val modelAssetPath: String = WakeWordModelMetadata.MODEL_NAME,
     val config: WakeWordConfig = WakeWordConfig()
 ) : WakeWordDetector {
-
-    private val mfccExtractor = MfccExtractor(numMfcc = NUM_MFCC, numMelFilters = 40)
-    private var tfliteInterpreter: Interpreter? = null
-
+    private val spec = KwsFeatureSpec.DEFAULT
+    private val mfccExtractor = MfccExtractor()
+    private var interpreter: Interpreter? = null
+    private var metadata: WakeWordModelMetadata? = null
     private var modelAvailable = false
     private var modelLoadError: String? = null
-
-    // Rolling circular audio buffer
-    private val rollingBuffer = ShortArray(config.windowSamples)
-    private var bufferPos = 0
-    private var isBufferFull = false
-    private var samplesSinceLastInference = 0
-
-    // Sliding confirmation window
-    private val recentScores = ArrayDeque<Float>()
-
-    // Adaptive noise floor & energy tracking
-    @Volatile private var noiseFloorRms = 12.0
-    private var lastRmsLogTime = 0L
-
-    // Diagnostics
-    private var inputDataType: DataType? = null
-    private var outputDataType: DataType? = null
-    private var inputShapeStr: String = ""
-    private var outputShapeStr: String = ""
-    // Stored output shape so runInference() can determine class count dynamically (BUG-023 fix)
-    private var outputShape: IntArray = IntArray(0)
-    private var inputScale: Float = 0.1f
-    private var inputZeroPoint: Int = 0
-    private var outputScale: Float = 1.0f
-    private var outputZeroPoint: Int = 0
-    private var lastWakeScore: Float = 0.0f
-    private var lastWakeTimestamp: Long = 0L
-    private var detectionCount: Long = 0L
-
-    // Pre-allocated buffers to prevent GC allocations during continuous audio processing
-    private val linearAudio = ShortArray(config.windowSamples)
-    private val mfccMatrix = Array(NUM_TIME_FRAMES) { FloatArray(NUM_MFCC) }
-    private val quantizedBytes = ByteArray(NUM_TIME_FRAMES * NUM_MFCC)
-    private val floatFeatures = FloatArray(NUM_TIME_FRAMES * NUM_MFCC)
-
-    private var inputByteBuffer: ByteBuffer? = null
-    private var outputByteBuffer: ByteBuffer? = null
-    private var isInitialized = false
+    private var initialized = false
+    private var inputBuffer: ByteBuffer? = null
+    private var outputBuffer: ByteBuffer? = null
+    private var inputScale = 0f
+    private var inputZeroPoint = 0
+    private var outputScale = 0f
+    private var outputZeroPoint = 0
+    private var inputShape = "unavailable"
+    private var outputShape = "unavailable"
+    private val rollingAudio = ShortArray(spec.windowSamples)
+    private var writePosition = 0
+    private var bufferFull = false
+    private var samplesSinceInference = 0
+    private val confirmation = KwsTemporalConfirmation(config.confirmationWindowCount, config.requiredPositiveWindows)
+    private val features = Array(spec.numFrames) { FloatArray(spec.numMfcc) }
+    private val quantized = ByteArray(spec.numFrames * spec.numMfcc)
+    private var noiseFloorRms = 0.003
+    private var lastEnergyLogAt = 0L
+    @Volatile private var latestRawScore = 0f
+    @Volatile private var latestEnergyGatePassed: Boolean? = null
 
     @Synchronized
-    private fun ensureTfliteInitialized() {
-        if (isInitialized) return
-        isInitialized = true
-        initTflite()
-    }
-
-    private fun initTflite() {
+    private fun ensureInitialized() {
+        if (initialized) return
+        initialized = true
         try {
-            val assetManager = context.assets
-            val fileDescriptor = assetManager.openFd(modelAssetPath)
-            FileInputStream(fileDescriptor.fileDescriptor).use { inputStream ->
-                val fileChannel = inputStream.channel
-                val modelBuffer = fileChannel.map(
-                    FileChannel.MapMode.READ_ONLY,
-                    fileDescriptor.startOffset,
-                    fileDescriptor.declaredLength
-                )
-
-                val options = Interpreter.Options().apply {
-                    setNumThreads(2)
-                    setUseNNAPI(false)
-                }
-
-                val interpreter = Interpreter(modelBuffer, options)
-                try {
-                    validateAndConfigureModel(interpreter)
-                    tfliteInterpreter = interpreter
-                } catch (t: Throwable) {
-                    interpreter.close()  // close local var — tfliteInterpreter is still null here
-                    throw t
-                }
-
-                modelAvailable = true
-                modelLoadError = null
-                Log.i(TAG, "Wake model loaded successfully: $modelAssetPath (input=$inputShapeStr $inputDataType, output=$outputShapeStr $outputDataType)")
+            val parsedMetadata = context.assets.open(WakeWordModelMetadata.ASSET_NAME).bufferedReader().use { it.readText() }
+                .let(WakeWordModelMetadata::fromJson)
+            require(parsedMetadata.modelFile == modelAssetPath) {
+                "Model manifest names '${parsedMetadata.modelFile}', but runtime requested '$modelAssetPath'"
             }
-        } catch (t: Throwable) {
-            tfliteInterpreter?.close()
-            tfliteInterpreter = null
+            val actualSha = sha256Asset(modelAssetPath)
+            require(actualSha.equals(parsedMetadata.modelSha256, ignoreCase = true)) {
+                "KWS model SHA-256 mismatch: manifest=${parsedMetadata.modelSha256}, actual=$actualSha"
+            }
+
+            val descriptor = context.assets.openFd(modelAssetPath)
+            val mapped = FileInputStream(descriptor.fileDescriptor).use { stream ->
+                stream.channel.map(FileChannel.MapMode.READ_ONLY, descriptor.startOffset, descriptor.declaredLength)
+            }
+            descriptor.close()
+
+            val model = Interpreter(mapped, Interpreter.Options().apply { setNumThreads(2); setUseNNAPI(false) })
+            try {
+                validateAndConfigure(model)
+                interpreter = model
+            } catch (error: Throwable) {
+                model.close()
+                throw error
+            }
+            metadata = parsedMetadata
+            modelAvailable = true
+            modelLoadError = null
+            Log.i(TAG, "KWS model loaded version=${parsedMetadata.version} sha256=$actualSha input=$inputShape output=$outputShape threshold=${parsedMetadata.threshold}")
+        } catch (error: Throwable) {
+            interpreter?.close()
+            interpreter = null
+            metadata = null
             modelAvailable = false
-            modelLoadError = t.message ?: "Unknown model loading error"
-            Log.e(TAG, "Wake model ($modelAssetPath) unavailable. Wake detection disabled: $modelLoadError")
+            val detail = error.message ?: error.javaClass.simpleName
+            modelLoadError = if (error is FileNotFoundException) {
+                "MODEL MISSING — TRAIN MODEL FIRST. Required KWS asset is unavailable: $detail"
+            } else detail
+            Log.e(TAG, "MODEL MISSING/INVALID — train and install a validated KWS model: $modelLoadError")
         }
     }
 
-    private fun validateAndConfigureModel(interpreter: Interpreter) {
-        val input = interpreter.getInputTensor(0)
-        val output = interpreter.getOutputTensor(0)
-
-        val inputShape = input.shape()
-        val outputShape = output.shape()
-
-        inputShapeStr = inputShape.contentToString()
-        outputShapeStr = outputShape.contentToString()
-        this.outputShape = outputShape  // persist for dynamic class-count reading in runInference()
-        inputDataType = input.dataType()
-        outputDataType = output.dataType()
-
-        Log.i(TAG, "Wake model input shape=$inputShapeStr type=$inputDataType, output shape=$outputShapeStr type=$outputDataType")
-
-        require(inputShape.isNotEmpty()) { "Wake model input tensor shape is invalid" }
-        require(outputShape.isNotEmpty()) { "Wake model output tensor shape is invalid" }
-
-        val inQuant = input.quantizationParams()
-        inputScale = if (inQuant.scale > 0f) inQuant.scale else 0.1f
-        inputZeroPoint = inQuant.zeroPoint
-
-        val outQuant = output.quantizationParams()
-        outputScale = if (outQuant.scale > 0f) outQuant.scale else 1.0f
-        outputZeroPoint = outQuant.zeroPoint
-
-        // Allocate I/O ByteBuffers based on data type
-        val inputByteSize = when (input.dataType()) {
-            DataType.INT8, DataType.UINT8 -> NUM_TIME_FRAMES * NUM_MFCC
-            DataType.FLOAT32 -> NUM_TIME_FRAMES * NUM_MFCC * 4
-            else -> throw IllegalStateException("Unsupported wake model input tensor type: ${input.dataType()}")
+    private fun validateAndConfigure(model: Interpreter) {
+        require(model.inputTensorCount == 1 && model.outputTensorCount == 1) {
+            "Expected one input and one output tensor; actual ${model.inputTensorCount} inputs, ${model.outputTensorCount} outputs"
         }
-        inputByteBuffer = ByteBuffer.allocateDirect(inputByteSize).apply {
-            order(ByteOrder.nativeOrder())
-        }
+        val input = model.getInputTensor(0)
+        val output = model.getOutputTensor(0)
+        inputShape = input.shape().contentToString()
+        outputShape = output.shape().contentToString()
+        WakeWordModelContract.validate(input.shape(), input.dataType().name, output.shape(), output.dataType().name)
 
-        val outputClasses = if (outputShape.size > 1) outputShape[1] else outputShape[0]
-        val outputByteSize = when (output.dataType()) {
-            DataType.INT8, DataType.UINT8 -> outputClasses
-            DataType.FLOAT32 -> outputClasses * 4
-            else -> throw IllegalStateException("Unsupported wake model output tensor type: ${output.dataType()}")
-        }
-        outputByteBuffer = ByteBuffer.allocateDirect(outputByteSize).apply {
-            order(ByteOrder.nativeOrder())
-        }
+        val inputQuantization = input.quantizationParams()
+        val outputQuantization = output.quantizationParams()
+        require(inputQuantization.scale.isFinite() && inputQuantization.scale > 0f) { "KWS input tensor has invalid INT8 quantization scale" }
+        require(outputQuantization.scale.isFinite() && outputQuantization.scale > 0f) { "KWS output tensor has invalid INT8 quantization scale" }
+        inputScale = inputQuantization.scale
+        inputZeroPoint = inputQuantization.zeroPoint
+        outputScale = outputQuantization.scale
+        outputZeroPoint = outputQuantization.zeroPoint
+        inputBuffer = ByteBuffer.allocateDirect(input.numBytes()).order(ByteOrder.nativeOrder())
+        outputBuffer = ByteBuffer.allocateDirect(output.numBytes()).order(ByteOrder.nativeOrder())
     }
 
     override fun isModelAvailable(): Boolean {
-        ensureTfliteInitialized()
+        ensureInitialized()
         return modelAvailable
     }
 
     override fun getModelLoadError(): String? {
-        ensureTfliteInitialized()
+        ensureInitialized()
         return modelLoadError
     }
 
+    override fun getModelThreshold(): Float? {
+        ensureInitialized()
+        return metadata?.threshold
+    }
+
+    override fun getModelMetadata(): WakeWordModelMetadata? {
+        ensureInitialized()
+        return metadata
+    }
+
+    override fun getInputShape(): String? = inputShape
+    override fun getOutputShape(): String? = outputShape
+    override fun getLatestRawScore(): Float? = latestRawScore
+    override fun getLatestEnergyGatePassed(): Boolean? = latestEnergyGatePassed
+
     @Synchronized
     override fun pushAudio(samples: ShortArray): Float {
-        ensureTfliteInitialized()
-        if (!modelAvailable || samples.isEmpty()) return 0.0f
-
-        // Ingest audio into rolling circular buffer
+        ensureInitialized()
+        if (!modelAvailable || samples.isEmpty()) return 0f
         for (sample in samples) {
-            rollingBuffer[bufferPos] = sample
-            bufferPos = (bufferPos + 1) % config.windowSamples
-            if (bufferPos == 0) {
-                isBufferFull = true
-            }
+            rollingAudio[writePosition] = sample
+            writePosition = (writePosition + 1) % rollingAudio.size
+            if (writePosition == 0) bufferFull = true
+        }
+        samplesSinceInference += samples.size
+        if (!bufferFull || samplesSinceInference < config.inferenceIntervalSamples) return 0f
+        samplesSinceInference = 0
+
+        val window = windowSnapshot()
+        latestEnergyGatePassed = hasSufficientEnergy(window)
+        if (latestEnergyGatePassed != true) {
+            latestRawScore = 0f
+            confirmation.add(0f, metadata?.threshold ?: 1f)
+            return 0f
         }
 
-        samplesSinceLastInference += samples.size
-
-        // Evaluate at configured sample cadence
-        if (!isBufferFull || samplesSinceLastInference < config.inferenceIntervalSamples) {
-            return 0.0f
-        }
-        samplesSinceLastInference = 0
-
-        // Energy & noise-floor gate: skip low energy / silence frames to save CPU
-        if (!hasSufficientEnergy(samples)) {
-            updateConfirmation(0.0f)
-            return 0.0f
-        }
-
-        // Linearize circular buffer
-        val part1 = config.windowSamples - bufferPos
-        System.arraycopy(rollingBuffer, bufferPos, linearAudio, 0, part1)
-        System.arraycopy(rollingBuffer, 0, linearAudio, part1, bufferPos)
-
-        // Extract MFCC features
-        val numFrames = mfccExtractor.extractMfcc(linearAudio, mfccMatrix)
-        if (numFrames < NUM_TIME_FRAMES) return 0.0f
-
-        // Run real model inference (no heuristic fallback!)
-        val inferenceScore = runInference(numFrames)
-
-        // Pass through multi-window confirmation
-        val confirmedScore = updateConfirmation(inferenceScore)
-        if (confirmedScore >= config.effectiveThreshold()) {
-            lastWakeScore = confirmedScore
-            lastWakeTimestamp = System.currentTimeMillis()
-            detectionCount++
-            Log.i(TAG, "Wake word 'Jarvis' CONFIRMED with score=$confirmedScore (history=$recentScores)")
-            return confirmedScore
-        }
-
-        return 0.0f
+        val score = inferWindow(window) ?: return 0f
+        val confirmed = confirmation.add(score, metadata?.threshold ?: 1f)
+        return if (confirmed >= (metadata?.threshold ?: 1f)) confirmed else 0f
     }
 
-    private fun updateConfirmation(score: Float): Float {
-        if (config.requiredPositiveWindows <= 1 && score >= config.effectiveThreshold()) {
-            recentScores.clear()
-            return score
-        }
-
-        recentScores.addLast(score)
-        while (recentScores.size > config.confirmationWindowCount) {
-            recentScores.removeFirst()
-        }
-
-        val positives = recentScores.count { it >= config.effectiveThreshold() }
-
-        if (recentScores.size >= config.confirmationWindowCount &&
-            positives >= config.requiredPositiveWindows
-        ) {
-            recentScores.clear()
-            return score
-        }
-
-        return 0.0f
+    @Synchronized
+    override fun scoreEnrollmentSample(pcm: ShortArray): Float? {
+        ensureInitialized()
+        if (!modelAvailable || pcm.isEmpty()) return null
+        val window = ShortArray(spec.windowSamples)
+        System.arraycopy(pcm, 0, window, 0, minOf(pcm.size, window.size))
+        return inferWindow(window)
     }
 
-    private fun runInference(numFrames: Int): Float {
-        val interpreter = tfliteInterpreter ?: return 0.0f
-        val inBuf = inputByteBuffer ?: return 0.0f
-        val outBuf = outputByteBuffer ?: return 0.0f
-
+    private fun inferWindow(window: ShortArray): Float? {
+        val frameCount = mfccExtractor.extractMfcc(window, features)
+        if (frameCount != spec.numFrames) {
+            markInferenceUnavailable("Expected ${spec.numFrames} MFCC frames, extracted $frameCount")
+            return null
+        }
+        val model = interpreter ?: return null
+        val input = inputBuffer ?: return null
+        val output = outputBuffer ?: return null
         return try {
-            inBuf.rewind()
-            outBuf.rewind()
-
-            when (inputDataType) {
-                DataType.INT8, DataType.UINT8 -> {
-                    val count = mfccExtractor.quantizeToInt8(
-                        mfccMatrix,
-                        numFrames,
-                        quantizedBytes,
-                        inputScale,
-                        inputZeroPoint
-                    )
-                    inBuf.put(quantizedBytes, 0, count)
-                }
-                DataType.FLOAT32 -> {
-                    val count = mfccExtractor.copyToFloatArray(mfccMatrix, numFrames, floatFeatures)
-                    for (i in 0 until count) {
-                        inBuf.putFloat(floatFeatures[i])
-                    }
-                }
-                else -> return 0.0f
-            }
-
-            inBuf.rewind()
-            interpreter.run(inBuf, outBuf)
-            outBuf.rewind()
-
-            val outputClasses = if (outputShape.size > 1) outputShape[1] else outputShape[0]
-
-            val rawScores = when (outputDataType) {
-                DataType.INT8 -> {
-                    FloatArray(outputClasses) { dequantize(outBuf.get().toInt(), outputScale, outputZeroPoint) }
-                }
-                DataType.UINT8 -> {
-                    FloatArray(outputClasses) { dequantize(outBuf.get().toInt() and 0xFF, outputScale, outputZeroPoint) }
-                }
-                DataType.FLOAT32 -> {
-                    FloatArray(outputClasses) { outBuf.float }
-                }
-                else -> return 0.0f
-            }
-
-            if (JARVIS_CLASS_INDEX >= rawScores.size) {
-                Log.e(TAG, "JARVIS_CLASS_INDEX ($JARVIS_CLASS_INDEX) out of bounds for model with ${rawScores.size} output classes")
-                return 0.0f
-            }
-
-            // Interpret output classes: [0 = silence/background, 1 = other speech, 2 = Jarvis]
-            // If output values are unnormalized logits, apply softmax.
-            val jarvisScore = if (isProbabilities(rawScores)) {
-                rawScores[JARVIS_CLASS_INDEX]
+            input.clear()
+            val count = mfccExtractor.quantizeToInt8(features, frameCount, quantized, inputScale, inputZeroPoint)
+            input.put(quantized, 0, count)
+            input.rewind()
+            output.clear()
+            model.run(input, output)
+            output.rewind()
+            val values = FloatArray(3) { (output.get().toInt() - outputZeroPoint) * outputScale }
+            val probabilities = if (values.all { it in 0f..1.05f } && values.sum() in 0.90f..1.10f) values else softmax(values)
+            val score = probabilities[metadata?.positiveClassIndex ?: return null]
+            if (!score.isFinite()) {
+                markInferenceUnavailable("KWS model returned a non-finite score")
+                null
             } else {
-                softmax(rawScores)[JARVIS_CLASS_INDEX]
+                latestRawScore = score
+                score
             }
-
-            if (jarvisScore > 0.35f) {
-                Log.d(TAG, "Inference raw Jarvis score=$jarvisScore (threshold=${config.effectiveThreshold()})")
-            }
-
-            jarvisScore
-        } catch (e: Exception) {
-            Log.e(TAG, "TFLite inference execution error", e)
-            0.0f
+        } catch (error: Throwable) {
+            markInferenceUnavailable("KWS inference failed: ${error.message ?: error.javaClass.simpleName}", error)
+            null
         }
     }
 
-    private fun dequantize(value: Int, scale: Float, zeroPoint: Int): Float {
-        return (value - zeroPoint) * scale
-    }
-
-    private fun isProbabilities(scores: FloatArray): Boolean {
-        return scores.all { it in 0.0f..1.05f } && scores.sum() in 0.90f..1.10f
-    }
-
-    private fun softmax(logits: FloatArray): FloatArray {
-        val maxLogit = logits.maxOrNull() ?: 0.0f
-        val exps = FloatArray(logits.size) { exp((logits[it] - maxLogit).toDouble()).toFloat() }
-        val sumExp = exps.sum()
-        return if (sumExp > 0.0f) FloatArray(logits.size) { exps[it] / sumExp } else logits
+    private fun windowSnapshot(): ShortArray {
+        val window = ShortArray(spec.windowSamples)
+        val firstLength = spec.windowSamples - writePosition
+        System.arraycopy(rollingAudio, writePosition, window, 0, firstLength)
+        System.arraycopy(rollingAudio, 0, window, firstLength, writePosition)
+        return window
     }
 
     private fun hasSufficientEnergy(frame: ShortArray): Boolean {
         if (frame.isEmpty()) return false
         var sum = 0.0
-        for (sample in frame) {
-            val s = sample.toDouble()
-            sum += s * s
-        }
+        frame.forEach { val normalized = it / 32768.0; sum += normalized * normalized }
         val rms = sqrt(sum / frame.size)
-
         val now = System.currentTimeMillis()
-        if (now - lastRmsLogTime > 4000L) {
-            lastRmsLogTime = now
-            Log.d(TAG, "Ambient audio RMS: %.1f, noise floor: %.1f".format(rms, noiseFloorRms))
+        if (now - lastEnergyLogAt >= 4000L) {
+            lastEnergyLogAt = now
+            Log.d(TAG, "KWS energy gate rms=${"%.4f".format(rms)} floor=${"%.4f".format(noiseFloorRms)}")
         }
-
-        // Calibrate noise floor on ambient audio
         val required = maxOf(config.minEnergyRms, noiseFloorRms * 1.15)
         if (rms < required) {
             noiseFloorRms = noiseFloorRms * 0.96 + rms * 0.04
             return false
-        } else {
-            noiseFloorRms = noiseFloorRms * 0.995 + rms * 0.005
         }
-
+        noiseFloorRms = noiseFloorRms * 0.995 + rms * 0.005
         return true
     }
 
     @Synchronized
     override fun resetDetectorState() {
-        rollingBuffer.fill(0)
-        linearAudio.fill(0)
-        bufferPos = 0
-        isBufferFull = false
-        samplesSinceLastInference = 0
-        recentScores.clear()
-        Log.d(TAG, "Detector state fully reset")
+        rollingAudio.fill(0)
+        writePosition = 0
+        bufferFull = false
+        samplesSinceInference = 0
+        confirmation.reset()
+        latestRawScore = 0f
+        latestEnergyGatePassed = null
     }
 
     @Synchronized
     override fun close() {
-        tfliteInterpreter?.close()
-        tfliteInterpreter = null
+        interpreter?.close()
+        interpreter = null
+        metadata = null
         modelAvailable = false
-        isInitialized = false
-        inputByteBuffer = null
-        outputByteBuffer = null
-        Log.i(TAG, "DsCnnWakeWordDetector closed and resources released")
+        initialized = false
+        inputBuffer = null
+        outputBuffer = null
     }
 
-    // Diagnostics getters
-    fun getDiagnostics(): Map<String, Any> {
-        return mapOf(
-            "modelAvailable" to modelAvailable,
-            "modelLoadError" to (modelLoadError ?: "None"),
-            "modelAssetPath" to modelAssetPath,
-            "inputShape" to inputShapeStr,
-            "inputDataType" to (inputDataType?.toString() ?: "N/A"),
-            "outputShape" to outputShapeStr,
-            "outputDataType" to (outputDataType?.toString() ?: "N/A"),
-            "threshold" to config.effectiveThreshold(),
-            "requiredPositives" to config.requiredPositiveWindows,
-            "confirmationWindows" to config.confirmationWindowCount,
-            "noiseFloorRms" to noiseFloorRms,
-            "lastWakeScore" to lastWakeScore,
-            "lastWakeTimestamp" to lastWakeTimestamp,
-            "detectionCount" to detectionCount
-        )
+    private fun markInferenceUnavailable(message: String, error: Throwable? = null) {
+        modelAvailable = false
+        modelLoadError = message
+        interpreter?.close()
+        interpreter = null
+        Log.e(TAG, message, error)
     }
 
-    companion object {
-        private const val TAG = "DsCnnWakeWordDetector"
-        const val NUM_TIME_FRAMES = 49
-        const val NUM_MFCC = 10
-        const val NUM_CLASSES = 3
-        const val JARVIS_CLASS_INDEX = 2 // 0=silence, 1=unknown speech, 2=Jarvis
+    private fun softmax(values: FloatArray): FloatArray {
+        val max = values.maxOrNull() ?: 0f
+        val expValues = FloatArray(values.size) { exp((values[it] - max).toDouble()).toFloat() }
+        val sum = expValues.sum()
+        return if (sum > 0f) FloatArray(values.size) { expValues[it] / sum } else FloatArray(values.size)
     }
+
+    private fun sha256Asset(path: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        context.assets.open(path).use { input ->
+            val buffer = ByteArray(8192)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    companion object { private const val TAG = "DsCnnWakeWordDetector" }
 }

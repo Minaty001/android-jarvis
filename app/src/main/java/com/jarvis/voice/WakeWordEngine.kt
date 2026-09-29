@@ -2,212 +2,272 @@ package com.jarvis.voice
 
 import android.content.Context
 import android.util.Log
-import com.jarvis.wakeword.DsCnnWakeWordDetector
 import com.jarvis.wakeword.HybridWakeWordDetector
+import com.jarvis.wakeword.KwsFeatureSpec
 import com.jarvis.wakeword.UserVoiceProfile
+import com.jarvis.wakeword.WakeDetectorMode
 import com.jarvis.wakeword.WakeWordConfig
 import com.jarvis.wakeword.WakeWordDetector
-import java.io.File
-import java.util.concurrent.atomic.AtomicBoolean
+import com.jarvis.wakeword.WakeWordModelMetadata
+import kotlin.math.sqrt
 
-enum class WakeWordState {
-    STOPPED,
-    RUNNING,
-    TRIGGERED,
-    CLOSED
-}
+enum class WakeWordState { STOPPED, RUNNING, TRIGGERED, CLOSED }
+enum class WakeModelStatus { MODEL_MISSING, MODEL_READY, DATASET_ENROLLING, DATASET_READY, MODEL_OUTDATED, MODEL_READY_AND_ENROLLED }
 
-/**
- * Wake word engine using continuous PCM audio stream + TFLite KWS detector with acoustic fallback.
- * Uses AudioRecord directly without requesting audio focus, allowing background media
- * (YouTube, Spotify, etc.) to play uninterrupted without pausing or ducking.
- *
- * State lifecycle:
- * - start(): Marks RUNNING, resets detector state, sets callback.
- * - acceptAudio(): Evaluates frame if RUNNING; transitions to TRIGGERED on detection.
- * - stop(): Stops accepting audio, remains loaded.
- * - reset(): Clears detection history and state, returns to RUNNING.
- * - close(): Permanently frees TFLite interpreter and buffers.
- */
+data class WakeWordSampleScore(val score: Float, val threshold: Float, val passed: Boolean)
+
+data class WakeWordDiagnostics(
+    val modelAvailable: Boolean,
+    val modelError: String?,
+    val detectorMode: WakeDetectorMode,
+    val modelStatus: WakeModelStatus,
+    val phrase: String,
+    val threshold: Float?,
+    val latestScore: Float,
+    val audioRms: Double,
+    val audioDurationMs: Long,
+    val sampleRate: Int,
+    val inputShape: String,
+    val outputShape: String,
+    val modelVersion: String?,
+    val trainedSampleCount: Int?,
+    val modelSha256: String?,
+    val modelFile: String?,
+    val outputPositive: Boolean?,
+    val energyGatePassed: Boolean?,
+    val ownerVerificationRequired: Boolean
+)
+
+/** Receives the single continuous audio route and triggers only on a loaded neural KWS model. */
 class WakeWordEngine(
     private val context: Context? = null,
-    private var config: WakeWordConfig = WakeWordConfig(),
+    private val config: WakeWordConfig = WakeWordConfig(),
     private val customDetector: WakeWordDetector? = null,
-    var rollingBuffer: com.jarvis.voice.audio.RollingPcmBuffer? = null,
     var wakeGate: JarvisWakeGate? = null
 ) {
-    private val TAG = "WakeWordEngine"
+    private val tag = "WakeWordEngine"
+    private val spec = KwsFeatureSpec.DEFAULT
     private var detector: WakeWordDetector? = customDetector
-    private var activeProfileIndex: Int = 0
-    private val detectionGate = AtomicBoolean(false)
-    private var currentVoiceProfile: UserVoiceProfile = UserVoiceProfile.DEFAULT
-
-    @Volatile
-    private var state = WakeWordState.STOPPED
+    private var currentVoiceProfile = UserVoiceProfile.DEFAULT
+    private val recentAudio = ShortArray(spec.windowSamples)
+    private var recentAudioPosition = 0
+    private var recentAudioCount = 0
+    private var totalAudioSamples = 0L
+    private var latestScore = 0f
+    private var latestRms = 0.0
+    @Volatile private var state = WakeWordState.STOPPED
+    @Volatile private var trailingAudioBuffer: ShortArray? = null
     private var onDetectedCallback: ((String) -> Unit)? = null
-    private var lastDetectionAt: Long = 0L
-    @Volatile
-    private var trailingAudioBuffer: ShortArray? = null
+    private var lastDetectionAt = 0L
+    private var detectionInProgress = false
 
     private fun ensureDetectorInitialized() {
-        if (detector == null) {
-            val profile = config.profiles.getOrNull(activeProfileIndex)
-            val profileConfig = if (currentVoiceProfile.isEnrolled) {
-                config.copy(
-                    detectionThreshold = currentVoiceProfile.calibratedThreshold,
-                    minEnergyRms = currentVoiceProfile.calibratedMinEnergyRms
-                )
-            } else if (profile != null) {
-                config.copy(
-                    detectionThreshold = profile.threshold
-                )
-            } else config
-            detector = HybridWakeWordDetector(
-                context = context,
-                modelAssetPath = profile?.modelAssetPath ?: "jarvis_dscnn_int8.tflite",
-                config = profileConfig
-            )
-        }
+        if (detector == null) detector = HybridWakeWordDetector(context, config = config)
     }
 
     @Synchronized
     fun applyVoiceProfile(profile: UserVoiceProfile) {
         currentVoiceProfile = profile
-        val targetThreshold = if (profile.isEnrolled) {
-            profile.calibratedThreshold.coerceIn(0.50f, 0.75f)
-        } else {
-            config.profiles.getOrNull(activeProfileIndex)?.threshold ?: 0.65f
-        }
-        val targetMinEnergy = if (profile.isEnrolled) {
-            profile.calibratedMinEnergyRms.coerceIn(10.0, 45.0)
-        } else {
-            15.0
-        }
-
-        config = config.copy(
-            detectionThreshold = targetThreshold,
-            minEnergyRms = targetMinEnergy
-        )
-
-        if (customDetector == null) {
-            detector?.close()
-            detector = null
-            ensureDetectorInitialized()
-        }
-        Log.i(TAG, "Applied voice profile (enrolled=${profile.isEnrolled}, threshold=${config.effectiveThreshold()}, minEnergy=$targetMinEnergy)")
+        Log.i(tag, "Dataset profile updated (samples=${profile.sampleCount}, model=${profile.modelVersion.ifBlank { "not recorded" }})")
     }
 
     fun getVoiceProfile(): UserVoiceProfile = currentVoiceProfile
 
-    fun getEffectiveThreshold(): Float = config.effectiveThreshold()
+    @Synchronized
+    fun availableWakeWords(): List<String> = listOf(WakeWordModelMetadata.SUPPORTED_PHRASE)
 
     @Synchronized
-    fun availableWakeWords(): List<String> = config.profiles.map { it.phrase }
+    fun setActiveWakeWord(phrase: String): Boolean =
+        phrase.equals(WakeWordModelMetadata.SUPPORTED_PHRASE, ignoreCase = true) && isAvailable()
+
+    fun getTrailingAudio(): ShortArray? = trailingAudioBuffer?.copyOf()
 
     @Synchronized
-    fun setActiveWakeWord(phrase: String): Boolean {
-        val index = config.profiles.indexOfFirst { it.phrase.equals(phrase, ignoreCase = true) }
-        if (index < 0) return false
-        activeProfileIndex = index
-        detector?.close()
-        detector = null
+    fun isAvailable(): Boolean {
         ensureDetectorInitialized()
+        return detector?.isModelAvailable() == true && detector?.getModelThreshold() != null
+    }
+
+    @Synchronized
+    fun getDetectorMode(): WakeDetectorMode {
+        ensureDetectorInitialized()
+        return (detector as? HybridWakeWordDetector)?.getDetectorMode()
+            ?: if (detector?.isModelAvailable() == true && detector?.getModelThreshold() != null) WakeDetectorMode.NEURAL_READY else WakeDetectorMode.UNAVAILABLE
+    }
+
+    @Synchronized
+    fun getModelError(): String? {
+        ensureDetectorInitialized()
+        return detector?.getModelLoadError() ?: if (detector?.getModelThreshold() == null) "Validated KWS model metadata is unavailable" else null
+    }
+
+    @Synchronized
+    fun getModelMetadata(): WakeWordModelMetadata? {
+        ensureDetectorInitialized()
+        return detector?.getModelMetadata()
+    }
+
+    @Synchronized
+    fun getEffectiveThreshold(): Float? {
+        ensureDetectorInitialized()
+        return detector?.getModelThreshold()
+    }
+
+    @Synchronized
+    fun scoreEnrollmentSample(pcm: ShortArray): WakeWordSampleScore? {
+        if (pcm.isEmpty()) return null
+        ensureDetectorInitialized()
+        val det = detector ?: return null
+        val threshold = det.getModelThreshold()?.takeIf { it.isFinite() } ?: return null
+        if (!det.isModelAvailable()) return null
+        det.resetDetectorState()
+        return try {
+            val score = det.scoreEnrollmentSample(pcm)?.takeIf { it.isFinite() } ?: return null
+            WakeWordSampleScore(score, threshold, score >= threshold)
+        } finally {
+            det.resetDetectorState()
+        }
+    }
+
+    @Synchronized
+    fun getDiagnostics(
+        datasetSampleCount: Int = currentVoiceProfile.sampleCount,
+        datasetSha256: String = currentVoiceProfile.datasetSha256
+    ): WakeWordDiagnostics {
+        ensureDetectorInitialized()
+        val det = detector
+        val metadata = det?.getModelMetadata()
+        val available = det?.isModelAvailable() == true && metadata != null
+        val modelStatus = when {
+            metadata != null && datasetSampleCount > metadata.trainedSampleCount -> WakeModelStatus.MODEL_OUTDATED
+            metadata != null && datasetSampleCount > 0 && datasetSha256 != metadata.positiveDatasetSha256 -> WakeModelStatus.MODEL_OUTDATED
+            available && datasetSampleCount > 0 && datasetSampleCount == metadata?.trainedSampleCount -> WakeModelStatus.MODEL_READY_AND_ENROLLED
+            available -> WakeModelStatus.MODEL_READY
+            datasetSampleCount >= com.jarvis.wakeword.WakeWordDatasetStore.TARGET_SAMPLES -> WakeModelStatus.DATASET_READY
+            datasetSampleCount > 0 -> WakeModelStatus.DATASET_ENROLLING
+            else -> WakeModelStatus.MODEL_MISSING
+        }
+        return WakeWordDiagnostics(
+            modelAvailable = available,
+            modelError = if (available) null else det?.getModelLoadError() ?: "MODEL MISSING — TRAIN MODEL FIRST",
+            detectorMode = getDetectorMode(),
+            modelStatus = modelStatus,
+            phrase = metadata?.phrase ?: WakeWordModelMetadata.SUPPORTED_PHRASE,
+            threshold = metadata?.threshold,
+            latestScore = det?.getLatestRawScore()?.takeIf { it.isFinite() } ?: latestScore,
+            audioRms = latestRms,
+            audioDurationMs = minOf(totalAudioSamples, spec.windowSamples.toLong()) * 1000L / spec.sampleRate,
+            sampleRate = spec.sampleRate,
+            inputShape = det?.getInputShape() ?: "unavailable",
+            outputShape = det?.getOutputShape() ?: "unavailable",
+            modelVersion = metadata?.version?.toString(),
+            trainedSampleCount = metadata?.trainedSampleCount,
+            modelSha256 = metadata?.modelSha256,
+            modelFile = metadata?.modelFile,
+            outputPositive = metadata?.threshold?.let { latestScore >= it },
+            energyGatePassed = det?.getLatestEnergyGatePassed(),
+            ownerVerificationRequired = wakeGate?.isOwnerVerificationRequired() == true
+        )
+    }
+
+    @Synchronized
+    fun start(@Suppress("UNUSED_PARAMETER") kwsDir: java.io.File? = null, onDetected: ((String) -> Unit)? = null) {
+        if (state == WakeWordState.CLOSED) {
+            state = WakeWordState.STOPPED
+            detector = customDetector
+        }
+        ensureDetectorInitialized()
+        recentAudio.fill(0)
+        recentAudioPosition = 0
+        recentAudioCount = 0
+        totalAudioSamples = 0L
+        trailingAudioBuffer = null
+        onDetectedCallback = onDetected
+        detectionInProgress = false
+        detector?.resetDetectorState()
+        lastDetectionAt = 0L
+        state = WakeWordState.RUNNING
+        Log.i(tag, "WakeWordEngine started (modelAvailable=${isAvailable()}, mode=${getDetectorMode()})")
+    }
+
+    @Synchronized
+    fun acceptAudio(samples: ShortArray): Boolean {
+        if (state != WakeWordState.RUNNING || detectionInProgress || samples.isEmpty()) return false
+        appendRecentAudio(samples)
+        latestRms = calculateRms(samples)
+        val det = detector ?: return false
+        if (!det.isModelAvailable()) return false
+        val score = det.pushAudio(samples)
+        latestScore = det.getLatestRawScore()?.takeIf { it.isFinite() } ?: score
+        val threshold = det.getModelThreshold() ?: return false
+        val now = System.currentTimeMillis()
+        if (!score.isFinite() || score < threshold || now - lastDetectionAt < config.detectionCooldownMs) return false
+
+        val candidateAudio = recentAudioWindow()
+        val verified = wakeGate?.processWakeScore(score, candidateAudio, threshold) ?: true
+        if (!verified) return false
+
+        detectionInProgress = true
+        trailingAudioBuffer = candidateAudio
+        state = WakeWordState.TRIGGERED
+        lastDetectionAt = now
+        Log.i(tag, "Wake event accepted for '${WakeWordModelMetadata.SUPPORTED_PHRASE}' (score=$score)")
+        onDetectedCallback?.invoke(WakeWordModelMetadata.SUPPORTED_PHRASE)
         return true
     }
 
-    fun getTrailingAudio(): ShortArray? = trailingAudioBuffer
+    fun applyOwnerVoiceProfile(profile: com.jarvis.wakeword.OwnerVoiceProfile?) = wakeGate?.setOwnerProfile(profile) ?: Unit
 
-    fun isAvailable(): Boolean {
-        ensureDetectorInitialized()
-        return detector?.isModelAvailable() == true
-    }
-
-    fun getDetectorMode(): com.jarvis.wakeword.WakeDetectorMode {
-        ensureDetectorInitialized()
-        return (detector as? HybridWakeWordDetector)?.getDetectorMode()
-            ?: if (detector?.isModelAvailable() == true) com.jarvis.wakeword.WakeDetectorMode.NEURAL_READY else com.jarvis.wakeword.WakeDetectorMode.UNAVAILABLE
-    }
-
-    fun getModelError(): String? {
-        ensureDetectorInitialized()
-        return detector?.getModelLoadError()
-    }
-
-    fun start(@Suppress("UNUSED_PARAMETER") kwsDir: File? = null, onDetected: ((String) -> Unit)? = null) {
-        if (state == WakeWordState.CLOSED) {
-            Log.i(TAG, "Re-opening previously closed wake engine")
-            state = WakeWordState.STOPPED
-            detector = null
-        }
-
-        ensureDetectorInitialized()
-        onDetectedCallback = onDetected
-        detectionGate.set(false)
-        detector?.resetDetectorState()
-        lastDetectionAt = 0L
-        state = WakeWordState.RUNNING
-
-    Log.i(TAG, "WakeWordEngine started (state=$state, modelAvailable=${isAvailable()})")
-    }
-
-    fun acceptAudio(samples: ShortArray): Boolean {
-        if (state != WakeWordState.RUNNING || detectionGate.get() || samples.isEmpty()) {
-            return false
-        }
-
-        val det = detector ?: return false
-        val score = det.pushAudio(samples)
-        val now = System.currentTimeMillis()
-        val threshold = config.effectiveThreshold()
-
-        if (score >= threshold && now - lastDetectionAt >= config.detectionCooldownMs) {
-            val candidateAudio = rollingBuffer?.getRecentAudio() ?: samples
-            val isVerified = wakeGate?.processWakeScore(score, candidateAudio) ?: true
-
-            if (!isVerified) {
-                return false
-            }
-
-            if (detectionGate.compareAndSet(false, true)) {
-                trailingAudioBuffer = samples.copyOf()
-                state = WakeWordState.TRIGGERED
-                lastDetectionAt = now
-                val phrase = config.profiles.getOrNull(activeProfileIndex)?.phrase ?: "Jarvis"
-                Log.i(TAG, "Wake word '$phrase' detected and VERIFIED in PCM stream with score: $score")
-                onDetectedCallback?.invoke(phrase)
-                return true
-            }
-        }
-        return false
-    }
-
-    fun applyOwnerVoiceProfile(profile: com.jarvis.wakeword.OwnerVoiceProfile?) {
-        wakeGate?.setOwnerProfile(profile)
-    }
-
+    @Synchronized
     fun stop() {
         if (state == WakeWordState.CLOSED) return
         state = WakeWordState.STOPPED
-        detectionGate.set(false)
+        detectionInProgress = false
         onDetectedCallback = null
-        Log.i(TAG, "WakeWordEngine stopped listening")
     }
 
+    @Synchronized
     fun reset() {
         if (state == WakeWordState.CLOSED) return
-        detectionGate.set(false)
+        detectionInProgress = false
         detector?.resetDetectorState()
         lastDetectionAt = 0L
         state = WakeWordState.RUNNING
-        Log.d(TAG, "WakeWordEngine reset to RUNNING")
     }
 
+    @Synchronized
     fun close() {
         state = WakeWordState.CLOSED
-        detectionGate.set(false)
+        detectionInProgress = false
         onDetectedCallback = null
         detector?.close()
         detector = null
-        Log.i(TAG, "WakeWordEngine closed and released")
+    }
+
+    private fun appendRecentAudio(samples: ShortArray) {
+        samples.forEach { sample ->
+            recentAudio[recentAudioPosition] = sample
+            recentAudioPosition = (recentAudioPosition + 1) % recentAudio.size
+            recentAudioCount = minOf(recentAudioCount + 1, recentAudio.size)
+            totalAudioSamples++
+        }
+    }
+
+    private fun recentAudioWindow(): ShortArray {
+        val result = ShortArray(spec.windowSamples)
+        if (recentAudioCount == recentAudio.size) {
+            val firstLength = recentAudio.size - recentAudioPosition
+            System.arraycopy(recentAudio, recentAudioPosition, result, 0, firstLength)
+            System.arraycopy(recentAudio, 0, result, firstLength, recentAudioPosition)
+        } else {
+            System.arraycopy(recentAudio, 0, result, 0, recentAudioCount)
+        }
+        return result
+    }
+
+    private fun calculateRms(samples: ShortArray): Double {
+        var sum = 0.0
+        samples.forEach { val normalized = it.toDouble() / 32768.0; sum += normalized * normalized }
+        return sqrt(sum / samples.size)
     }
 }

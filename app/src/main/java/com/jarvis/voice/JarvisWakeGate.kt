@@ -2,51 +2,26 @@ package com.jarvis.voice
 
 import com.jarvis.wakeword.OwnerVoiceProfile
 
+/** Applies optional speaker verification after the KWS detector's sole temporal confirmation. */
 class JarvisWakeGate(
     private val ownerVerificationAvailable: () -> Boolean,
     private val verifyOwner: (ShortArray) -> Boolean,
-    private val updateOwnerProfile: (OwnerVoiceProfile?) -> Unit = {}
+    private val updateOwnerProfile: (OwnerVoiceProfile?) -> Unit = {},
+    private val requireOwnerVerification: Boolean = false,
+    private val cooldownMs: Long = 1_200L,
+    private val clockMs: () -> Long = System::currentTimeMillis
 ) {
-    companion object {
-        private const val WAKE_THRESHOLD = 0.55f
-        private const val REQUIRED_HITS = 2
-        private const val COOLDOWN_MS = 2500L
-    }
+    private var lastActivation = Long.MIN_VALUE
 
-    private var hitCount = 0
-    private var lastActivation = 0L
+    @Synchronized
+    fun processWakeScore(wakeScore: Float, candidateAudio: ShortArray, kwsThreshold: Float): Boolean {
+        val now = clockMs()
+        if (lastActivation != Long.MIN_VALUE && now - lastActivation < cooldownMs) return false
+        if (!wakeScore.isFinite() || !kwsThreshold.isFinite() || wakeScore < kwsThreshold) return false
 
-    fun processWakeScore(
-        wakeScore: Float,
-        candidateAudio: ShortArray
-    ): Boolean {
-        val now = System.currentTimeMillis()
-
-        if (now - lastActivation < COOLDOWN_MS) {
-            return false
-        }
-
-        if (wakeScore < WAKE_THRESHOLD) {
-            hitCount = 0
-            return false
-        }
-
-        if (!ownerVerificationAvailable()) {
-            hitCount = 0
-            lastActivation = now
-            return true
-        }
-
-        hitCount++
-
-        if (hitCount < REQUIRED_HITS) {
-            return false
-        }
-
-        hitCount = 0
-
-        if (!verifyOwner(candidateAudio)) {
-            return false
+        if (requireOwnerVerification) {
+            if (!runCatching(ownerVerificationAvailable).getOrDefault(false)) return false
+            if (!runCatching { verifyOwner(candidateAudio) }.getOrDefault(false)) return false
         }
 
         lastActivation = now
@@ -54,4 +29,5 @@ class JarvisWakeGate(
     }
 
     fun setOwnerProfile(profile: OwnerVoiceProfile?) = updateOwnerProfile(profile)
+    fun isOwnerVerificationRequired(): Boolean = requireOwnerVerification
 }

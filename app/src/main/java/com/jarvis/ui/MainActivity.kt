@@ -127,7 +127,7 @@ class MainActivity : AppCompatActivity() {
             }
             "Memory" -> MemoryScreen(this)
             "Brain" -> ApiManagerScreen(this, this, apiManager, service?.voiceEngine) { service?.reloadConfig() }
-            "WakeWordSetup" -> WakeWordSetupScreen(this) { showRoute("Dashboard") }
+            "WakeWordSetup" -> WakeWordSetupScreen(this, service?.voiceEngine) { showRoute("Dashboard") }
             "Settings" -> SettingsScreen(this, store, store.loadSettings(), { dirty = it }, { service?.reloadConfig() }, service?.voiceEngine, onOpenWakeWordSetup = { showRoute("WakeWordSetup") })
             "Logs" -> LogsScreen(this, store)
             else -> DashboardScreen(

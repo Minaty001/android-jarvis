@@ -24,15 +24,6 @@ flowchart TD
         LCC[LiveConversationController]
     end
 
-    subgraph Optional Screen-local DTW Setup
-        WWS[WakeWordSetupScreen]
-        DBLS[DtwBackgroundListeningService]
-        DTM[DtwMatcher]
-        WTS[WakeWordTemplateStore]
-        WWS --> DBLS --> DTM --> WTS
-        WWS --> WTS
-    end
-
     subgraph Runtime & Control Plane Layer
         AR[AssistantRuntime]
         AK[AgentKernel]
@@ -77,8 +68,9 @@ flowchart TD
 ### 2. Real-Time Streaming Voice Pipeline (`com.jarvis.voice`)
 - **`ContinuousAudioStream`**: Low-latency 16kHz PCM audio stream reader managing `AudioRecord` hardware, echo cancellation (AEC), noise suppression (NS), and hardware suspend/resume during voice enrollment or external audio capture.
 - **`VoiceRouter`**: High-performance audio frame dispatcher that routes continuous PCM samples between `WakeWordEngine`, `BargeInDetector`, and `AsrEngine`.
-- **`WakeWordEngine`**: Real-time wake-word engine running TFLite DS-CNN detection with user-specific acoustic calibration (`UserVoiceProfile`). Its optional `JarvisWakeGate` checks the persisted `OwnerVoiceProfile` through the TFLite speaker encoder when both enrollment and model are available; wake activation remains available when either is missing.
-- **`WakeWordSetupScreen` / `DtwBackgroundListeningService`**: Records three validated local templates and matches them with DTW only while the setup screen is open. These templates are separate from the normal TFLite wake detector.
+- **`WakeWordEngine`**: The only production wake-word path. It receives audio from `ContinuousAudioStream`, keeps a one-second candidate buffer, and invokes the INT8 DS-CNN. The energy gate is separate from the manifest threshold; 2-of-3 temporal confirmation runs only inside the detector. Optional owner verification is disabled by default and fails closed when required but unavailable.
+- **`VoiceEnrollmentDialog` / `WakeWordDatasetStore`**: Records 16 kHz mono PCM16 WAVs under app-private storage and exports the positive dataset. Enrollment updates dataset provenance only; offline `scripts/train_kws.py` performs actual optimization from positive, unknown, and background recordings.
+- **Model availability**: `jarvis_model.json` and a matching real INT8 TFLite asset are required. If either is missing, invalid, or has a mismatched hash/tensor contract, wake detection reports unavailable; there is no heuristic or DTW fallback.
 - **`AsrEngine` / `TtsEngine`**: Speech-to-text (Whisper / Android SpeechRecognizer) and Text-to-Speech (Groq TTS / Android TTS / PlayAI) modules.
 - **`BargeInDetector` & `LiveConversationController`**: Sub-50ms full-duplex speech interruption detector and continuous turn-taking controller. Halts TTS playback when incoming human speech or interruption controls (`stop`, `mute`, `pause`) are detected.
 
@@ -94,7 +86,7 @@ flowchart TD
 - **`EarbudsAssistantEngine`**: Manages hands-free Bluetooth headset call screening and notification routing without forcing unprompted spoken TTS announcements.
 
 ### 5. Settings Persistence & UI (`com.jarvis.ui`)
-- **`UiPreferencesStore`**: Encapsulates `SharedPreferences` for `AppSettings`, LLM provider keys, acoustic calibration profiles, and the optional owner speaker template.
+- **`UiPreferencesStore`**: Encapsulates `SharedPreferences` for `AppSettings`, LLM provider keys, dataset/model provenance, and the optional owner speaker profile.
 - **`SettingsScreen`**: User interface providing immediate persistence upon setting changes, hot-reloading configurations in `JarvisForegroundService` dynamically.
 
 ### 6. Local Routine Learning & Memory (`com.jarvis.habit`, `com.jarvis.memory`, `com.jarvis.routine`)

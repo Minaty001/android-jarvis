@@ -72,7 +72,7 @@ class VoiceRouter(
             }
 
             AudioRoutingTarget.BARGE_IN_LISTENING -> {
-                // 1. Evaluate Wake Word phonemes ("Jarvis", "Hey Jarvis")
+                // 1. Evaluate the single supported KWS phrase: "Jarvis".
                 wakeEngine.acceptAudio(samples)
 
                 // 2. Evaluate acoustic energy burst above speaker echo threshold

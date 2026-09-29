@@ -44,5 +44,8 @@ __pycache__/
 # IDE / workspace metadata
 .opencode/
 .kotlin/
+.venv-kws/
 
+# Private wake-word recordings are local training data and must stay out of Git.
+/data/wakeword/**/*.wav
 

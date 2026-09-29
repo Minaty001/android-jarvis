@@ -115,28 +115,14 @@ class ApiManagerScreen(
             setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
         }
         
-        // Wake Word Selector
+        // This build has only a Jarvis KWS model contract.
         val initialSettings = uiStore.loadSettings()
-        val wakeWordOptions = listOf("Jarvis", "Computer", "Alice", "Echo", "Friday")
-        val wakeWordSpinner = Spinner(context)
-        val wakeWordAdapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, wakeWordOptions)
-        wakeWordSpinner.adapter = wakeWordAdapter
-        val selectedWakeWordIndex = wakeWordOptions.indexOfFirst { it.equals(initialSettings.wakeWord, ignoreCase = true) }.coerceAtLeast(0)
-        wakeWordSpinner.setSelection(selectedWakeWordIndex)
-        wakeWordSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            private var isFirst = true
-            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, id: Long) {
-                if (isFirst) { isFirst = false; return }
-                val newWord = wakeWordOptions[position]
-                uiStore.saveSettings(uiStore.loadSettings().copy(wakeWord = newWord))
-                voiceEngine?.wakeEngine?.setActiveWakeWord(newWord)
-                onChanged?.invoke()
-            }
-            override fun onNothingSelected(p0: AdapterView<*>?) {}
-        }
         val wakeWordRow = Ui.row(context)
-        wakeWordRow.addView(TextView(context).apply { text = "Detection Phrase"; setTextColor(Ui.TEXT); textSize = 12f }, LinearLayout.LayoutParams(0, -2, 1f))
-        wakeWordRow.addView(wakeWordSpinner)
+        wakeWordRow.addView(TextView(context).apply {
+            text = "Supported KWS phrase: Jarvis (wake detection requires a trained model asset)"
+            setTextColor(Ui.TEXT)
+            textSize = 12f
+        })
         wakeInner.addView(wakeWordRow)
 
         // Wake Acknowledgment
@@ -162,10 +148,15 @@ class ApiManagerScreen(
         // Voice Enrollment Profile
         val profileRow = Ui.row(context).apply { setPadding(0, Ui.dp(context, 8), 0, 0) }
         val enrollBtn = Ui.primaryButton(context, "ENROLL VOICE PROFILE") {
-            VoiceEnrollmentDialog(context, voiceEngine = voiceEngine) { newProfile ->
+            val engine = voiceEngine
+            if (engine == null) {
+                Toast.makeText(context, "Voice service is unavailable. Start Jarvis and retry.", Toast.LENGTH_SHORT).show()
+                return@primaryButton
+            }
+            VoiceEnrollmentDialog(context, voiceEngine = engine) { newProfile ->
                 uiStore.saveVoiceProfile(newProfile)
-                voiceEngine?.applyVoiceProfile(newProfile)
-                Toast.makeText(context, "Voice profile updated!", Toast.LENGTH_SHORT).show()
+                engine.applyVoiceProfile(newProfile)
+                Toast.makeText(context, "Wake-word dataset updated. Offline training is still required.", Toast.LENGTH_SHORT).show()
             }.show()
         }
         profileRow.addView(enrollBtn)

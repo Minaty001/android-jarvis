@@ -2,7 +2,7 @@
 
 ## 1. Overview & Stitch Connection
 The J.A.R.V.I.S. Android voice assistant UI has been completely rebuilt using **Google Stitch** (`stitch-mcp`) designs, matching the application's full feature set:
-- **Continuous Wake Word Detection**: TFLite DS-CNN INT8 continuous streaming KWS without audio contention.
+- **Wake-Word Runtime**: The single continuous stream feeds a manifest-validated INT8 DS-CNN when a real trained model asset is installed; the current repository reports the model missing.
 - **Autonomous Agent Intelligence**: Goal evaluation, step-by-step reasoning, loop guards, and outcome verification.
 - **Subsystem Automation**: Media & Music (Spotify, YouTube Music, YMusic), WhatsApp Direct Dispatch, Deep Research with candidate ranking, OS Device Controls, and Natural Language Calculation.
 - **Memory Subsystem**: Local SQLite RAG (FTS + BM25), CAG session awareness, and MAG persistent facts.
@@ -89,7 +89,7 @@ The J.A.R.V.I.S. Android voice assistant UI has been completely rebuilt using **
 3. **Active Endpoints**: Live ping testing (`TEST PING`), CRUD editing, and toggles
 
 ### 4.5. Settings & Trace Logs (`SettingsScreen.kt`)
-1. **Audio & Wake Model**: Displays model status (`TFLite DS-CNN INT8`) and audio source (`VOICE_RECOGNITION`)
+1. **Audio & Wake Model**: Displays actual model availability, metadata threshold, tensor shapes, last score, and audio source (`VOICE_RECOGNITION`)
 2. **Network & System**: Timeouts, retries, theme selection, verbosity
 3. **Embedded Diagnostics**: Live correlation logs viewer (`X-Jarvis-Correlation-Id`) with Refresh & Clear
 

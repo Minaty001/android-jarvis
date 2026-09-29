@@ -6,7 +6,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Android%209.0%2B%20(API%2028%2B)-00E5FF?style=flat-square)](https://github.com/1209codex/android-jarvis)
 [![Release APK](https://img.shields.io/badge/Release%20APK-9.7%20MB-blue?style=flat-square&logo=googleplay)](dist/jarvis-v1.1-release.apk)
 
-**J.A.R.V.I.S.** (*Just A Rather Very Intelligent System*) is a fully autonomous, closed-loop Android AI super-agent and personal voice assistant. Built for privacy-first, on-device intelligence, J.A.R.V.I.S. integrates continuous on-device wake-word detection (quantized INT8 TFLite keyword spotter), multi-provider LLM reasoning (Groq `openai/gpt-oss-20b` / `openai/gpt-oss-120b`, Gemini `gemini-2.5-flash`, OpenRouter, and local Ollama), Bluetooth earbud SCO routing with physical button hook interception, WearOS companion synchronization with signature security, fail-closed policy execution, computer vision perception (`qwen/qwen3.6-27b`), on-device hybrid RAG memory, and deep OS-level accessibility automation.
+**J.A.R.V.I.S.** (*Just A Rather Very Intelligent System*) is a closed-loop Android AI assistant. Its wake-word runtime requires a validated, offline-trained INT8 TFLite asset; that personal model is currently missing from this repository. Jarvis also includes multi-provider LLM reasoning (Groq `openai/gpt-oss-20b` / `openai/gpt-oss-120b`, Gemini `gemini-2.5-flash`, OpenRouter, and local Ollama), Bluetooth earbud SCO routing with physical button hook interception, WearOS companion synchronization with signature security, fail-closed policy execution, computer vision perception (`qwen/qwen3.6-27b`), on-device hybrid RAG memory, and deep OS-level accessibility automation.
 
 ---
 
@@ -70,7 +70,7 @@ The app is organized into **5 core navigation tabs** along with a persistent HUD
 
 ### 4. 🔑 Brain & Wake Config (`BRAIN`)
 - **Unified Brain Control:** Provides a unified setup for API keys (Groq, Gemini, Ollama) and Wake Word phrase configuration.
-- **Voice Enrollment:** Instantly calibrate your voice to bypass background noise.
+- **Voice Enrollment:** Record real WAV samples into a local dataset for later offline training.
 - **Hardware-Backed Keystore**: Visual badge confirming AES-GCM-256 Android Keystore credential encryption.
 - **Active Reasoning Models**: One-tap selection across multi-provider LLM models:
   - `openai/gpt-oss-20b` (Default high-speed reasoning, planning & tool use)
@@ -81,7 +81,7 @@ The app is organized into **5 core navigation tabs** along with a persistent HUD
 - **Active Endpoints & Ping Testing**: Live endpoint status with real-time latency ping verification (`TEST PING`).
 
 ### 5. ⚙️ System Settings & Diagnostics (`CONFIG`)
-- **Voice & Acoustic Customization**: Personal Wake-Word Calibration Wizard, optional owner voice verification, custom wake-word templates for screen-local DTW matching, wake acknowledgment sounds (*"Yes Sir"*, *"At your service"*, *"Ready"*, Chime), continuous conversation toggle, full-duplex barge-in switch, and offline ASR toggle.
+- **Voice & Acoustic Customization**: Personal wake-word dataset recording/export, optional fail-closed owner voice verification, manifest-backed KWS diagnostics, wake acknowledgment sounds (*"Yes Sir"*, *"At your service"*, *"Ready"*, Chime), continuous conversation toggle, full-duplex barge-in switch, and offline ASR toggle.
 - **Android System Access**: Shortcuts open Android's default assistant, overlay permission, accessibility service, and notification access settings. Jarvis reports whether the required access is enabled; Android owns the final permission switch.
 - **Audio Device Controls**: `DEVICE_SETTINGS` reads media volume and ringer status and can change media volume, mute/unmute media, or set the ringer mode. It can also open Jarvis's app permission page.
 - **Proactive Contextual Intelligence**: Battery warning toggles, calendar pre-briefing lead time picker (5m, 10m, 15m, 30m), and interactive Daily Morning Briefing time picker (`HH:mm`).
@@ -94,34 +94,21 @@ The app is organized into **5 core navigation tabs** along with a persistent HUD
 ## 📖 Complete Feature Guide & How to Use Every Feature
 
 ### 1. 🎙️ Continuous Wake-Word Detection (Hands-Free Activation)
-- **What it does**: Continuously monitors the microphone for the wake phrase (*"Hey Jarvis"* or *"Jarvis"*) using a quantized INT8 TFLite keyword spotter on a dedicated `VOICE_RECOGNITION` audio stream with 2-second pre-roll audio handoff for seamless same-breath command capture.
+- **What it does**: Sends the single `ContinuousAudioStream` microphone path through an energy gate and a manifest-validated INT8 TFLite DS-CNN for the phrase *"Jarvis"*. A 2-of-3 temporal confirmation runs inside that detector. The repository currently ships no trained model asset, so wake detection reports unavailable until a real model is trained and installed.
 - **How to use via Voice**:
-  - Simply say *"Hey Jarvis"* or *"Jarvis"* at normal speaking volume from anywhere in the room.
+  - With a trained model installed, say *"Jarvis"* at normal speaking volume.
   - J.A.R.V.I.S. chimes or responds (*"Yes sir"*) and enters active listening mode.
 - **How to use on Lock Screen**:
   - The display turns on automatically upon hearing the wake word (`showWhenLocked="true"`, `turnScreenOn="true"`). The holographic Arc Reactor HUD appears over the lock screen so you can issue commands without unlocking your phone.
-- **Settings**: Adjust wake word phrase, acknowledgment style, and lock-screen HUD toggle under **CONFIG**.
+- **Settings**: View the supported phrase, acknowledgment style, model status, and lock-screen HUD toggle under **CONFIG**.
 
 ---
 
-### 1.1 🎚️ Personal Voice Wake-Word Enrollment & Acoustic Calibration
-- **What it does**: Calibrates the on-device keyword spotter's sensitivity using guided recordings and saves a personalized `UserVoiceProfile`. When the speaker encoder is available, the wizard also creates an optional owner voice profile used by the normal wake pipeline. Calibration does not retrain the TFLite keyword-spotting model.
-- **How to use via Settings (`CONFIG`)**:
-  - Go to the **CONFIG** tab and scroll to **Wake Engine & Audio Contract**.
-  - Under **Personal Acoustic Calibration**, tap `🎙 RECORD & START TRAINING`.
-  - The **Voice Calibration Wizard** modal opens:
-    1. Tap `RECORD SAMPLE 1`, speak *"Jarvis"* clearly at your normal speaking distance (real-time cyan speech energy meter visualizes volume).
-    2. The engine validates duration ($\ge 0.4$s), speech energy ($\text{RMS} \ge 70.0$), microphone clipping distortion ($< 3\%$), and keyword-model confidence when that model is available.
-    3. Repeat for `SAMPLE 2` and `SAMPLE 3`.
-    4. Upon completion, review the calibrated detection profile and whether an owner speaker profile was created.
-    5. Tap `SAVE & ACTIVATE` to apply the profiles to the live detection pipeline. If the speaker model or owner profile is unavailable, normal wake-word activation remains enabled without owner verification.
-  - **Revert anytime**: Tap `↺ RESET TO DEFAULT` to restore factory acoustic settings and clear the optional owner voice profile.
-
-### 1.2 ⚡ Custom Wake-Word Templates (DTW)
-- Open **WAKE WORD SETUP (3 TEMPLATES)** from the wake settings in CONFIG.
-- Record three samples. Rejected samples show the validation reason and can be retried without replacing a saved template.
-- Choose **NORMAL (0.80)** or **STRICT (0.88)** to set the DTW match threshold.
-- DTW listening runs only while the setup screen is open and matches these saved templates. It does not train or replace the normal TFLite wake detector.
+### 1.1 🎚️ Personal Wake-Word Dataset Enrollment
+- **Enrollment** records real PCM16, mono, 16 kHz WAV samples of *"Jarvis"* in app-private storage. The default goal is 50 samples; users can continue to 100, 200, or more.
+- **Enrollment is not training.** The Android app does not optimize model weights or alter the model threshold. It can score a sample only when a validated KWS model is installed; otherwise it reports `MODEL UNAVAILABLE` and still stores quality-passing WAVs.
+- Export the positive WAV dataset from the enrollment screen. Add at least 30 real `unknown` and 30 `background` WAVs on the development machine, then train and validate offline with [the wake-word training guide](docs/WAKE_WORD_TRAINING.md).
+- One production microphone path feeds `WakeWordEngine`; DTW template listening and acoustic fallback detection have been removed.
 
 ### 1.3 ⚡ Lazy Subsystem Container & Cold-Start RAM Optimization
 - **What it does**: Segregates core boot-critical subsystems (Wake-Word Engine, Event Bus, World State Store, Device Guardian) from heavy, memory-intensive modules (Camera2 Perception, TFLite Vision Detectors, SQLite Knowledge Vaults, RAG dense vector stores, WhatsApp accessibility automations, Telephony, and Sherpa-ONNX/TTS).
@@ -421,7 +408,7 @@ The project includes an extensive test suite of **503 automated unit tests** acr
 ### Key Verified Test Suites:
 - [`MasterSystemFunctionVerificationTest.kt`](app/src/test/java/com/jarvis/MasterSystemFunctionVerificationTest.kt): Exhaustive verification of all 44 tools and agent functions across 8 functional domains: Calculator, Hardware (Flashlight/Battery/Location/DeviceSettings), App Lifecycle (Open/Close/CloseAll), Media (Playback/YouTube/YMusic), Storage & Files (FileManager/FileSearch/StorageBreakdown), Security & Calendar (SecurityAuditor/Calendar), Memory & Speech (Note/SearchMemory/Speak), and OS Accessibility & UI (Scroll/Click/Back/Home/Browser).
 - [`SubsystemContainerAndMemoryOptimizationTest.kt`](app/src/test/java/com/jarvis/SubsystemContainerAndMemoryOptimizationTest.kt): Lazy subsystem container and cold-start RAM footprint optimization. Verifies boot-critical segregation (`SubsystemManager`), `LazyTool` parameter and policy metadata discovery without delegate instantiation, on-demand deferred initialization, `ToolRegistry.evictIdleLazyTools()`, Android `ComponentCallbacks2.onTrimMemory()` memory warning handling (`TRIM_MEMORY_UI_HIDDEN`, `TRIM_MEMORY_RUNNING_CRITICAL`), automatic RAG dense vector cache flushing, and live memory diagnostics reporting.
-- [`VoiceEnrollmentAndCalibrationTest.kt`](app/src/test/java/com/jarvis/VoiceEnrollmentAndCalibrationTest.kt): Personalized acoustic wake-word enrollment and multi-sample calibration wizard. Validates vocal RMS energy calculation, duration gating ($\ge 0.4$s), clipping ratio rejection ($< 3\%$), personalized detection threshold adaptation based on user SNR, and encrypted SharedPreferences `UserVoiceProfile` serialization.
+- [`VoiceEnrollmentAndCalibrationTest.kt`](app/src/test/java/com/jarvis/VoiceEnrollmentAndCalibrationTest.kt): Recording quality checks, unavailable-model handling, and use of the real detector score and manifest threshold. Dataset enrollment never changes runtime thresholds.
 - [`BluetoothAndWearableCompanionTest.kt`](app/src/test/java/com/jarvis/BluetoothAndWearableCompanionTest.kt): Bluetooth SCO audio routing, earbud media hook button click interception (`KEYCODE_HEADSETHOOK`), physical barge-in speech interruption, WearOS broadcast intent bridge (`WEAR_WAKE`, `WEAR_COMMAND`, `WEAR_STOP`), and preference roundtrip serialization.
 - [`ProactiveContextIntelligenceTest.kt`](app/src/test/java/com/jarvis/ProactiveContextIntelligenceTest.kt): Autonomous calendar event pre-briefings within lead window, duplicate alert suppression, critical low-battery voice announcements (<15%), 30-minute cooldown protection, full-charge alerts, and preference roundtrip serialization.
 - [`FullDuplexBargeInAndDuckingTest.kt`](app/src/test/java/com/jarvis/FullDuplexBargeInAndDuckingTest.kt): Real-time speech interruption, energy burst thresholding, interrupt keyword spotting, and media ducking calculations.
@@ -446,7 +433,7 @@ J.A.R.V.I.S. is architected using strict **Clean Architecture** boundaries, cate
 | **2** | **Application & Runtime** | High-priority `JarvisForegroundService`, `AssistantRuntime` coordinator, `SubsystemManager`, and `JarvisEventBus`. |
 | **3** | **Domain Core & Autonomous Reasoning** | `MultiTaskDecomposer` planning engine, `HallucinationFirewall` safety bounds, and `AutonomousDaemon` supervisor. |
 | **4** | **Device Tools & OS Automation** | 44+ automated capabilities, Android Accessibility Services, synthetic UI automation, WhatsApp, and telephony drivers. |
-| **5** | **Voice & Acoustic Perception** | Zero-dependency pure Kotlin acoustic detector, quantized INT8 TFLite keyword spotter ("Hey Jarvis"), and Bluetooth SCO. |
+| **5** | **Voice & Acoustic Perception** | Single `WakeWordEngine` microphone path, manifest-backed INT8 TFLite KWS for "Jarvis", optional fail-closed speaker verification, and Bluetooth SCO. The model must be trained from real recordings and installed as an asset. |
 | **6** | **AI Inference & Computer Vision** | Multi-provider LLM client (Groq `openai/gpt-oss-20b`/`120b`, Gemini `gemini-2.5-flash`, OpenRouter, local Ollama) and Camera2 perception (`qwen/qwen3.6-27b`). |
 | **7** | **Neural Memory & Vector RAG** | Dense vector embeddings, BM25 relevance re-ranking, half-life decay garbage collection, and AES-GCM-256 Keystore encryption. |
 | **8** | **Test & Verification Suite** | 91 test suites containing 503 automated unit and integration tests with a 100% pass rate. |

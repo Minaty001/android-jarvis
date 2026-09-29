@@ -12,6 +12,7 @@ import com.jarvis.ui.data.UiPreferencesStore
 import com.jarvis.ui.dialogs.VoiceEnrollmentDialog
 import com.jarvis.ui.model.AppSettings
 import com.jarvis.wakeword.UserVoiceProfile
+import com.jarvis.wakeword.WakeWordDatasetStore
 
 class SettingsScreen(
     context: Context,
@@ -690,7 +691,9 @@ class SettingsScreen(
             orientation = LinearLayout.VERTICAL
             setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
         }
-        addField(wakeInner, "Wake Word (TFLite KWS)", wakeWord, initial.wakeWord)
+        addField(wakeInner, "Supported KWS Phrase", wakeWord, "Jarvis")
+        wakeWord.setText("Jarvis")
+        wakeWord.isEnabled = false
 
         val ackOptions = listOf("CHIME", "VOICE", "BOTH", "SILENT")
         wakeAckSpinner.adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, ackOptions)
@@ -840,7 +843,7 @@ class SettingsScreen(
         }
         wakeInner.addView(profileDivider)
 
-        // Voice Training Guide Instructions Card
+        // Dataset enrollment guide
         val guideCard = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 8)
@@ -851,7 +854,7 @@ class SettingsScreen(
             }
         }
         guideCard.addView(TextView(context).apply {
-            text = "💡 HOW TO TRAIN YOUR VOICE"
+            text = "PERSONAL WAKE WORD DATASET"
             textSize = 10.5f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
@@ -859,10 +862,7 @@ class SettingsScreen(
             setPadding(0, 0, 0, Ui.dp(context, 4))
         })
         guideCard.addView(TextView(context).apply {
-            text = "1. Hold device 12–18 inches away in your normal position.\n" +
-                   "2. Speak 'Jarvis' naturally at your regular pace and volume.\n" +
-                   "3. Record 3 to 5 samples (more samples = higher recognition accuracy).\n" +
-                   "4. You can re-record individual samples if interrupted by noise."
+            text = "Recording adds real WAV files to the local dataset; it does not train model weights. Collect at least 50 samples, export them, add unknown/background audio on your development machine, then run scripts/train_kws.py."
             textSize = 10.5f
             setTextColor(Ui.TEXT)
             setLineSpacing(0f, 1.15f)
@@ -875,7 +875,7 @@ class SettingsScreen(
             setPadding(0, 0, 0, Ui.dp(context, 6))
         }
         profileHeaderRow.addView(TextView(context).apply {
-            text = "PERSONAL ACOUSTIC CALIBRATION"
+            text = "DATASET AND MODEL STATUS"
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
@@ -902,7 +902,7 @@ class SettingsScreen(
         }
 
         val enrollVoiceBtn = com.google.android.material.button.MaterialButton(context).apply {
-            text = "🎙 RECORD & START TRAINING"
+            text = "🎙 RECORD DATASET SAMPLES"
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.BG)
@@ -911,73 +911,56 @@ class SettingsScreen(
             setPadding(Ui.dp(context, 12), Ui.dp(context, 6), Ui.dp(context, 12), Ui.dp(context, 6))
         }
 
-        val resetVoiceBtn = com.google.android.material.button.MaterialButton(context).apply {
-            text = "↺ RESET TO DEFAULT"
-            textSize = 11f
-            setTextColor(Ui.MUTED)
-            strokeColor = android.content.res.ColorStateList.valueOf(Ui.BORDER)
-            strokeWidth = Ui.dp(context, 1)
-            cornerRadius = Ui.dp(context, 8)
-            backgroundTintList = android.content.res.ColorStateList.valueOf(Ui.SURFACE_2)
-            setPadding(Ui.dp(context, 12), Ui.dp(context, 6), Ui.dp(context, 12), Ui.dp(context, 6))
-            layoutParams = LinearLayout.LayoutParams(-2, -2).apply {
-                marginStart = Ui.dp(context, 8)
-            }
-        }
-
         fun updateVoiceProfileCard() {
-            val ownerProf = store.loadOwnerVoiceProfile()
-            if (voiceProfile.isEnrolled) {
-                val ownerStatus = if (ownerProf != null) " • Owner ID Active" else ""
-                profileBadge.text = "ENROLLED • ${(voiceProfile.averageScore * 100).toInt()}% MATCH"
-                profileBadge.textSize = 9.5f
-                profileBadge.typeface = Typeface.DEFAULT_BOLD
-                profileBadge.setTextColor(Ui.CYAN)
-                profileBadge.background = Ui.rounded(context, Ui.SURFACE_2, Ui.CYAN, 6)
-                profileBadge.setPadding(Ui.dp(context, 8), Ui.dp(context, 3), Ui.dp(context, 8), Ui.dp(context, 3))
-                profileDetailsView.text = "Calibrated Threshold: ${String.format(java.util.Locale.US, "%.2f", voiceProfile.calibratedThreshold)} • ${voiceProfile.sampleCount} Samples • RMS Floor: ${voiceProfile.calibratedMinEnergyRms.toInt()}$ownerStatus"
-                resetVoiceBtn.visibility = View.VISIBLE
-            } else {
-                profileBadge.text = "FACTORY DEFAULT"
-                profileBadge.textSize = 9.5f
-                profileBadge.typeface = Typeface.DEFAULT_BOLD
-                profileBadge.setTextColor(Ui.MUTED)
-                profileBadge.background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 6)
-                profileBadge.setPadding(Ui.dp(context, 8), Ui.dp(context, 3), Ui.dp(context, 8), Ui.dp(context, 3))
-                profileDetailsView.text = "Default DS-CNN TFLite Acoustic Model • Threshold: 0.82 • Min Energy: 110.0 RMS"
-                resetVoiceBtn.visibility = View.GONE
+            val count = WakeWordDatasetStore(context).getPositiveSampleCount()
+            val datasetSha = WakeWordDatasetStore(context).getPositiveDatasetSha256()
+            val diagnostics = voiceEngine?.wakeEngine?.getDiagnostics(count, datasetSha)
+            profileBadge.text = when {
+                diagnostics == null -> "MODEL UNAVAILABLE"
+                diagnostics.modelStatus == com.jarvis.voice.WakeModelStatus.MODEL_OUTDATED -> "MODEL OUTDATED"
+                diagnostics.modelAvailable -> "MODEL ACTIVE"
+                else -> "MODEL MISSING"
+            }
+            profileBadge.textSize = 9.5f
+            profileBadge.typeface = Typeface.DEFAULT_BOLD
+            profileBadge.setTextColor(if (diagnostics?.modelAvailable == true) Ui.CYAN else Ui.WARNING)
+            profileBadge.background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 6)
+            profileBadge.setPadding(Ui.dp(context, 8), Ui.dp(context, 3), Ui.dp(context, 8), Ui.dp(context, 3))
+            profileDetailsView.text = buildString {
+                append("Phrase: Jarvis • Samples: $count / ${WakeWordDatasetStore.TARGET_SAMPLES}")
+                append(" • Dataset: ${if (count >= WakeWordDatasetStore.TARGET_SAMPLES) "READY" else "INCOMPLETE"}")
+                append("\nDataset/model status: ${diagnostics?.modelStatus?.name?.replace('_', ' ') ?: "unavailable"}")
+                append("\nModel trained on: ${diagnostics?.trainedSampleCount ?: "unavailable"} samples")
+                append("\nModel: ${diagnostics?.modelFile ?: "unavailable"} • threshold: ${diagnostics?.threshold?.let { String.format(java.util.Locale.US, "%.3f", it) } ?: "unavailable"}")
+                append("\nLatest score: ${diagnostics?.let { String.format(java.util.Locale.US, "%.3f", it.latestScore) } ?: "unavailable"}")
+                append(" • Input/output: ${diagnostics?.inputShape ?: "unavailable"} / ${diagnostics?.outputShape ?: "unavailable"}")
+                append("\nSHA-256: ${diagnostics?.modelSha256 ?: "unavailable"}")
+                diagnostics?.modelError?.let { append("\n$it") }
+                append("\nRecording only enrolls WAV data; offline training is required to change model weights.")
             }
         }
 
         enrollVoiceBtn.setOnClickListener {
+            val engine = voiceEngine
+            if (engine == null) {
+                Toast.makeText(context, "Voice service is unavailable. Start Jarvis and retry.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             VoiceEnrollmentDialog(
                 context = context,
-                voiceEngine = voiceEngine,
-                onOwnerEnrolled = { ownerProfile ->
-                    store.saveOwnerVoiceProfile(ownerProfile)
-                    voiceEngine?.applyOwnerVoiceProfile(ownerProfile)
-                },
-                onProfileEnrolled = { newProfile ->
+                voiceEngine = engine,
+                onDatasetUpdated = { newProfile ->
                     store.saveVoiceProfile(newProfile)
                     voiceProfile = newProfile
                     updateVoiceProfileCard()
-                    voiceEngine?.applyVoiceProfile(newProfile)
+                    engine.applyVoiceProfile(newProfile)
                     onSaved?.invoke()
                 }
             ).show()
         }
 
-        resetVoiceBtn.setOnClickListener {
-            store.resetVoiceProfile()
-            voiceEngine?.applyOwnerVoiceProfile(null)
-            voiceProfile = store.loadVoiceProfile()
-            updateVoiceProfileCard()
-            voiceEngine?.applyVoiceProfile(voiceProfile)
-            onSaved?.invoke()
-        }
-
         val customSetupBtn = com.google.android.material.button.MaterialButton(context).apply {
-            text = "⚡ WAKE WORD SETUP (3 TEMPLATES)"
+            text = "⚡ DATASET STATUS & EXPORT"
             textSize = 11f
             setTextColor(Ui.CYAN)
             strokeColor = android.content.res.ColorStateList.valueOf(Ui.CYAN_DIM)
@@ -994,7 +977,6 @@ class SettingsScreen(
         updateVoiceProfileCard()
         profileButtonsRow.addView(enrollVoiceBtn)
         profileButtonsRow.addView(customSetupBtn)
-        profileButtonsRow.addView(resetVoiceBtn)
         wakeInner.addView(profileButtonsRow)
 
         wakeInner.addView(TextView(context).apply {

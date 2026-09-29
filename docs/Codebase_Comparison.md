@@ -11,9 +11,9 @@ This document outlines the architectural and feature differences between two var
 The `/home/shanu/Desktop/android-jarvis` repository contains several high-level experimental or standalone modules. Owner voice verification is now present in both codebases; Stitch, Emergency, and Meeting remain Desktop-specific in this comparison.
 
 ### 1.1 Owner Voice Verification (present in both)
-Owner voice verification is now present in the current `main` project as well as the Desktop implementation. The current enrollment flow saves an `OwnerVoiceProfile`; the normal wake gate uses the TFLite speaker encoder when both that profile and the model are available. If either is unavailable, wake-word activation falls back to keyword detection without the owner check.
+Owner voice verification is optional and disabled by default. If explicitly required, missing speaker assets or an unavailable embedding reject the wake event; KWS and speaker identity are separate stages.
 
-The three-template DTW setup is a separate screen-local matcher and is not connected to normal wake detection.
+Personal enrollment writes real WAV files for offline model training. It does not calibrate the active model; `WakeWordEngine` is the only production microphone wake detector.
 
 ### 1.2 "Stitch" UI Module
 *   **Added Files:** `com.jarvis.stitch.*`
@@ -48,7 +48,7 @@ The `main` branch abstracts concrete classes into interfaces to improve testabil
 | :--- | :--- | :--- |
 | **Architecture** | Clean, direct implementation (YAGNI-audited) | Monolithic, concrete classes |
 | **Procedural Memory** | **Persistent** (survives app reboots) | **Volatile** (in-memory only) |
-| **Voice Security** | Optional owner verification with wake-word fallback (`TfliteOwnerVoiceVerifier`) | Owner verification (`TfliteOwnerVoiceVerifier`) |
+| **Voice Security** | Optional owner verification, fail-closed when required (`TfliteOwnerVoiceVerifier`) | Owner verification (`TfliteOwnerVoiceVerifier`) |
 | **Experimental Modes** | None | **Emergency**, **Meeting**, & **Stitch** modules |
 
 ### Conclusion & Recommendation

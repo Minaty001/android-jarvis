@@ -26,9 +26,9 @@ class OwnerVoiceVerifier(
 
     @Synchronized
     fun verifyOwner(candidateAudio: ShortArray): Boolean {
-        val enrolledProfile = profile ?: return true
-        val speakerEncoder = getEncoder()?.takeIf { it.isAvailable() } ?: return true
-        val embedding = speakerEncoder.embed(candidateAudio) ?: return true
+        val enrolledProfile = profile ?: return false
+        val speakerEncoder = getEncoder()?.takeIf { it.isAvailable() } ?: return false
+        val embedding = speakerEncoder.embed(candidateAudio) ?: return false
         return enrolledProfile.matches(embedding)
     }
 

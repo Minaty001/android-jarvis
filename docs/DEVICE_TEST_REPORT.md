@@ -219,8 +219,8 @@
 2. Spotify Integration (app not installed)
 
 ### 🔜 Features Requiring Manual Testing
-1. Wake Word Detection ("Hey Jarvis")
-2. Voice Enrollment & Calibration
+1. Wake Word Detection (requires a trained `Jarvis` INT8 model asset; the repository currently reports model missing)
+2. Voice Dataset Enrollment & Export (requires an Android microphone/device)
 3. Camera Vision (requires live camera)
 4. Bluetooth SCO Audio Routing
 5. WearOS Companion Sync
