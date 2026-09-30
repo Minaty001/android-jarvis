@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "sampleRate": 16000,
+  "frameSamples": 1280,
+  "featureModels": {
+    "melspectrogram": {
+      "asset": "melspectrogram.tflite",
+      "sha256": "a3224c82810abc2a3586ea5bc68fd452d4fa74ad5972ae80f3075eda7fb0ff60"
+    },
+    "embedding": {
+      "asset": "embedding_model.tflite",
+      "sha256": "c0aea21eb84a4ce90a08c870da41b7a7173b45269e6a3207c71d67c40f3a59d8"
+    }
+  },
+  "models": [
+    {
+      "phrase": "Hey Jarvis",
+      "asset": "hey_jarvis_v0.1.tflite",
+      "threshold": 0.35,
+      "sha256": "14bff778604985e1b5c19f0f7bbe477a69cf281d8db34b232b3b972411f710e2"
+    }
+  ]
+}

@@ -6,7 +6,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Android%209.0%2B%20(API%2028%2B)-00E5FF?style=flat-square)](https://github.com/1209codex/android-jarvis)
 [![Release APK](https://img.shields.io/badge/Release%20APK-9.7%20MB-blue?style=flat-square&logo=googleplay)](dist/jarvis-v1.1-release.apk)
 
-**J.A.R.V.I.S.** (*Just A Rather Very Intelligent System*) is a closed-loop Android AI assistant. Its wake-word runtime requires a validated, offline-trained INT8 TFLite asset; that personal model is currently missing from this repository. Jarvis also includes multi-provider LLM reasoning (Groq `openai/gpt-oss-20b` / `openai/gpt-oss-120b`, Gemini `gemini-2.5-flash`, OpenRouter, and local Ollama), Bluetooth earbud SCO routing with physical button hook interception, WearOS companion synchronization with signature security, fail-closed policy execution, computer vision perception (`qwen/qwen3.6-27b`), on-device hybrid RAG memory, and deep OS-level accessibility automation.
+**J.A.R.V.I.S.** (*Just A Rather Very Intelligent System*) is a closed-loop Android AI assistant. Its openWakeWord runtime currently includes the pretrained **Hey Jarvis** TFLite head for personal, non-commercial use; the locally trained one-word **Jarvis** head still needs to be generated from the enrollment recordings. Jarvis also includes multi-provider LLM reasoning (Groq `openai/gpt-oss-20b` / `openai/gpt-oss-120b`, Gemini `gemini-2.5-flash`, OpenRouter, and local Ollama), Bluetooth earbud SCO routing with physical button hook interception, WearOS companion synchronization with signature security, fail-closed policy execution, computer vision perception (`qwen/qwen3.6-27b`), on-device hybrid RAG memory, and deep OS-level accessibility automation.
 
 ---
 
@@ -94,7 +94,7 @@ The app is organized into **5 core navigation tabs** along with a persistent HUD
 ## 📖 Complete Feature Guide & How to Use Every Feature
 
 ### 1. 🎙️ Continuous Wake-Word Detection (Hands-Free Activation)
-- **What it does**: Sends the single `ContinuousAudioStream` microphone path through an energy gate and a manifest-validated INT8 TFLite DS-CNN for the phrase *"Jarvis"*. A 2-of-3 temporal confirmation runs inside that detector. The repository currently ships no trained model asset, so wake detection reports unavailable until a real model is trained and installed.
+- **What it does**: Sends the single `ContinuousAudioStream` microphone path through openWakeWord's shared TFLite feature models and the `Jarvis` and `Hey Jarvis` classifier heads. A 2-of-3 temporal confirmation runs before either phrase activates the voice pipeline. Model assets and hashes must be installed for wake detection to be available.
 - **How to use via Voice**:
   - With a trained model installed, say *"Jarvis"* at normal speaking volume.
   - J.A.R.V.I.S. chimes or responds (*"Yes sir"*) and enters active listening mode.
@@ -107,7 +107,7 @@ The app is organized into **5 core navigation tabs** along with a persistent HUD
 ### 1.1 🎚️ Personal Wake-Word Dataset Enrollment
 - **Enrollment** records real PCM16, mono, 16 kHz WAV samples of *"Jarvis"* in app-private storage. The default goal is 50 samples; users can continue to 100, 200, or more.
 - **Enrollment is not training.** The Android app does not optimize model weights or alter the model threshold. It can score a sample only when a validated KWS model is installed; otherwise it reports `MODEL UNAVAILABLE` and still stores quality-passing WAVs.
-- Export the positive WAV dataset from the enrollment screen. Add at least 30 real `unknown` and 30 `background` WAVs on the development machine, then train and validate offline with [the wake-word training guide](docs/WAKE_WORD_TRAINING.md).
+- Export the positive WAV dataset from the enrollment screen, train and validate the Jarvis model offline, then install it alongside the bundled Hey Jarvis head as described in [the wake-word training guide](docs/WAKE_WORD_TRAINING.md). The upstream Hey Jarvis weights are for personal, non-commercial use.
 - One production microphone path feeds `WakeWordEngine`; DTW template listening and acoustic fallback detection have been removed.
 
 ### 1.3 ⚡ Lazy Subsystem Container & Cold-Start RAM Optimization
@@ -433,7 +433,7 @@ J.A.R.V.I.S. is architected using strict **Clean Architecture** boundaries, cate
 | **2** | **Application & Runtime** | High-priority `JarvisForegroundService`, `AssistantRuntime` coordinator, `SubsystemManager`, and `JarvisEventBus`. |
 | **3** | **Domain Core & Autonomous Reasoning** | `MultiTaskDecomposer` planning engine, `HallucinationFirewall` safety bounds, and `AutonomousDaemon` supervisor. |
 | **4** | **Device Tools & OS Automation** | 44+ automated capabilities, Android Accessibility Services, synthetic UI automation, WhatsApp, and telephony drivers. |
-| **5** | **Voice & Acoustic Perception** | Single `WakeWordEngine` microphone path, manifest-backed INT8 TFLite KWS for "Jarvis", optional fail-closed speaker verification, and Bluetooth SCO. The model must be trained from real recordings and installed as an asset. |
+| **5** | **Voice & Acoustic Perception** | Single `WakeWordEngine` microphone path, openWakeWord TFLite heads for "Jarvis" and "Hey Jarvis", optional fail-closed speaker verification, and Bluetooth SCO. Trained and upstream model assets must be installed with validated manifests. |
 | **6** | **AI Inference & Computer Vision** | Multi-provider LLM client (Groq `openai/gpt-oss-20b`/`120b`, Gemini `gemini-2.5-flash`, OpenRouter, local Ollama) and Camera2 perception (`qwen/qwen3.6-27b`). |
 | **7** | **Neural Memory & Vector RAG** | Dense vector embeddings, BM25 relevance re-ranking, half-life decay garbage collection, and AES-GCM-256 Keystore encryption. |
 | **8** | **Test & Verification Suite** | 91 test suites containing 503 automated unit and integration tests with a 100% pass rate. |

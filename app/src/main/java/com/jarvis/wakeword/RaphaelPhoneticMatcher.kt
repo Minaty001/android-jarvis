@@ -75,14 +75,23 @@ object RaphaelPhoneticMatcher {
     }
 
     /**
-     * Checks if a single token matches the target wake word.
+     * Checks if a wake token or exact "Hey <wake word>" phrase matches.
      * Supports both the canonical "Jarvis" variants and dynamic custom wake words (e.g. "Friday", "Computer").
      */
     fun isWakeWord(token: String, customWakeWord: String? = null): Boolean {
-        val lower = token.lowercase(Locale.ROOT).trim().filter { it.isLetter() }
+        val words = token.lowercase(Locale.ROOT).trim()
+            .split(Regex("[^\\p{L}]+"))
+            .filter { it.isNotBlank() }
+        val lower = when {
+            words.size == 1 -> words[0]
+            words.size == 2 && PREFIX_HOTWORDS.contains(words[0]) -> words[1]
+            else -> return false
+        }
         if (lower.isEmpty()) return false
 
-        val target = customWakeWord?.lowercase(Locale.ROOT)?.trim()?.filter { it.isLetter() }
+        val targetWords = customWakeWord?.lowercase(Locale.ROOT)?.trim()
+            ?.split(Regex("[^\\p{L}]+"))?.filter { it.isNotBlank() }.orEmpty()
+        val target = targetWords.lastOrNull()
 
         if (target.isNullOrBlank() || target == "jarvis") {
             if (CANONICAL_VARIANTS.contains(lower)) return true
@@ -152,4 +161,3 @@ object RaphaelPhoneticMatcher {
         return com.jarvis.foundation.TextDistance.levenshtein(s1, s2)
     }
 }
-

@@ -74,11 +74,14 @@ class WakeWordEngine(
     fun getVoiceProfile(): UserVoiceProfile = currentVoiceProfile
 
     @Synchronized
-    fun availableWakeWords(): List<String> = listOf(WakeWordModelMetadata.SUPPORTED_PHRASE)
+    fun availableWakeWords(): List<String> {
+        ensureDetectorInitialized()
+        return detector?.getSupportedPhrases().orEmpty()
+    }
 
     @Synchronized
     fun setActiveWakeWord(phrase: String): Boolean =
-        phrase.equals(WakeWordModelMetadata.SUPPORTED_PHRASE, ignoreCase = true) && isAvailable()
+        availableWakeWords().any { it.equals(phrase.trim(), ignoreCase = true) } && isAvailable()
 
     fun getTrailingAudio(): ShortArray? = trailingAudioBuffer?.copyOf()
 
@@ -137,8 +140,9 @@ class WakeWordEngine(
         ensureDetectorInitialized()
         val det = detector
         val metadata = det?.getModelMetadata()
-        val available = det?.isModelAvailable() == true && metadata != null
+        val available = det?.isModelAvailable() == true && det.getModelThreshold() != null
         val modelStatus = when {
+            available && metadata == null -> WakeModelStatus.MODEL_READY
             metadata != null && datasetSampleCount > metadata.trainedSampleCount -> WakeModelStatus.MODEL_OUTDATED
             metadata != null && datasetSampleCount > 0 && datasetSha256 != metadata.positiveDatasetSha256 -> WakeModelStatus.MODEL_OUTDATED
             available && datasetSampleCount > 0 && datasetSampleCount == metadata?.trainedSampleCount -> WakeModelStatus.MODEL_READY_AND_ENROLLED
@@ -152,8 +156,8 @@ class WakeWordEngine(
             modelError = if (available) null else det?.getModelLoadError() ?: "MODEL MISSING — TRAIN MODEL FIRST",
             detectorMode = getDetectorMode(),
             modelStatus = modelStatus,
-            phrase = metadata?.phrase ?: WakeWordModelMetadata.SUPPORTED_PHRASE,
-            threshold = metadata?.threshold,
+            phrase = metadata?.phrase ?: det?.getSupportedPhrases()?.joinToString(" / ").orEmpty().ifBlank { "unavailable" },
+            threshold = det?.getModelThreshold(),
             latestScore = det?.getLatestRawScore()?.takeIf { it.isFinite() } ?: latestScore,
             audioRms = latestRms,
             audioDurationMs = minOf(totalAudioSamples, spec.windowSamples.toLong()) * 1000L / spec.sampleRate,
@@ -164,7 +168,7 @@ class WakeWordEngine(
             trainedSampleCount = metadata?.trainedSampleCount,
             modelSha256 = metadata?.modelSha256,
             modelFile = metadata?.modelFile,
-            outputPositive = metadata?.threshold?.let { latestScore >= it },
+            outputPositive = det?.getModelThreshold()?.let { latestScore >= it },
             energyGatePassed = det?.getLatestEnergyGatePassed(),
             ownerVerificationRequired = wakeGate?.isOwnerVerificationRequired() == true
         )
@@ -198,7 +202,7 @@ class WakeWordEngine(
         val det = detector ?: return false
         if (!det.isModelAvailable()) return false
         val score = det.pushAudio(samples)
-        latestScore = det.getLatestRawScore()?.takeIf { it.isFinite() } ?: score
+        latestScore = score
         val threshold = det.getModelThreshold() ?: return false
         val now = System.currentTimeMillis()
         if (!score.isFinite() || score < threshold || now - lastDetectionAt < config.detectionCooldownMs) return false
@@ -211,8 +215,9 @@ class WakeWordEngine(
         trailingAudioBuffer = candidateAudio
         state = WakeWordState.TRIGGERED
         lastDetectionAt = now
-        Log.i(tag, "Wake event accepted for '${WakeWordModelMetadata.SUPPORTED_PHRASE}' (score=$score)")
-        onDetectedCallback?.invoke(WakeWordModelMetadata.SUPPORTED_PHRASE)
+        val phrase = det.getDetectedPhrase() ?: WakeWordModelMetadata.SUPPORTED_PHRASE
+        Log.i(tag, "Wake event accepted for '$phrase' (score=$score)")
+        onDetectedCallback?.invoke(phrase)
         return true
     }
 

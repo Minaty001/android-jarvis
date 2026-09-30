@@ -72,5 +72,8 @@ class RaphaelPhoneticMatcherTest {
         assertTrue(RaphaelPhoneticMatcher.isWakeWord("jarvis", ""))
         assertTrue(RaphaelPhoneticMatcher.isWakeWord("jarvis", "   "))
         assertTrue(RaphaelPhoneticMatcher.isWakeWord("jarvis", "Jarvis"))
+        assertTrue(RaphaelPhoneticMatcher.isWakeWord("Hey Jarvis", "Jarvis"))
+        assertFalse(RaphaelPhoneticMatcher.isWakeWord("Hey Jarvis play music", "Jarvis"))
+        assertNull(com.jarvis.conversation.ConversationManager().processUtterance("Hey Jarvis", "Jarvis"))
     }
 }

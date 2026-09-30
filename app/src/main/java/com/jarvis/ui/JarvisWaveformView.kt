@@ -186,4 +186,9 @@ class JarvisWaveformView @JvmOverloads constructor(
         animator?.cancel()
         super.onDetachedFromWindow()
     }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (animator?.isStarted != true) startAnimation()
+    }
 }

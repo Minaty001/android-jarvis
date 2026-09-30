@@ -927,7 +927,7 @@ class SettingsScreen(
             profileBadge.background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 6)
             profileBadge.setPadding(Ui.dp(context, 8), Ui.dp(context, 3), Ui.dp(context, 8), Ui.dp(context, 3))
             profileDetailsView.text = buildString {
-                append("Phrase: Jarvis • Samples: $count / ${WakeWordDatasetStore.TARGET_SAMPLES}")
+                append("Phrase: ${diagnostics?.phrase ?: "unavailable"} • Samples: $count / ${WakeWordDatasetStore.TARGET_SAMPLES}")
                 append(" • Dataset: ${if (count >= WakeWordDatasetStore.TARGET_SAMPLES) "READY" else "INCOMPLETE"}")
                 append("\nDataset/model status: ${diagnostics?.modelStatus?.name?.replace('_', ' ') ?: "unavailable"}")
                 append("\nModel trained on: ${diagnostics?.trainedSampleCount ?: "unavailable"} samples")

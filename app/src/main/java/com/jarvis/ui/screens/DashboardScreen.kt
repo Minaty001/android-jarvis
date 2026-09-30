@@ -211,26 +211,6 @@ class DashboardScreen(
             input.setSelection(input.text.length)
             input.requestFocus()
         })
-        chipsRow.addView(Ui.techChip(context, "Driving", "🚗") {
-            input.setText("driving mode on")
-            sendCommand()
-        })
-        chipsRow.addView(Ui.techChip(context, "Meeting", "📅") {
-            input.setText("meeting mode on")
-            sendCommand()
-        })
-        chipsRow.addView(Ui.techChip(context, "Focus", "🧠") {
-            input.setText("focus mode on")
-            sendCommand()
-        })
-        chipsRow.addView(Ui.techChip(context, "Night", "🌙") {
-            input.setText("night mode on")
-            sendCommand()
-        })
-        chipsRow.addView(Ui.techChip(context, "Workout", "🏋️") {
-            input.setText("workout mode on")
-            sendCommand()
-        })
         chipsRow.addView(Ui.techChip(context, "Skills Hub", "⚡") {
             onOpenSkills?.invoke()
         })
@@ -560,6 +540,9 @@ class DashboardScreen(
             setTextColor(Ui.SUCCESS)
         }
         service.voiceEngine?.let { engine ->
+            val wakePhrase = engine.wakeEngine.availableWakeWords()
+                .joinToString(" / ")
+                .ifBlank { settings().wakeWord }
             statusJob?.cancel()
             statusJob = owner.lifecycleScope.launch {
                 engine.status.collect { s ->
@@ -579,7 +562,7 @@ class DashboardScreen(
                     }
 
                     status.text = when (s.voiceState) {
-                        VoiceState.WAITING_FOR_WAKE -> if (s.wakeModelAvailable) "LISTENING FOR ${settings().wakeWord.uppercase()}…" else "WAKE MODEL UNAVAILABLE • TAP TO TALK"
+                        VoiceState.WAITING_FOR_WAKE -> if (s.wakeModelAvailable) "LISTENING FOR ${wakePhrase.uppercase()}…" else "WAKE MODEL UNAVAILABLE • TAP TO TALK"
                         VoiceState.WAKE_DETECTED -> "WAKE WORD DETECTED"
                         VoiceState.LISTENING -> "LISTENING…"
                         VoiceState.THINKING -> "THINKING…"
@@ -592,7 +575,7 @@ class DashboardScreen(
                     }
 
                     activityDetail.text = when (s.voiceState) {
-                        VoiceState.WAITING_FOR_WAKE -> "Tap Arc Reactor or say \"${settings().wakeWord}\" to speak"
+                        VoiceState.WAITING_FOR_WAKE -> "Tap Arc Reactor or say \"$wakePhrase\" to speak"
                         VoiceState.LISTENING -> "Listening… Speak now"
                         VoiceState.THINKING -> "Analyzing your request…"
                         VoiceState.EXECUTING -> "Executing task: ${s.lastTaskGoal?.take(28) ?: "Device automation"}"

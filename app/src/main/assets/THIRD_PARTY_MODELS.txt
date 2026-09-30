@@ -1,0 +1,9 @@
+openWakeWord Hey Jarvis pretrained model (hey_jarvis_v0.1.tflite)
+Copyright David Scripka, openWakeWord project.
+Licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International:
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+Model source: https://github.com/dscripka/openWakeWord/releases/tag/v0.5.1
+
+The shared melspectrogram and embedding frontend models are from openWakeWord,
+licensed under Apache License 2.0:
+https://github.com/dscripka/openWakeWord/blob/main/LICENSE

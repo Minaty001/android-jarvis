@@ -59,7 +59,7 @@ data class AppSettings(
     val headsetHookActivationEnabled: Boolean = true,
     val wearableSyncEnabled: Boolean = true,
     val floatingOverlayEnabled: Boolean = false,
-    val ttsProvider: String = "groq",
+    val ttsProvider: String = "android",
     val ttsVoice: String = "Fritz-PlayAI",
     val callScreeningEnabled: Boolean = true,
     val clipboardIntelligenceEnabled: Boolean = true,

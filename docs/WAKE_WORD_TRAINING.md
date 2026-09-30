@@ -1,38 +1,37 @@
-# Personal wake-word dataset and offline training
+# Wake word models
 
-Android enrollment records real positive `Jarvis` WAV files. It does not train model weights. The runtime accepts only a validated INT8 TFLite model for the phrase `Jarvis`; a missing model disables wake detection.
+The Android runtime uses openWakeWord's shared TFLite melspectrogram and speech embedding models, followed by one or two classifier heads: the locally trained **Jarvis** head and upstream **Hey Jarvis**. Audio runs at 16 kHz in 80 ms frames. The shared models produce 32-bin mel features and 96-value embeddings; each classifier consumes `[1,16,96]` and returns one score. Packaged phrases enter the same `WakeWordEngine` activation flow. Until the custom Jarvis head is trained and validated, only **Hey Jarvis** is available.
 
-## Recording and export
+## Training data
 
-In **CONFIG → Personal Wake Word Dataset**, record at least 50 samples (100–200 is better), varying volume and distance. The app stores mono PCM16 WAV at 16 kHz under `filesDir/wake_word_dataset/positive/` and can export those files with `manifest.json` as a ZIP.
+Export the personal dataset from **CONFIG → Personal Wake Word Dataset**. Keep whole WAV files separate for training and evaluation: reserve at least 10 real Jarvis clips as held-out positives. Use openWakeWord's synthetic speech generation to increase the training positives, with adversarial phrase negatives, room responses, and background noise. Include a separate negative validation set with similar-sounding speech and ordinary background audio; do not use clips from that set for training. Keep the original recordings and generated examples in separate directories so the held-out set stays untouched.
 
-On the development machine, unpack the positive WAVs into `data/wakeword/positive/`. Add at least 30 unique real WAV files to each of `data/wakeword/unknown/` and `data/wakeword/background/`. Unknown speech should include similar-sounding words; background should include silence and realistic environmental noise. Keep original files intact; the trainer rejects duplicates and splits by original file before it augments training examples.
+## Train the Jarvis head
 
-## Create the training environment
+Use the upstream [openWakeWord training workflow](https://github.com/dscripka/openWakeWord#training-new-models) and its `custom_model.yml` configuration. Set `target_phrase` to `jarvis`, provide Piper sample generation, room responses, background clips, the ACAV100M negative feature set, and a false-positive validation feature set. Copy the 41 training recordings to `positive_train` and reserve 10 untouched real recordings in `positive_test` before synthetic data generation. Keep these real clips distinct from generated speech.
 
-Python 3.12.3 was used for the repository-side script checks. The requirements are pinned for that Python/TensorFlow combination.
-
-```bash
-python3 -m venv .venv-kws
-source .venv-kws/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r scripts/requirements-kws.txt
-```
-
-## Train and validate
+Run each upstream stage with the same configuration:
 
 ```bash
-python scripts/train_kws.py \
-  --data-root data/wakeword \
-  --output-model app/src/main/assets/jarvis_dscnn_int8.tflite \
-  --output-float app/src/main/assets/jarvis_dscnn_float32.tflite \
-  --output-metadata app/src/main/assets/jarvis_model.json
-
-python scripts/validate_kws_model.py \
-  --model app/src/main/assets/jarvis_dscnn_int8.tflite \
-  --data-root data/wakeword
+python openWakeWord/openwakeword/train.py --training_config jarvis.yml --generate_clips
+python openWakeWord/openwakeword/train.py --training_config jarvis.yml --augment_clips
+python openWakeWord/openwakeword/train.py --training_config jarvis.yml --train_model --convert_to_tflite
 ```
 
-Training uses an 80/10/10 deterministic file split, augments training data only, trains a compact DS-CNN, derives the score threshold from validation negatives at the requested false-accept rate, evaluates the held-out test split, and verifies both TFLite exports. It writes the model assets only after those checks pass. The manifest records the feature contract, validation threshold, dataset fingerprint, and model SHA-256.
+The configuration must point to the Piper voice, room impulse responses, background audio, ACAV100M features, and false-positive validation features on your machine. The first stage makes synthetic positives and adversarial negatives; the second creates augmented embeddings; the final stage trains and exports the classifier. Keep the config, data licenses, and validation results with the output.
 
-The Android `MfccExtractor` and Python `kws_features.py` share the same 16 kHz, 16,000-sample, 49×10 MFCC feature contract. `MfccParityTest` compares Android output to a fixed Python-generated tone fixture. After installing a newly built APK, adding further recordings changes the dataset fingerprint and the UI reports the model as outdated; train and install again to update the weights.
+Select the Jarvis threshold using held-out positives and negative/background audio. Record recall, missed detections, false accepts, and the chosen threshold. Do not package a model that has not passed the held-out checks. Rename the exported head to `jarvis_openwakeword.tflite` for the Android manifest.
+
+## Install assets
+
+After calibrating both heads, install the assets and create the hash manifest with:
+
+```bash
+python scripts/package_openwakeword.py \
+  --jarvis-model /path/to/jarvis.tflite \
+  --jarvis-threshold 0.50
+```
+
+The script copies the shared TFLite feature models from the installed openWakeWord package and writes classifier entries to `app/src/main/assets/openwakeword_models.json`. Set `--jarvis-threshold` to the measured value from validation; the Hey Jarvis threshold defaults to 0.50 and can be overridden with `--hey-jarvis-threshold`. To package and test only the included Hey Jarvis head, omit both Jarvis options. The Android loader checks hashes and tensor contracts before enabling each packaged phrase. Keep the `.tflite` assets uncompressed in the APK.
+
+The Hey Jarvis pretrained weights are licensed **CC BY-NC-SA 4.0**; they are included only for personal, non-commercial use. Preserve attribution and the license with any redistribution. The shared openWakeWord frontend models use the project's Apache 2.0 license. See [third-party model notices](../THIRD_PARTY_MODELS.md).

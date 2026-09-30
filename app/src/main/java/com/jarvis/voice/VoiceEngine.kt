@@ -96,6 +96,7 @@ class VoiceEngine(
     private val wakeTransitionGate = AtomicBoolean(false)
     private val commandFinalizationGate = AtomicBoolean(false)
     private val isStarting = AtomicBoolean(false)
+    private val wakeOnlyCommandRetryUsed = AtomicBoolean(false)
 
     // Tracked coroutine jobs
     private var listeningTimeoutJob: Job? = null
@@ -341,6 +342,7 @@ class VoiceEngine(
         if (current != VoiceState.WAITING_FOR_WAKE && current != VoiceState.IDLE) return
         val currentSession = sessionSequence.get()
         Log.i(TAG, "VOICE session=$currentSession event=WAKE_DETECTED phrase=\"$detectedPhrase\"")
+        wakeOnlyCommandRetryUsed.set(false)
 
         // Wake screen if display is currently inactive and lock-screen voice is enabled
         try {
@@ -682,10 +684,17 @@ class VoiceEngine(
             val stripped = RaphaelPhoneticMatcher.stripWakeWordPrefix(rawTranscript, configuredWakeWord)
             val cleanCommand = (conversationManager.processUtterance(stripped, configuredWakeWord) ?: stripped).trim()
             if (cleanCommand.isBlank() || RaphaelPhoneticMatcher.isWakeWord(cleanCommand, configuredWakeWord)) {
-                Log.i(TAG, "Utterance was wake-word-only or blank ('$rawTranscript'). Returning to WAITING_FOR_WAKE")
-                returnToWakeListening()
+                if (wakeOnlyCommandRetryUsed.compareAndSet(false, true)) {
+                    Log.i(TAG, "ASR captured only the wake phrase ('$rawTranscript'); keeping one command-listening window open")
+                    startListeningForCommand(isFollowUp = true)
+                } else {
+                    Log.i(TAG, "Repeated wake-word-only capture ('$rawTranscript'). Returning to WAITING_FOR_WAKE")
+                    returnToWakeListening()
+                }
                 return
             }
+
+            wakeOnlyCommandRetryUsed.set(false)
 
             conversationManager.transitionTo(VoiceState.THINKING)
             _status.value = _status.value.copy(

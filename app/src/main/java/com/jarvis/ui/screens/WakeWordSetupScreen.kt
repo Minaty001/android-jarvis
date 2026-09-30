@@ -88,7 +88,7 @@ class WakeWordSetupScreen(
         val count = datasetStore.getPositiveSampleCount()
         val diagnostics = voiceEngine?.wakeEngine?.getDiagnostics(count, datasetStore.getPositiveDatasetSha256())
         view.text = buildString {
-            append("Phrase: Jarvis\nSamples: $count / ${WakeWordDatasetStore.TARGET_SAMPLES}\n")
+            append("Phrase: ${diagnostics?.phrase ?: "unavailable"}\nSamples: $count / ${WakeWordDatasetStore.TARGET_SAMPLES}\n")
             append("Dataset: ${if (count >= WakeWordDatasetStore.TARGET_SAMPLES) "READY" else "INCOMPLETE"}\n")
             append("Model: ${when {
                 diagnostics == null -> "STATUS UNAVAILABLE"

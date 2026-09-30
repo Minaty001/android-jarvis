@@ -8,7 +8,7 @@ enum class WakeDetectorMode {
     UNAVAILABLE
 }
 
-/** The sole production detector: it reports unavailable instead of switching to a heuristic. */
+/** The sole production detector: packaged openWakeWord heads share one streaming frontend. */
 class HybridWakeWordDetector(
     private val context: Context? = null,
     val modelAssetPath: String = WakeWordModelMetadata.MODEL_NAME,
@@ -22,7 +22,7 @@ class HybridWakeWordDetector(
         if (neuralDetector == null) {
             neuralDetector = context?.let { appContext ->
                 runCatching {
-                    DsCnnWakeWordDetector(appContext, modelAssetPath, config)
+                    OpenWakeWordDetector(appContext, config)
                 }.onFailure { Log.e(tag, "KWS model unavailable; wake detection disabled", it) }.getOrNull()
             }
         }
@@ -39,6 +39,8 @@ class HybridWakeWordDetector(
     override fun getLatestRawScore(): Float? = neuralDetector?.getLatestRawScore()
     override fun getLatestEnergyGatePassed(): Boolean? = neuralDetector?.getLatestEnergyGatePassed()
     override fun getModelMetadata(): WakeWordModelMetadata? = neuralDetector?.getModelMetadata()
+    override fun getDetectedPhrase(): String? = neuralDetector?.getDetectedPhrase()
+    override fun getSupportedPhrases(): List<String> = neuralDetector?.getSupportedPhrases().orEmpty()
 
     @Synchronized
     override fun pushAudio(samples: ShortArray): Float {

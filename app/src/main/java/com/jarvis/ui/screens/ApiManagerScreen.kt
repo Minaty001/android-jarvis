@@ -294,6 +294,10 @@ class ApiManagerScreen(
     private fun showSimpleEditor(providerName: String) {
         val container = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(Ui.dp(context,18), Ui.dp(context,8), Ui.dp(context,18), Ui.dp(context,8)) }
         val secret = Ui.input(context, if (providerName == "Ollama") "Base URL (e.g. http://10.0.2.2:11434)" else "API Key for $providerName")
+        if (providerName != "Ollama") {
+            secret.second.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            secret.second.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
+        }
         container.addView(secret.first)
         
         androidx.appcompat.app.AlertDialog.Builder(context)

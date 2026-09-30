@@ -9,6 +9,7 @@ import android.view.animation.LinearInterpolator
 import com.jarvis.voice.VoiceState
 import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 class JarvisOrbView @JvmOverloads constructor(
@@ -34,6 +35,13 @@ class JarvisOrbView @JvmOverloads constructor(
         strokeCap = Paint.Cap.ROUND
     }
     private val particlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val centerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val outerRect = RectF()
+    private val middleRect = RectF()
+    private var shaderRadiusBucket = Int.MIN_VALUE
+    private var shaderPrimary = 0
+    private var shaderSecondary = 0
+    private var shaderDark = 0
 
     private var pulseAnimator: ValueAnimator? = null
     private var rotationAnimator: ValueAnimator? = null
@@ -158,12 +166,37 @@ class JarvisOrbView @JvmOverloads constructor(
         val darkColor = getDarkColor()
 
         // 1. Radiant Ambient Outer Glow
-        glowPaint.shader = RadialGradient(
-            centerX, centerY, radius * 1.6f,
-            intArrayOf(primaryColor and 0x55FFFFFF.toInt(), primaryColor and 0x18FFFFFF.toInt(), Color.TRANSPARENT),
-            floatArrayOf(0f, 0.45f, 1f),
-            Shader.TileMode.CLAMP
-        )
+        // Quantize the animated radius so the gradients are reused across frames.
+        val radiusBucket = (radius / 4f).roundToInt() * 4
+        if (radiusBucket != shaderRadiusBucket || primaryColor != shaderPrimary ||
+            secondaryColor != shaderSecondary || darkColor != shaderDark
+        ) {
+            val shaderRadius = radiusBucket.toFloat()
+            val coreRadius = shaderRadius * 0.52f
+            val centerNodeRadius = coreRadius * 0.42f
+            glowPaint.shader = RadialGradient(
+                centerX, centerY, shaderRadius * 1.6f,
+                intArrayOf(primaryColor and 0x55FFFFFF.toInt(), primaryColor and 0x18FFFFFF.toInt(), Color.TRANSPARENT),
+                floatArrayOf(0f, 0.45f, 1f),
+                Shader.TileMode.CLAMP
+            )
+            corePaint.shader = RadialGradient(
+                centerX - coreRadius * 0.25f, centerY - coreRadius * 0.25f, coreRadius,
+                intArrayOf(Color.WHITE, primaryColor, secondaryColor, darkColor),
+                floatArrayOf(0f, 0.25f, 0.65f, 1f),
+                Shader.TileMode.CLAMP
+            )
+            centerPaint.shader = RadialGradient(
+                centerX, centerY, centerNodeRadius,
+                intArrayOf(Color.WHITE, primaryColor, darkColor),
+                floatArrayOf(0f, 0.4f, 1f),
+                Shader.TileMode.CLAMP
+            )
+            shaderRadiusBucket = radiusBucket
+            shaderPrimary = primaryColor
+            shaderSecondary = secondaryColor
+            shaderDark = darkColor
+        }
         canvas.drawCircle(centerX, centerY, radius * 1.6f, glowPaint)
 
         // 2. Orbital Glowing Particles
@@ -181,7 +214,7 @@ class JarvisOrbView @JvmOverloads constructor(
         canvas.rotate(rotationAngle, centerX, centerY)
         ringPaint.strokeWidth = 3.5f
         ringPaint.color = primaryColor
-        val outerRect = RectF(centerX - radius, centerY - radius, centerX + radius, centerY + radius)
+        outerRect.set(centerX - radius, centerY - radius, centerX + radius, centerY + radius)
         val segmentCount = 6
         val sweepAngle = 40f
         val gapAngle = (360f - segmentCount * sweepAngle) / segmentCount
@@ -210,13 +243,13 @@ class JarvisOrbView @JvmOverloads constructor(
         canvas.save()
         canvas.rotate(counterRotationAngle, centerX, centerY)
         val midRadius = radius * 0.76f
-        val midRect = RectF(centerX - midRadius, centerY - midRadius, centerX + midRadius, centerY + midRadius)
+        middleRect.set(centerX - midRadius, centerY - midRadius, centerX + midRadius, centerY + midRadius)
         ringPaint.strokeWidth = 4f
         ringPaint.color = (secondaryColor and 0x00FFFFFF) or 0xDD000000.toInt()
 
         for (i in 0 until 4) {
             val startAngle = i * 90f + 10f
-            canvas.drawArc(midRect, startAngle, 70f, false, ringPaint)
+            canvas.drawArc(middleRect, startAngle, 70f, false, ringPaint)
         }
 
         // Inner ring notches
@@ -234,31 +267,21 @@ class JarvisOrbView @JvmOverloads constructor(
 
         // 5. Central Arc Reactor Core
         val coreRadius = radius * 0.52f
-        corePaint.shader = RadialGradient(
-            centerX - coreRadius * 0.25f, centerY - coreRadius * 0.25f, coreRadius,
-            intArrayOf(Color.WHITE, primaryColor, secondaryColor, darkColor),
-            floatArrayOf(0f, 0.25f, 0.65f, 1f),
-            Shader.TileMode.CLAMP
-        )
         canvas.drawCircle(centerX, centerY, coreRadius, corePaint)
 
         // 6. Inner Glowing Node Core & Concentric Rings
         val centerNodeRadius = coreRadius * 0.42f
-        val centerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-            shader = RadialGradient(
-                centerX, centerY, centerNodeRadius,
-                intArrayOf(Color.WHITE, primaryColor, darkColor),
-                floatArrayOf(0f, 0.4f, 1f),
-                Shader.TileMode.CLAMP
-            )
-        }
         canvas.drawCircle(centerX, centerY, centerNodeRadius, centerPaint)
 
         // Inner Core Ring
         ringPaint.strokeWidth = 2f
         ringPaint.color = Color.WHITE and 0xCCFFFFFF.toInt()
         canvas.drawCircle(centerX, centerY, centerNodeRadius * 0.65f, ringPaint)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        shaderRadiusBucket = Int.MIN_VALUE
     }
 
     private fun getPrimaryColor(): Int = when (currentState) {
@@ -305,5 +328,11 @@ class JarvisOrbView @JvmOverloads constructor(
         super.onDetachedFromWindow()
         pulseAnimator?.cancel()
         rotationAnimator?.cancel()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (pulseAnimator?.isStarted != true) startContinuousAnimations()
+        updateAnimationForState()
     }
 }

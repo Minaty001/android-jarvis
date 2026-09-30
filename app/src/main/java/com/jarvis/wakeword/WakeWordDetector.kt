@@ -18,4 +18,6 @@ interface WakeWordDetector {
     fun getLatestRawScore(): Float? = null
     fun getLatestEnergyGatePassed(): Boolean? = null
     fun getModelMetadata(): WakeWordModelMetadata? = null
+    fun getDetectedPhrase(): String? = null
+    fun getSupportedPhrases(): List<String> = listOf("Jarvis", "Hey Jarvis")
 }

@@ -27,7 +27,7 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 ## 1. 🎙️ Voice Recognition & Acoustic Engine
 
 ### Features & Functions:
-* **Continuous Wake-Word Detection**: A single microphone path runs an INT8 TFLite model for the phrase `"Jarvis"`. The repository has no trained model asset yet, so wake activation stays unavailable until one is trained from real recordings and installed.
+* **Continuous Wake-Word Detection**: A single continuous microphone path feeds openWakeWord shared frontend feature models (`melspectrogram.tflite`, `embedding_model.tflite`) and classifier heads (`Hey Jarvis` upstream and custom `Jarvis`) verified via `openwakeword_models.json`.
 * **Lock-Screen HUD Overlay**: Displays cyber-slate HUD on lock screen without unlocking.
 * **Personal Dataset Enrollment**: Saves quality-checked positive WAV samples and exports them for offline model training. Recording samples does not change model weights or the model threshold.
 * **Optional Owner Voice Verification**: A separate identity check, disabled by default. If explicitly required, unavailable model assets fail closed.

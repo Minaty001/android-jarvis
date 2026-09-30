@@ -2,7 +2,7 @@
 
 ## 1. Overview & Stitch Connection
 The J.A.R.V.I.S. Android voice assistant UI has been completely rebuilt using **Google Stitch** (`stitch-mcp`) designs, matching the application's full feature set:
-- **Wake-Word Runtime**: The single continuous stream feeds a manifest-validated INT8 DS-CNN when a real trained model asset is installed; the current repository reports the model missing.
+- **Wake-Word Runtime**: The single continuous stream feeds openWakeWord shared frontend feature models and classifier heads (`Hey Jarvis`, `Jarvis`) verified via `openwakeword_models.json`.
 - **Autonomous Agent Intelligence**: Goal evaluation, step-by-step reasoning, loop guards, and outcome verification.
 - **Subsystem Automation**: Media & Music (Spotify, YouTube Music, YMusic), WhatsApp Direct Dispatch, Deep Research with candidate ranking, OS Device Controls, and Natural Language Calculation.
 - **Memory Subsystem**: Local SQLite RAG (FTS + BM25), CAG session awareness, and MAG persistent facts.
