@@ -3,6 +3,8 @@ package com.jarvis.runtime
 import android.content.ComponentCallbacks2
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import com.jarvis.camera.CameraPerceptionEngine
 import com.jarvis.camera.TfLiteVisionDetector
 import com.jarvis.runtime.JarvisEventBus
@@ -384,7 +386,7 @@ class SubsystemManager(private val context: Context? = null) {
         }
 
         runCatching { _ttsEngine?.stop() }
-        runCatching { _asrEngine?.let { kotlinx.coroutines.runBlocking { it.stop() } } }
+        runCatching { _asrEngine?.let { asr -> kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) { asr.stop() } } }
 
         // Fix: Camera resources should be cleaned up before nulling to prevent leaks.
         // CameraPerceptionEngine opens/closes the camera per capture (no persistent session),

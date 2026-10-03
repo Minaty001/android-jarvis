@@ -461,12 +461,12 @@ class JarvisForegroundService : Service() {
         releaseWakeLock()
         wakeLock = null
         try {
-            kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
                 kotlinx.coroutines.withTimeoutOrNull(1500) {
                     voiceEngine?.stop()
+                    voiceEngine?.close()
                 }
             }
-            voiceEngine?.close()
         } catch (e: Exception) {
             Log.w(TAG, "Error during synchronous service stop in onDestroy", e)
         }

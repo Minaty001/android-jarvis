@@ -140,7 +140,7 @@ class YouTubePlayTool(private val context: Context? = null) : Tool {
                 return ToolResult(true, "Playing YouTube video in browser", targetResolved(null))
             }
 
-            val query = rawQuery!!
+            val query = rawQuery ?: return ToolResult(false, "No search query or URL provided for YouTube.", emptyMap())
 
             // 3. Resolve top video ID from YouTube query for direct immediate playback
             val resolvedVideoId = withContext(Dispatchers.IO) {

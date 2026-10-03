@@ -78,19 +78,22 @@ class SpotifyControlTool(
 
             if (query.isBlank()) {
                 if (isInstalled) {
-                    val launchIntent = ctx.packageManager.getLaunchIntentForPackage(spotifyPkg)!!
-                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    ctx.startActivity(launchIntent)
-                    sessionManager?.recordTrackPlay(title = "Spotify App", playerApp = "spotify")
-                    SpotifySessionManager.recordTrackPlay("Spotify App")
-                    ToolResult.Success("Opening Spotify.", mapOf("launched" to true))
-                } else {
-                    val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com")).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    val launchIntent = ctx.packageManager.getLaunchIntentForPackage(spotifyPkg)
+                    if (launchIntent != null) {
+                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        ctx.startActivity(launchIntent)
+                        sessionManager?.recordTrackPlay(title = "Spotify App", playerApp = "spotify")
+                        SpotifySessionManager.recordTrackPlay("Spotify App")
+                        return ToolResult.Success("Opening Spotify.", mapOf("launched" to true))
                     }
-                    ctx.startActivity(webIntent)
-                    ToolResult.Success("Opening Spotify Web Player.", mapOf("launched" to "web"))
                 }
+                
+                // Fallback to web player if not installed or intent not found
+                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com")).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                ctx.startActivity(webIntent)
+                return ToolResult.Success("Opening Spotify Web Player.", mapOf("launched" to "web"))
             } else {
                 sessionManager?.recordTrackPlay(title = query, playerApp = "spotify")
                 SpotifySessionManager.recordTrackPlay(query)
