@@ -24,6 +24,7 @@ class ResponsiveNav(context: Context, private val onSelect: (String) -> Unit) : 
 
         listOf(
             NavItem("Dashboard", "Home", "⌂"),
+            NavItem("Routines", "Routines", "⏱"),
             NavItem("Skills", "Skills", "⚡"),
             NavItem("Memory", "Memory", "◈"),
             NavItem("Brain", "Brain", "◌"),

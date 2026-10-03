@@ -20,7 +20,7 @@ class LiveConversationControllerTest {
         override fun close() {}
     }
 
-    private class MockAsrEngine : AsrEngine {
+    private class MockAsrEngine : AndroidSpeechRecognizerEngine() {
         override val state: StateFlow<AsrState> = MutableStateFlow(AsrState.LISTENING)
         override val usesRawAudio: Boolean = true
         override suspend fun start(asrDir: File) {}

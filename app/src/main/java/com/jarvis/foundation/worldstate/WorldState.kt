@@ -3,17 +3,71 @@ package com.jarvis.foundation.worldstate
 import java.util.Locale
 
 object ForegroundAppSession {
-    val sharedUiApps = setOf("WhatsApp", "Instagram", "Chrome", "Telegram", "YouTube")
+    val sharedUiApps = setOf(
+        "WhatsApp", "YouTube", "Camera", "Samsung Notes", "ChatGPT", "Gemini",
+        "Claude", "DeepSeek", "Perplexity", "MX Player", "Netflix", "Samsung Music",
+        "Google Search", "Chrome", "Gaming Hub", "Telegram", "Snapchat", "Instagram",
+        "Gmail", "PicsArt", "OneRoom", "PUBG", "Genshin", "PhonePe", "Kotak 811",
+        "MobiKwik", "Google Keep", "Google Docs", "My Files", "Files by Google",
+        "Google Photos", "Google Maps", "Calculator", "Voice Recorder", "DigiLocker",
+        "Termux", "GitHub", "ZArchiver", "KDE Connect", "Calendar", "Clock",
+        "FM Radio", "Reminder", "Bixby", "Gallery", "Galaxy Store", "Settings",
+        "Play Store", "Amazon"
+    )
 
     fun fromPackage(packageName: String?): String? {
         val pkg = packageName?.takeIf { it.isNotBlank() } ?: return null
         val lower = pkg.lowercase(Locale.ROOT)
         return when {
             "whatsapp" in lower -> "WhatsApp"
-            "instagram" in lower -> "Instagram"
+            "youtube" in lower || "ytube" in lower -> "YouTube"
+            "camera" in lower -> "Camera"
+            "samsung.android.app.notes" in lower -> "Samsung Notes"
+            "chatgpt" in lower || "openai" in lower -> "ChatGPT"
+            "bard" in lower || "gemini" in lower -> "Gemini"
+            "claude" in lower -> "Claude"
+            "deepseek" in lower -> "DeepSeek"
+            "perplexity" in lower -> "Perplexity"
+            "mxtech.videoplayer" in lower -> "MX Player"
+            "netflix" in lower -> "Netflix"
+            "sec.android.app.music" in lower -> "Samsung Music"
+            "googlequicksearchbox" in lower -> "Google Search"
             "chrome" in lower -> "Chrome"
+            "gamehome" in lower || "gaminghub" in lower -> "Gaming Hub"
             "telegram" in lower -> "Telegram"
-            "youtube" in lower -> "YouTube"
+            "snapchat" in lower -> "Snapchat"
+            "instagram" in lower -> "Instagram"
+            "google.android.gm" in lower -> "Gmail"
+            "picsart" in lower -> "PicsArt"
+            "oneroom" in lower -> "OneRoom"
+            "pubg" in lower -> "PUBG"
+            "genshin" in lower || "levelinfinite" in lower -> "Genshin"
+            "phonepe" in lower -> "PhonePe"
+            "kotak811" in lower -> "Kotak 811"
+            "mobikwik" in lower -> "MobiKwik"
+            "google.android.keep" in lower -> "Google Keep"
+            "google.android.apps.docs" in lower -> "Google Docs"
+            "myfiles" in lower -> "My Files"
+            "nbu.files" in lower -> "Files by Google"
+            "google.android.apps.photos" in lower -> "Google Photos"
+            "google.android.apps.maps" in lower -> "Google Maps"
+            "calculator" in lower -> "Calculator"
+            "voicenote" in lower -> "Voice Recorder"
+            "digilocker" in lower -> "DigiLocker"
+            "termux" in lower -> "Termux"
+            "github" in lower -> "GitHub"
+            "zarchiver" in lower -> "ZArchiver"
+            "kdeconnect" in lower -> "KDE Connect"
+            "calendar" in lower -> "Calendar"
+            "clock" in lower -> "Clock"
+            "app.fm" in lower -> "FM Radio"
+            "reminder" in lower -> "Reminder"
+            "bixby" in lower -> "Bixby"
+            "gallery3d" in lower -> "Gallery"
+            "samsungapps" in lower -> "Galaxy Store"
+            "settings" in lower -> "Settings"
+            "vending" in lower -> "Play Store"
+            "amazon" in lower -> "Amazon"
             "spotify" in lower -> "Spotify"
             else -> pkg.substringAfterLast('.')
         }

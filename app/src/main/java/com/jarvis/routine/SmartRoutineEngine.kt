@@ -97,6 +97,16 @@ class SmartRoutineEngine(
         routines[routine.id] = routine
     }
 
+    fun addCustomRoutine(routine: SmartRoutine) {
+        routines[routine.id] = routine
+    }
+
+    fun deleteRoutine(idOrName: String): Boolean {
+        val routine = getRoutine(idOrName) ?: return false
+        routines.remove(routine.id)
+        return true
+    }
+
     fun enableRoutine(idOrName: String, enable: Boolean): Boolean {
         val routine = getRoutine(idOrName) ?: return false
         routine.isEnabled = enable

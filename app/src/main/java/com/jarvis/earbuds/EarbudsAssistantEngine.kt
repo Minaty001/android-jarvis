@@ -9,7 +9,7 @@ import com.jarvis.messaging.WhatsAppMessagingEngine
 import com.jarvis.telecom.CallAndSmsAgent
 import com.jarvis.telecom.ContactResolver
 import com.jarvis.ui.data.UiPreferencesStore
-import com.jarvis.voice.AsrEngine
+import com.jarvis.voice.AndroidSpeechRecognizerEngine
 import com.jarvis.voice.TtsEngine
 import com.jarvis.voice.VoiceEngine
 import com.jarvis.voice.VoiceState
@@ -33,7 +33,7 @@ class EarbudsAssistantEngine(
     private val bluetoothHeadsetManager: BluetoothHeadsetManager,
     private val voiceEngine: VoiceEngine? = null,
     private val ttsEngine: TtsEngine? = voiceEngine?.ttsEngine,
-    private val asrEngine: AsrEngine? = voiceEngine?.asrEngine
+    private val asrEngine: AndroidSpeechRecognizerEngine? = voiceEngine?.asrEngine
 ) {
     private val TAG = "EarbudsAssistantEngine"
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())

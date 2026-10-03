@@ -16,7 +16,6 @@ import com.jarvis.tools.FileManagerTool
 import com.jarvis.tools.FlashlightTool
 import com.jarvis.tools.LocationTool
 import com.jarvis.tools.MediaPlaybackControlTool
-import com.jarvis.tools.MediaStopTool
 import com.jarvis.tools.MusicPlayTool
 import com.jarvis.tools.NoteTool
 import com.jarvis.tools.OpenAppTool
@@ -27,9 +26,7 @@ import com.jarvis.tools.ToolResult
 import com.jarvis.tools.UiClickTool
 import com.jarvis.tools.UiScrollTool
 import com.jarvis.tools.UiTypeTool
-import com.jarvis.tools.YMusicPlayTool
 import com.jarvis.tools.YouTubePlayTool
-import com.jarvis.tools.YouTubeScrollTool
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -241,26 +238,6 @@ class MasterSystemFunctionVerificationTest {
         assertEquals("Search query or video ID missing", resMissing.message)
 
         val resValid = yt.execute(mapOf("query" to "Coldplay live"))
-        assertTrue(resValid.success)
-    }
-
-    @Test
-    fun testYouTubeScrollToolDirection() = runBlocking {
-        val ytScroll = YouTubeScrollTool(context = null)
-        val res = ytScroll.execute(mapOf("direction" to "down"))
-        assertFalse(res.success)
-        // Requires Accessibility service
-        assertTrue(res.message.contains("Accessibility Service"))
-    }
-
-    @Test
-    fun testYMusicPlayToolQueryValidation() = runBlocking {
-        val ymusic = YMusicPlayTool(context = null)
-        val resMissing = ymusic.execute(emptyMap())
-        assertFalse(resMissing.success)
-        assertEquals("Music query missing", resMissing.message)
-
-        val resValid = ymusic.execute(mapOf("query" to "Interstellar Theme"))
         assertTrue(resValid.success)
     }
 

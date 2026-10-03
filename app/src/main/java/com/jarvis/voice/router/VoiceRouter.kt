@@ -1,7 +1,7 @@
 package com.jarvis.voice.router
 
 import android.util.Log
-import com.jarvis.voice.AsrEngine
+import com.jarvis.voice.AndroidSpeechRecognizerEngine
 import com.jarvis.voice.VadEngine
 import com.jarvis.voice.VadEvent
 import com.jarvis.voice.WakeWordEngine
@@ -32,7 +32,7 @@ class VoiceRouter(
     val rollingBuffer: RollingPcmBuffer,
     val wakeEngine: WakeWordEngine,
     val vadEngine: VadEngine,
-    var asrEngine: AsrEngine,
+    var asrEngine: AndroidSpeechRecognizerEngine,
     val bargeInDetector: com.jarvis.voice.BargeInDetector = com.jarvis.voice.BargeInDetector(),
     var continuousAudioStream: com.jarvis.voice.audio.ContinuousAudioStream? = null
 ) : AudioFrameConsumer {

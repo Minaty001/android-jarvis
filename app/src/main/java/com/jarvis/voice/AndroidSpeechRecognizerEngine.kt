@@ -14,15 +14,29 @@ import android.speech.SpeechRecognizer
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+
+
+
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 
-class AndroidSpeechRecognizerEngine(private val context: Context) : AsrEngine {
+enum class AsrState {
+    STOPPED,
+    STARTING,
+    READY,
+    LISTENING,
+    STOPPING,
+    ERROR
+}
+
+open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
+    open val usesRawAudio: Boolean = false
+
     private val TAG = "AndroidSpeechEngine"
     private val _state = MutableStateFlow(AsrState.STOPPED)
-    override val state: StateFlow<AsrState> = _state.asStateFlow()
+    open val state: StateFlow<AsrState> = _state.asStateFlow()
 
     private var speechRecognizer: SpeechRecognizer? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -37,9 +51,9 @@ class AndroidSpeechRecognizerEngine(private val context: Context) : AsrEngine {
     // Debounce flag: speechStartedCallback should fire at most once per listening session
     @Volatile private var speechStartedFired = false
 
-    override suspend fun start(asrDir: File) {
+    open suspend fun start(asrDir: File) {
         mainHandler.post {
-            if (SpeechRecognizer.isRecognitionAvailable(context)) {
+            if (context != null && SpeechRecognizer.isRecognitionAvailable(context)) {
                 _state.value = AsrState.READY
                 ensureSpeechRecognizer()
                 Log.i(TAG, "Android native SpeechRecognizer initialized, pre-warmed and READY")
@@ -53,7 +67,8 @@ class AndroidSpeechRecognizerEngine(private val context: Context) : AsrEngine {
     private fun ensureSpeechRecognizer(): SpeechRecognizer? {
         if (speechRecognizer == null) {
             try {
-                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
+                val ctx = context ?: return null
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(ctx).apply {
                     setRecognitionListener(createListener())
                 }
             } catch (e: Exception) {
@@ -85,13 +100,13 @@ class AndroidSpeechRecognizerEngine(private val context: Context) : AsrEngine {
         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2200L)
     }
 
-    override suspend fun startListening(
-        onSpeechStarted: (() -> Unit)?,
+    open suspend fun startListening(
+        onSpeechStarted: (() -> Unit)? = null,
         onPartial: (String) -> Unit,
         onFinal: (String) -> Unit,
-        onError: ((Int, String) -> Unit)?,
-        onEmpty: (() -> Unit)?,
-        onRmsChanged: ((Float) -> Unit)?
+        onError: ((Int, String) -> Unit)? = null,
+        onEmpty: (() -> Unit)? = null,
+        onRmsChanged: ((Float) -> Unit)? = null
     ) {
         speechStartedCallback = onSpeechStarted
         partialCallback = onPartial
@@ -131,11 +146,11 @@ class AndroidSpeechRecognizerEngine(private val context: Context) : AsrEngine {
         }
     }
 
-    override suspend fun pushAudio(samples: ShortArray) {
+    open suspend fun pushAudio(samples: ShortArray) {
         // System SpeechRecognizer captures microphone directly
     }
 
-    override suspend fun stopListening() {
+    open suspend fun stopListening() {
         if (_state.value != AsrState.LISTENING) return
         mainHandler.post {
             try {
@@ -147,7 +162,7 @@ class AndroidSpeechRecognizerEngine(private val context: Context) : AsrEngine {
         }
     }
 
-    override suspend fun stop() {
+    open suspend fun stop() {
         sessionCounter.incrementAndGet()
         mainHandler.post {
             try {

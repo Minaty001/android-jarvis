@@ -202,6 +202,41 @@ class SmartRoutineEngineTest {
     }
 
     @Test
+    fun testRoutineManageToolCreateAndDelete() = runBlocking {
+        // Create custom scheduled routine
+        val createRes = routineManageTool.execute(mapOf(
+            "action" to "create",
+            "name" to "Drink Water Reminder",
+            "time" to "10:00",
+            "speech" to "Time to drink water boss!"
+        ))
+        assertTrue(createRes.success)
+        assertTrue(createRes.message.contains("Drink Water Reminder"))
+
+        val added = routineEngine.getRoutine("Drink Water Reminder")
+        assertNotNull(added)
+        assertEquals("TIME_SCHEDULE", added?.trigger?.type?.name)
+        assertEquals("10:00", added?.trigger?.parameter)
+
+        // Delete custom routine
+        val deleteRes = routineManageTool.execute(mapOf("action" to "delete", "name" to "Drink Water Reminder"))
+        assertTrue(deleteRes.success)
+        assertNull(routineEngine.getRoutine("Drink Water Reminder"))
+    }
+
+    @Test
+    fun testRoutineSkillVoiceScheduling() = runBlocking {
+        val ctx = SkillContext("remind me to take medicine at 9 pm", AgentWorkingMemory("remind me to take medicine at 9 pm"))
+        assertTrue(routineSkill.canHandle(ctx.goal, ctx))
+
+        val res = routineSkill.execute(ctx.goal, ctx)
+        assertTrue(res.handled)
+        assertEquals("ROUTINE_MANAGE", res.proposedAction?.type)
+        assertEquals("create", res.proposedAction?.params?.get("action"))
+        assertEquals("21:00", res.proposedAction?.params?.get("time"))
+    }
+
+    @Test
     fun testToolRegistryAliases() {
         val registry = ToolRegistry()
         registry.register(routineManageTool)

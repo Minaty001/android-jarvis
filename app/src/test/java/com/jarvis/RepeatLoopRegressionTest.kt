@@ -1,12 +1,6 @@
 package com.jarvis
 
-import com.jarvis.agent.AgentKernel
-import com.jarvis.agent.AgentLoopGuard
-import com.jarvis.agent.AgentObservation
-import com.jarvis.agent.AgentState
-import com.jarvis.agent.AgentWorkingMemory
-import com.jarvis.agent.ExecutedAct
-import com.jarvis.agent.PendingApproval
+import com.jarvis.agent.*
 import com.jarvis.execution.VerificationResult
 import com.jarvis.execution.VerificationStatus
 import com.jarvis.tools.ToolResult
@@ -70,7 +64,7 @@ class RepeatLoopRegressionTest {
     fun testCheckpointRoundTripPreservesPendingApproval() {
         val goal = "Doller ko hello bhejo"
         val state = AgentState(taskId = 9, goal = goal)
-        state.pendingApproval = PendingApproval("WHATSAPP", mapOf("recipient" to "Doller", "message" to "hello"))
+        state.pendingApproval = AgentAction("WHATSAPP", mapOf("recipient" to "Doller", "message" to "hello"))
 
         val json = AgentKernel.serializeState(state, AgentWorkingMemory(goal))
         val (restoredState, _) = AgentKernel.restoreState(json)!!

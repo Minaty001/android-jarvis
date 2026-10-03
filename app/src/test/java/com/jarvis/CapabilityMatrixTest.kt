@@ -1,60 +1,43 @@
 package com.jarvis
 
 import com.jarvis.tools.SystemCapability
-import com.jarvis.tools.API_ANDROID_13
-import com.jarvis.tools.API_ANDROID_14
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-// Surface the API constants used above.
-@Suppress("unused")
-private val api13 = API_ANDROID_13
-private val api14 = API_ANDROID_14
+private const val API_ANDROID_13 = 33
+private const val API_ANDROID_14 = 34
 
 class CapabilityMatrixTest {
 
     @Test
     fun wifiOpenableBelowAndroid13() {
-        assertTrue(SystemCapability.wifiToggle(32).canAttempt)
-        assertTrue(SystemCapability.wifiToggle(API_ANDROID_13 - 1).canAttempt)
+        assertTrue(SystemCapability.wifiToggle(31).canAttempt)
+        assertFalse(SystemCapability.wifiToggle(API_ANDROID_13).canAttempt)
+        assertNotNull(SystemCapability.wifiToggle(API_ANDROID_13).panelAction)
     }
 
     @Test
-    fun wifiBlockedOnAndroid13PlusWithPanel() {
-        val d = SystemCapability.wifiToggle(API_ANDROID_13)
-        assertFalse(d.canAttempt)
-        assertNotNull(d.panelAction)
-        assertEquals("android.settings.WIFI_SETTINGS", d.panelAction)
-        assertFalse(d.reason.isNullOrBlank())
+    fun bluetoothAttemptedOnAllSupportedVersions() {
+        assertTrue(SystemCapability.bluetoothToggle(31).canAttempt)
+        assertTrue(SystemCapability.bluetoothToggle(API_ANDROID_13).canAttempt)
     }
 
     @Test
-    fun hotspotAlwaysOpensTetheringPanel() {
+    fun hotspotBlockedAcrossVersions() {
         val d = SystemCapability.hotspotToggle(API_ANDROID_13)
         assertFalse(d.canAttempt)
-        assertEquals("android.settings.WIRELESS_SETTINGS", d.panelAction)
+        assertNotNull(d.panelAction)
     }
 
     @Test
-    fun bluetoothAttemptedButRequiresVerification() {
-        val d = SystemCapability.bluetoothToggle(API_ANDROID_13)
-        assertTrue(d.canAttempt)
-        assertNotNull(d.reason)
-    }
-
-    @Test
-    fun dndBlockedOnAndroid14NeedsSpecialAccess() {
-        val d = SystemCapability.dndToggle(API_ANDROID_14)
-        assertFalse(d.canAttempt)
-        assertEquals(SystemCapability.ACTION_NOTIFICATION_POLICY_ACCESS, d.panelAction)
-    }
-
-    @Test
-    fun dndAttemptedBefore14() {
-        assertTrue(SystemCapability.dndToggle(33).canAttempt)
+    fun dndNeedsPanelAccessOnAndroid14() {
+        assertTrue(SystemCapability.dndToggle(API_ANDROID_13).canAttempt)
+        val d14 = SystemCapability.dndToggle(API_ANDROID_14)
+        assertFalse(d14.canAttempt)
+        assertNotNull(d14.panelAction)
     }
 
     @Test

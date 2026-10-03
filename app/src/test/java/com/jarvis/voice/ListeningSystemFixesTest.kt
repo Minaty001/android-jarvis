@@ -43,7 +43,7 @@ class ListeningSystemFixesTest {
         assertEquals(VadEvent.Silence, postEvent)
     }
 
-    private class StubAsrEngine : AsrEngine {
+    private class StubAsrEngine : AndroidSpeechRecognizerEngine() {
         private val _state = MutableStateFlow(AsrState.STOPPED)
         override val state: StateFlow<AsrState> = _state
         override val usesRawAudio: Boolean = true

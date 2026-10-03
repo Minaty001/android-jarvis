@@ -17,8 +17,7 @@ import com.jarvis.service.JarvisForegroundService
 import com.jarvis.ui.JarvisOrbView
 import com.jarvis.ui.JarvisWaveformView
 import com.jarvis.ui.components.Ui
-import com.jarvis.ui.model.AppSettings
-import com.jarvis.ui.model.safeDisplay
+import com.jarvis.ui.model.*
 import com.jarvis.ui.reliability.BackgroundTaskRunner
 import com.jarvis.voice.VoiceState
 import kotlinx.coroutines.Job
@@ -63,6 +62,8 @@ class DashboardScreen(
     private var commandJob: Job? = null
     private var statusJob: Job? = null
     private var boundService: JarvisForegroundService? = null
+
+    private fun String.safeDisplay(): String = replace(Regex("[\\r\\n\\t]"), " ").trim()
 
     init {
         setBackgroundColor(Ui.BG)
@@ -217,6 +218,40 @@ class DashboardScreen(
 
         chipsScroll.addView(chipsRow)
         root.addView(chipsScroll)
+
+        // 3.5 Voice Profile HUD Card
+        val voiceStore = com.jarvis.ui.data.UiPreferencesStore(context)
+        val profile = voiceStore.loadVoiceProfile()
+        val voiceCard = Ui.glassCard(context, if (profile.isEnrolled) Ui.BORDER_GLOW else Ui.BORDER)
+        val voiceInner = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Ui.dp(context, 14), Ui.dp(context, 10), Ui.dp(context, 14), Ui.dp(context, 10))
+        }
+        val voiceRow = Ui.row(context)
+        val voiceTitle = TextView(context).apply {
+            text = "OWNER VOICE PROFILE"
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Ui.TEXT)
+            letterSpacing = 0.08f
+        }
+        voiceRow.addView(voiceTitle, LinearLayout.LayoutParams(0, -2, 1f))
+        voiceRow.addView(Ui.hudBadge(context, if (profile.isEnrolled) "ENROLLED" else "UNENROLLED", if (profile.isEnrolled) Ui.SUCCESS else Ui.WARNING))
+        voiceInner.addView(voiceRow)
+
+        voiceInner.addView(TextView(context).apply {
+            text = if (profile.isEnrolled) "Speaker verification active • KWS phrase '${profile.wakeWordPhrase}' (${profile.sampleCount} samples enrolled)" else "Owner voice uncalibrated • Tap below to setup voice profile"
+            textSize = 10.5f
+            setTextColor(Ui.MUTED)
+            setPadding(0, Ui.dp(context, 2), 0, Ui.dp(context, 6))
+        })
+
+        val enrollBtn = Ui.button(context, if (profile.isEnrolled) "RE-ENROLL VOICE MODEL" else "ENROLL VOICE MODEL") {
+            onOpenSettings()
+        }
+        voiceInner.addView(enrollBtn)
+        voiceCard.addView(voiceInner)
+        root.addView(voiceCard)
 
         // 4. Context-Aware Active Protocol / Task Card (Hidden by default when idle)
         protocolCard = Ui.glassCard(context, Ui.BORDER_GLOW).apply {

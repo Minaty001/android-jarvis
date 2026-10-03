@@ -30,6 +30,10 @@ class SongSearchAndPlaySkill : Skill {
                 lower.contains("build") || lower.contains("make") || lower.contains("code") || lower.contains("develop")
         if (isCreation) return false
 
+        if (lower.contains("play store") || lower.contains("playstore") || lower.contains("google play")) {
+            return false
+        }
+
         if (triggers.any { lower.contains(it) }) {
             return true
         }

@@ -12,16 +12,49 @@ class MediaSkill : Skill {
         "next song", "agla gaana", "next track", "skip", "skip song",
         "previous song", "previous track", "pichla gaana", "pichhla gaana", "pichla", "pichhla", "prev song", "prev track", "back track",
         "resume music", "gaana chalao", "continue music", "pause music", "pause",
-        "spotify", "lyrics", "bol", "gaane ke bol"
+        "spotify", "lyrics", "song lyrics", "gaane ke bol", "youtube", "history"
     )
 
     override suspend fun canHandle(goal: String, context: SkillContext): Boolean {
         val lower = goal.lowercase().trim()
+        if (lower.contains("play store") || lower.contains("playstore") || lower.contains("google play")) {
+            return false
+        }
         return triggers.any { lower.contains(it) }
     }
 
     override suspend fun execute(goal: String, context: SkillContext): SkillResult {
         val lower = goal.lowercase().trim()
+
+        // 0. Explicit YouTube Session Actions
+        if (lower.contains("youtube") && (lower.contains("history") || lower.contains("purana") || lower.contains("list"))) {
+            return SkillResult(
+                handled = true,
+                proposedAction = AgentAction("YOUTUBE_PLAY", mapOf("action" to "history")),
+                explanation = "Retrieving YouTube session history"
+            )
+        }
+        if (lower.contains("youtube") && (lower.contains("current") || lower.contains("kya") || lower.contains("status") || lower.contains("playing"))) {
+            return SkillResult(
+                handled = true,
+                proposedAction = AgentAction("YOUTUBE_PLAY", mapOf("action" to "current")),
+                explanation = "Retrieving current YouTube video session info"
+            )
+        }
+        if (lower.contains("youtube") && (lower.contains("previous") || lower.contains("pichla") || lower.contains("prev") || lower.contains("back"))) {
+            return SkillResult(
+                handled = true,
+                proposedAction = AgentAction("YOUTUBE_PLAY", mapOf("action" to "previous")),
+                explanation = "Playing previous video from YouTube session history"
+            )
+        }
+        if (lower.contains("youtube") && lower.contains("pause")) {
+            return SkillResult(
+                handled = true,
+                proposedAction = AgentAction("YOUTUBE_PLAY", mapOf("action" to "pause")),
+                explanation = "Pausing YouTube session playback"
+            )
+        }
 
         // 1. Hardware media playback controls
         if (lower.contains("next") || lower.contains("skip") || lower.contains("agla")) {
@@ -53,8 +86,8 @@ class MediaSkill : Skill {
             )
         }
 
-        // 2. Lyrics retrieval
-        if (lower.contains("lyrics") || lower.contains("bol")) {
+        // 2. Lyrics retrieval (requires explicit "lyrics" or standalone word "bol" / "gaane ke bol")
+        if (lower.contains("lyrics") || Regex("\\b(gaane\\s+ke\\s+)?bol\\b").containsMatchIn(lower)) {
             val songName = lower.replace(Regex("\\b(show|lyrics|for|of|gaane ke|bol|batao|dikhao|what are the)\\b", RegexOption.IGNORE_CASE), " ")
                 .replace(Regex("\\s+"), " ").trim()
             return SkillResult(

@@ -28,7 +28,7 @@ class ApiManager(private val store: UiPreferencesStore, private val credentials:
         .writeTimeout(30, TimeUnit.SECONDS)
         .retryOnConnectionFailure(false)
         .build() // OkHttp supplies connection pooling for concurrent requests.
-    private val activeCalls = Collections.newSetFromMap(ConcurrentHashMap<Call, Boolean>())
+    private val activeCalls = ConcurrentHashMap.newKeySet<Call>()
 
     fun list(): List<ApiConfig> = store.loadApis().sortedBy { it.name.lowercase() }
 

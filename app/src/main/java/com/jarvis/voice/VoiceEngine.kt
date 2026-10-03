@@ -14,6 +14,8 @@ import com.jarvis.ui.data.UiPreferencesStore
 import com.jarvis.wakeword.RaphaelPhoneticMatcher
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.*
+
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,6 +41,14 @@ data class VoiceEngineStatus(
     val isLiveConversationActive: Boolean = false
 )
 
+enum class PipelineState {
+    STANDBY,
+    WAKE_LISTENING,
+    ACTIVE_ASR,
+    SPEAKING,
+    UNLOADING
+}
+
 class VoiceEngine(
     private val context: Context,
     private var groqApiKey: String = "",
@@ -60,7 +70,7 @@ class VoiceEngine(
     val continuousAudioStream = com.jarvis.voice.audio.ContinuousAudioStream(context)
     val vadEngine = assistantRuntime.vadEngine
     val wakeEngine = assistantRuntime.wakeEngine
-    @Volatile var asrEngine: AsrEngine = assistantRuntime.asrEngine
+    @Volatile var asrEngine: AndroidSpeechRecognizerEngine = assistantRuntime.asrEngine
     val ttsEngine = assistantRuntime.ttsEngine
     val voiceRouter = com.jarvis.voice.router.VoiceRouter(
         rollingBuffer = continuousAudioStream.rollingBuffer,
@@ -69,13 +79,37 @@ class VoiceEngine(
         asrEngine = asrEngine,
         continuousAudioStream = continuousAudioStream
     )
-    val lifecycleManager = VoicePipelineLifecycleManager(
-        asrEngine = asrEngine,
-        idleTimeoutMs = 45_000L,
-        onUnload = {
-            Log.i("VoiceEngine", "VoicePipelineLifecycleManager idle timeout — unloaded active ASR session")
+    private val currentState = java.util.concurrent.atomic.AtomicReference(PipelineState.STANDBY)
+    private var idleJob: Job? = null
+    
+    fun getCurrentState(): PipelineState = currentState.get()
+    
+    @Synchronized
+    fun transitionTo(newState: PipelineState) {
+        val prev = currentState.getAndSet(newState)
+        if (prev == newState) return
+        when (newState) {
+            PipelineState.WAKE_LISTENING -> resetIdleTimer()
+            PipelineState.ACTIVE_ASR, PipelineState.SPEAKING, PipelineState.STANDBY, PipelineState.UNLOADING -> {
+                idleJob?.cancel()
+                idleJob = null
+            }
         }
-    )
+    }
+    
+    @Synchronized
+    fun resetIdleTimer() {
+        idleJob?.cancel()
+        idleJob = scope.launch {
+            delay(45_000L)
+            currentState.set(PipelineState.UNLOADING)
+            try {
+                android.util.Log.i("VoiceEngine", "VoicePipelineLifecycleManager idle timeout — unloaded active ASR session")
+                asrEngine.stop()
+            } catch (e: Exception) {}
+            currentState.set(PipelineState.STANDBY)
+        }
+    }
     val memoryStore = assistantRuntime.memoryStore
     val augmentedMemoryPipeline = assistantRuntime.augmentedMemoryPipeline
     val toolRegistry = assistantRuntime.toolRegistry
@@ -398,7 +432,7 @@ class VoiceEngine(
 
     private suspend fun startListeningForCommand(isFollowUp: Boolean = false, initialAudio: ShortArray? = null) {
         stopCommandSession()
-        lifecycleManager.transitionTo(PipelineState.ACTIVE_ASR)
+        transitionTo(PipelineState.ACTIVE_ASR)
 
         val routeToAppropriateAsr: (Int) -> Unit = { preRoll ->
             if (asrEngine.usesRawAudio) {
@@ -622,7 +656,7 @@ class VoiceEngine(
 
     private suspend fun startWakeSession() {
         stopCommandSession()
-        lifecycleManager.transitionTo(PipelineState.WAKE_LISTENING)
+        transitionTo(PipelineState.WAKE_LISTENING)
 
         val isWakeAvailable = wakeEngine.isAvailable()
         wakeTransitionGate.set(false)
@@ -773,7 +807,7 @@ class VoiceEngine(
             if (finalResponse.isNotBlank() && !wasAlreadySpoken) {
                 _status.value = _status.value.copy(lastResponse = finalResponse, statusMessage = "Speaking")
                 conversationManager.transitionTo(VoiceState.SPEAKING)
-                lifecycleManager.transitionTo(PipelineState.SPEAKING)
+                transitionTo(PipelineState.SPEAKING)
                 val isHeadset = (ttsEngine as? AndroidTtsEngine)?.isHeadsetConnected() == true
                 voiceRouter.bargeInDetector.isSpeakerBleedGated = !isHeadset
                 if (isBargeInEnabled) {
@@ -820,7 +854,7 @@ class VoiceEngine(
         acousticFeedbackEngine.release()
         activeExecutionJob?.cancel()
         activeExecutionJob = null
-        lifecycleManager.transitionTo(PipelineState.STANDBY)
+        transitionTo(PipelineState.STANDBY)
         stopCommandSession()
         continuousAudioStream.stop()
         wakeEngine.stop()
@@ -842,7 +876,7 @@ class VoiceEngine(
             toneGenerator = null
         } catch (_: Exception) {}
         stateCollectionJob?.cancel()
-        lifecycleManager.close()
+        idleJob?.cancel()
         scope.cancel()
         continuousAudioStream.stop()
         wakeEngine.close()

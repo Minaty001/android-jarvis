@@ -318,11 +318,14 @@ class FileManager(private val context: Context? = null) {
     }
 
     fun formatBytes(bytes: Long): String {
-        val mb = bytes / (1024.0 * 1024.0)
-        return if (mb >= 1024) {
-            String.format(Locale.ROOT, "%.2f GB", mb / 1024.0)
-        } else {
-            String.format(Locale.ROOT, "%.1f MB", mb)
-        }
+        return context?.let { android.text.format.Formatter.formatShortFileSize(it, bytes) }
+            ?: run {
+                val mb = bytes / (1024.0 * 1024.0)
+                if (mb >= 1024) {
+                    String.format(java.util.Locale.ROOT, "%.2f GB", mb / 1024.0)
+                } else {
+                    String.format(java.util.Locale.ROOT, "%.1f MB", mb)
+                }
+            }
     }
 }

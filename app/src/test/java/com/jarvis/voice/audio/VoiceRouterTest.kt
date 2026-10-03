@@ -1,6 +1,6 @@
 package com.jarvis.voice.audio
 
-import com.jarvis.voice.AsrEngine
+import com.jarvis.voice.AndroidSpeechRecognizerEngine
 import com.jarvis.voice.AsrState
 import com.jarvis.voice.VadEngine
 import com.jarvis.voice.WakeWordEngine
@@ -27,7 +27,7 @@ class VoiceRouterTest {
         override fun close() {}
     }
 
-    private class MockAsrEngine : AsrEngine {
+    private class MockAsrEngine : AndroidSpeechRecognizerEngine() {
         var pushedPcm = 0
         override val state: StateFlow<AsrState> = MutableStateFlow(AsrState.LISTENING)
         override val usesRawAudio: Boolean = true

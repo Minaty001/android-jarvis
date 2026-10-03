@@ -45,6 +45,8 @@ class AgentKernel(
         register(RoutineSkill())
         register(SecuritySkill())
         register(TimeSkill())
+        register(DeviceHardwareSkill())
+        register(AppLauncherSkill())
     },
     private val learnedSkillStore: com.jarvis.skilllearning.LearnedSkillStore? = null,
     private val checkpointManager: com.jarvis.reliability.CheckpointManager? = null,

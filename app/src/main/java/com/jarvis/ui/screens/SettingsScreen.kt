@@ -26,38 +26,14 @@ class SettingsScreen(
     private var settings = initial
     private var voiceProfile: UserVoiceProfile = store.loadVoiceProfile()
     private val themeSpinner = Spinner(context)
-    private val timeout = EditText(context)
-    private val retries = EditText(context)
-    private val verbosity = Spinner(context)
     private val wakeWord = EditText(context)
     private val wakeAckSpinner = Spinner(context)
     private val ttsProviderSpinner = Spinner(context)
     private val ttsVoiceSpinner = Spinner(context)
     private val notifications = MaterialSwitch(context)
-    private val developer = MaterialSwitch(context)
-    private val continuousConvSwitch = MaterialSwitch(context)
-    private val bargeInSwitch = MaterialSwitch(context)
-    private val offlineAsrSwitch = MaterialSwitch(context)
-    private val batteryAnnouncementsSwitch = MaterialSwitch(context)
-    private val proactiveCalendarSwitch = MaterialSwitch(context)
-    private var currentPreBriefingMinutes: Int = initial.proactivePreBriefingMinutes
-    private val preBriefingMinutesBtn = TextView(context)
-    private val proactiveBatterySwitch = MaterialSwitch(context)
     private val dailyBriefingSwitch = MaterialSwitch(context)
     private val briefingTimeBtn = TextView(context)
     private var currentBriefingTime: String = initial.dailyBriefingTime
-    private val lockScreenSwitch = MaterialSwitch(context)
-    private val deviceUnlockPinInput = EditText(context)
-    private val autoLearnSwitch = MaterialSwitch(context)
-    private val whatsAppAutoReturnSwitch = MaterialSwitch(context)
-    private val mediaDuckingSwitch = MaterialSwitch(context)
-    private var currentDuckingPercent: Int = initial.mediaDuckingPercent
-    private val duckingPercentBtn = TextView(context)
-    private val acousticFeedbackSwitch = MaterialSwitch(context)
-    private val hapticFeedbackSwitch = MaterialSwitch(context)
-    private val bluetoothScoSwitch = MaterialSwitch(context)
-    private val headsetHookSwitch = MaterialSwitch(context)
-    private val wearableSyncSwitch = MaterialSwitch(context)
     private val floatingOverlaySwitch = MaterialSwitch(context)
     private val customKey = EditText(context)
     private val customValue = EditText(context)
@@ -361,65 +337,6 @@ class SettingsScreen(
         }
         notifInner.addView(notifBtn)
 
-        proactiveCalendarSwitch.apply {
-            text = "Calendar Event Pre-Briefings"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.proactiveCalendarAlertsEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        notifInner.addView(proactiveCalendarSwitch)
-
-        val preBriefRow = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(0, Ui.dp(context, 4), 0, Ui.dp(context, 6))
-            val label = TextView(context).apply {
-                text = "Pre-Briefing Lead Time"
-                setTextColor(Ui.MUTED)
-                textSize = 12f
-                layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
-            }
-            addView(label)
-        }
-
-        preBriefingMinutesBtn.apply {
-            textSize = 11.5f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.CYAN)
-            background = Ui.rounded(context, Ui.SURFACE_2, Ui.CYAN, 8)
-            setPadding(Ui.dp(context, 10), Ui.dp(context, 5), Ui.dp(context, 10), Ui.dp(context, 5))
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                currentPreBriefingMinutes = when (currentPreBriefingMinutes) {
-                    10 -> 15
-                    15 -> 30
-                    else -> 10
-                }
-                updatePreBriefingMinutesBtnText()
-                markDirty()
-            }
-        }
-        updatePreBriefingMinutesBtnText()
-        preBriefRow.addView(preBriefingMinutesBtn)
-        notifInner.addView(preBriefRow)
-
-        proactiveBatterySwitch.apply {
-            text = "Critical Low Battery Alert (<= 15%)"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.proactiveBatteryAlertsEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        notifInner.addView(proactiveBatterySwitch)
-
-        batteryAnnouncementsSwitch.apply {
-            text = "Full Battery Announcement (100% Charged)"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.batteryAnnouncementsEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        notifInner.addView(batteryAnnouncementsSwitch)
-
         notifCard.addView(notifInner)
         root.addView(notifCard)
 
@@ -629,58 +546,6 @@ class SettingsScreen(
         timeRow.addView(briefingTimeBtn)
         autoInner.addView(timeRow)
 
-        // 3. Lock-Screen HUD Switch
-        lockScreenSwitch.apply {
-            text = "Wake Screen & Show HUD on Lock-Screen"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.lockScreenVoiceEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        autoInner.addView(lockScreenSwitch)
-
-        // 3.5. Device Unlock PIN Input
-        val pinRow = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 6))
-        }
-        pinRow.addView(TextView(context).apply {
-            text = "Device Unlock PIN / Passcode"
-            textSize = 12f
-            setTextColor(Ui.MUTED)
-        })
-        deviceUnlockPinInput.apply {
-            hint = "e.g. 1234 (used for auto-unlock)"
-            setText(initial.deviceUnlockPin)
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            setTextColor(Ui.TEXT)
-            setHintTextColor(Ui.MUTED)
-            addTextChangedListener(object : android.text.TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { markDirty() }
-                override fun afterTextChanged(s: android.text.Editable?) {}
-            })
-        }
-        pinRow.addView(deviceUnlockPinInput)
-        autoInner.addView(pinRow)
-
-        // 3.8. Auto-Learn Mode Switch
-        autoLearnSwitch.apply {
-            text = "Auto-Learn Mode (Capture Screen & Log Workflows)"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.autoLearnEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        autoInner.addView(autoLearnSwitch)
-
-        // 4. WhatsApp Auto-Return Switch
-        whatsAppAutoReturnSwitch.apply {
-            text = "Auto-Return to Home After Sending Messages"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.whatsAppAutoReturnEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        autoInner.addView(whatsAppAutoReturnSwitch)
-
         autoCard.addView(autoInner)
         root.addView(autoCard)
 
@@ -753,85 +618,6 @@ class SettingsScreen(
             addView(ttsVoiceSpinner)
         }
         wakeInner.addView(ttsVoiceRow)
-
-        continuousConvSwitch.text = "Continuous Conversation Mode"
-        continuousConvSwitch.setTextColor(Ui.TEXT)
-        continuousConvSwitch.isChecked = initial.continuousConversation
-        continuousConvSwitch.setOnCheckedChangeListener { _, _ -> markDirty() }
-        wakeInner.addView(continuousConvSwitch)
-
-        bargeInSwitch.text = "Barge-in Speech Interruption"
-        bargeInSwitch.setTextColor(Ui.TEXT)
-        bargeInSwitch.isChecked = initial.bargeInEnabled
-        bargeInSwitch.setOnCheckedChangeListener { _, _ -> markDirty() }
-        wakeInner.addView(bargeInSwitch)
-
-        offlineAsrSwitch.text = "Prefer Offline Low-Latency Neural ASR"
-        offlineAsrSwitch.setTextColor(Ui.TEXT)
-        offlineAsrSwitch.isChecked = initial.offlineAsrPreferred
-        offlineAsrSwitch.setOnCheckedChangeListener { _, _ -> markDirty() }
-        wakeInner.addView(offlineAsrSwitch)
-
-        // Media Ducking Switch
-        mediaDuckingSwitch.apply {
-            text = "Automated Background Media Ducking"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.mediaDuckingEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        wakeInner.addView(mediaDuckingSwitch)
-
-        // Ducking Level Row
-        val duckRow = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(0, Ui.dp(context, 4), 0, Ui.dp(context, 4))
-        }
-        duckRow.addView(TextView(context).apply {
-            text = "Media Ducking Volume Level"
-            setTextColor(Ui.MUTED)
-            textSize = 12f
-            layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
-        })
-        duckingPercentBtn.apply {
-            textSize = 11.5f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.CYAN)
-            background = Ui.rounded(context, Ui.SURFACE_2, Ui.CYAN, 8)
-            setPadding(Ui.dp(context, 10), Ui.dp(context, 5), Ui.dp(context, 10), Ui.dp(context, 5))
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                currentDuckingPercent = when (currentDuckingPercent) {
-                    25 -> 45
-                    45 -> 65
-                    else -> 25
-                }
-                updateDuckingPercentBtnText()
-                markDirty()
-            }
-        }
-        updateDuckingPercentBtnText()
-        duckRow.addView(duckingPercentBtn)
-        wakeInner.addView(duckRow)
-
-        // Acoustic Feedback Switch
-        acousticFeedbackSwitch.apply {
-            text = "Acoustic Earcons & Audio Feedback"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.acousticFeedbackEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        wakeInner.addView(acousticFeedbackSwitch)
-
-        // Haptic Feedback Switch
-        hapticFeedbackSwitch.apply {
-            text = "Haptic Tactile Pulse on Barge-in"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.hapticFeedbackEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        wakeInner.addView(hapticFeedbackSwitch)
 
         // Voice Calibration Profile Sub-Section
         val profileDivider = View(context).apply {
@@ -1022,30 +808,6 @@ class SettingsScreen(
             setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 10))
         })
 
-        bluetoothScoSwitch.apply {
-            text = "Bluetooth Earbud Microphone (SCO Audio Routing)"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.bluetoothScoRoutingEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        btInner.addView(bluetoothScoSwitch)
-
-        headsetHookSwitch.apply {
-            text = "Earbud Button Wake / Physical Barge-in Hook"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.headsetHookActivationEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        btInner.addView(headsetHookSwitch)
-
-        wearableSyncSwitch.apply {
-            text = "Smartwatch & WearOS Companion Synchronization"
-            setTextColor(Ui.TEXT)
-            isChecked = initial.wearableSyncEnabled
-            setOnCheckedChangeListener { _, _ -> markDirty() }
-        }
-        btInner.addView(wearableSyncSwitch)
-
         floatingOverlaySwitch.apply {
             text = "Floating Multitasking Hologram Bubble (Over Other Apps)"
             setTextColor(Ui.TEXT)
@@ -1112,18 +874,6 @@ class SettingsScreen(
         notifications.isChecked = initial.notificationsEnabled
         prefInner.addView(notifications)
 
-        addNumeric(prefInner, "Default API Timeout (ms)", timeout, initial.defaultTimeoutMs.toString())
-        addNumeric(prefInner, "Max Retry Attempts", retries, initial.maxRetryAttempts.toString())
-
-        verbosity.adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, listOf("ERROR", "WARN", "INFO", "DEBUG", "TRACE"))
-        verbosity.setSelection(listOf("ERROR", "WARN", "INFO", "DEBUG", "TRACE").indexOf(initial.logVerbosity).coerceAtLeast(0))
-        prefInner.addView(TextView(context).apply { text = "Log Verbosity"; textSize = 11f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Ui.TEXT); setPadding(0, Ui.dp(context, 6), 0, 0) })
-        prefInner.addView(verbosity)
-
-        developer.text = "Developer Mode & Detailed Traces"
-        developer.setTextColor(Ui.TEXT)
-        developer.isChecked = initial.developerMode
-        prefInner.addView(developer)
         prefCard.addView(prefInner)
         root.addView(prefCard)
 
@@ -1179,7 +929,7 @@ class SettingsScreen(
         root.addView(logCard)
         renderLogs()
 
-        val editFields = listOf(timeout, retries, wakeWord, customKey, customValue)
+        val editFields = listOf(wakeWord, customKey, customValue)
         editFields.forEach { field ->
             field.addTextChangedListener(object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -1188,9 +938,7 @@ class SettingsScreen(
             })
         }
         themeSpinner.onItemSelectedListener = simpleSpinnerListener { markDirty() }
-        verbosity.onItemSelectedListener = simpleSpinnerListener { markDirty() }
         notifications.setOnCheckedChangeListener { _, _ -> markDirty() }
-        developer.setOnCheckedChangeListener { _, _ -> markDirty() }
         suppressDirty = false
 
     }
@@ -1234,32 +982,10 @@ class SettingsScreen(
         settings = settings.copy(
             theme = themeSpinner.selectedItem.toString(),
             notificationsEnabled = notifications.isChecked,
-            defaultTimeoutMs = timeout.text.toString().toLongOrNull()?.coerceIn(1_000L, 300_000L) ?: 30_000L,
-            maxRetryAttempts = retries.text.toString().toIntOrNull()?.coerceIn(1, 8) ?: 3,
-            logVerbosity = verbosity.selectedItem.toString(),
             wakeWord = wakeWord.text.toString().trim().ifBlank { "Jarvis" },
-            developerMode = developer.isChecked,
-            continuousConversation = continuousConvSwitch.isChecked,
-            bargeInEnabled = bargeInSwitch.isChecked,
-            offlineAsrPreferred = offlineAsrSwitch.isChecked,
-            batteryAnnouncementsEnabled = batteryAnnouncementsSwitch.isChecked,
-            proactiveCalendarAlertsEnabled = proactiveCalendarSwitch.isChecked,
-            proactivePreBriefingMinutes = currentPreBriefingMinutes,
-            proactiveBatteryAlertsEnabled = proactiveBatterySwitch.isChecked,
             wakeAcknowledgment = wakeAckSpinner.selectedItem.toString(),
             dailyBriefingEnabled = dailyBriefingSwitch.isChecked,
             dailyBriefingTime = currentBriefingTime,
-            lockScreenVoiceEnabled = lockScreenSwitch.isChecked,
-            deviceUnlockPin = deviceUnlockPinInput.text.toString().trim(),
-            autoLearnEnabled = autoLearnSwitch.isChecked,
-            whatsAppAutoReturnEnabled = whatsAppAutoReturnSwitch.isChecked,
-            mediaDuckingEnabled = mediaDuckingSwitch.isChecked,
-            mediaDuckingPercent = currentDuckingPercent,
-            acousticFeedbackEnabled = acousticFeedbackSwitch.isChecked,
-            hapticFeedbackEnabled = hapticFeedbackSwitch.isChecked,
-            bluetoothScoRoutingEnabled = bluetoothScoSwitch.isChecked,
-            headsetHookActivationEnabled = headsetHookSwitch.isChecked,
-            wearableSyncEnabled = wearableSyncSwitch.isChecked,
             floatingOverlayEnabled = floatingOverlaySwitch.isChecked,
             ttsProvider = if (ttsProviderSpinner.selectedItemPosition == 1) "android" else "groq",
             ttsVoice = ttsVoiceSpinner.selectedItem?.toString() ?: "Fritz-PlayAI"
@@ -1283,26 +1009,9 @@ class SettingsScreen(
     private fun reset() {
         settings = AppSettings()
         store.saveSettings(settings)
-        proactiveCalendarSwitch.isChecked = settings.proactiveCalendarAlertsEnabled
-        currentPreBriefingMinutes = settings.proactivePreBriefingMinutes
-        updatePreBriefingMinutesBtnText()
-        proactiveBatterySwitch.isChecked = settings.proactiveBatteryAlertsEnabled
-        batteryAnnouncementsSwitch.isChecked = settings.batteryAnnouncementsEnabled
         dailyBriefingSwitch.isChecked = settings.dailyBriefingEnabled
         currentBriefingTime = settings.dailyBriefingTime
         updateBriefingTimeBtnText()
-        lockScreenSwitch.isChecked = settings.lockScreenVoiceEnabled
-        deviceUnlockPinInput.setText(settings.deviceUnlockPin)
-        autoLearnSwitch.isChecked = settings.autoLearnEnabled
-        whatsAppAutoReturnSwitch.isChecked = settings.whatsAppAutoReturnEnabled
-        mediaDuckingSwitch.isChecked = settings.mediaDuckingEnabled
-        currentDuckingPercent = settings.mediaDuckingPercent
-        updateDuckingPercentBtnText()
-        acousticFeedbackSwitch.isChecked = settings.acousticFeedbackEnabled
-        hapticFeedbackSwitch.isChecked = settings.hapticFeedbackEnabled
-        bluetoothScoSwitch.isChecked = settings.bluetoothScoRoutingEnabled
-        headsetHookSwitch.isChecked = settings.headsetHookActivationEnabled
-        wearableSyncSwitch.isChecked = settings.wearableSyncEnabled
         floatingOverlaySwitch.isChecked = settings.floatingOverlayEnabled
         com.jarvis.automation.DailyBriefingScheduler.scheduleNextBriefing(context, hour = 8, minute = 0)
         dirty = false; onDirtyChanged(false)
@@ -1325,14 +1034,6 @@ class SettingsScreen(
 
     private fun updateBriefingTimeBtnText() {
         briefingTimeBtn.text = formatTimeForDisplay(currentBriefingTime)
-    }
-
-    private fun updateDuckingPercentBtnText() {
-        duckingPercentBtn.text = "$currentDuckingPercent% Vol"
-    }
-
-    private fun updatePreBriefingMinutesBtnText() {
-        preBriefingMinutesBtn.text = "$currentPreBriefingMinutes min before"
     }
 
     private val saveHandler = android.os.Handler(android.os.Looper.getMainLooper())

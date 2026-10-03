@@ -64,6 +64,7 @@ class GroqTtsEngine(
         val key = apiKeyProvider().trim()
         if (key.isBlank()) {
             Log.d(TAG, "No Groq API key provided for neural TTS — using fallback engine")
+            fallbackEngine?.start(context.filesDir)
             return fallbackEngine?.speak(trimmed) ?: false
         }
 
@@ -77,6 +78,7 @@ class GroqTtsEngine(
         }
 
         if (!success && !isCancelled.get()) {
+            fallbackEngine?.start(context.filesDir)
             return fallbackEngine?.speak(trimmed) ?: false
         }
         return success
@@ -159,14 +161,9 @@ class GroqTtsEngine(
                     .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
-            } else if (isBtDevice != null) {
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build()
             } else {
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             }

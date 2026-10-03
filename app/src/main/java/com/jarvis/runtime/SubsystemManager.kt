@@ -25,9 +25,8 @@ import com.jarvis.retrieval.engine.RaphaelRetrievalManager
 import com.jarvis.telecom.CallAndSmsAgent
 import com.jarvis.telecom.ContactResolver
 import com.jarvis.voice.AndroidTtsEngine
-import com.jarvis.voice.AsrEngine
-import com.jarvis.voice.GroqTtsEngine
 import com.jarvis.voice.AndroidSpeechRecognizerEngine
+import com.jarvis.voice.GroqTtsEngine
 import com.jarvis.voice.TtsEngine
 import com.jarvis.voice.VadEngine
 import com.jarvis.voice.WakeWordEngine
@@ -253,10 +252,10 @@ class SubsystemManager(private val context: Context? = null) {
         }
 
     @Volatile
-    private var _asrEngine: AsrEngine? = null
-    var asrEngine: AsrEngine
+    private var _asrEngine: AndroidSpeechRecognizerEngine? = null
+    var asrEngine: AndroidSpeechRecognizerEngine
         get() = _asrEngine ?: synchronized(this) {
-            _asrEngine ?: AndroidSpeechRecognizerEngine(requireNotNull(context) { "Context required for AsrEngine" }).also {
+            _asrEngine ?: AndroidSpeechRecognizerEngine(requireNotNull(context) { "Context required for AndroidSpeechRecognizerEngine" }).also {
                 _asrEngine = it
                 Log.d(TAG, "Initialized AndroidSpeechRecognizerEngine on-demand")
             }

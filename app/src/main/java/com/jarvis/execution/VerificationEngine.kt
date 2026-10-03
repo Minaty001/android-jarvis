@@ -600,28 +600,27 @@ class VerificationEngine(private val context: android.content.Context? = null) {
             null
         }
     }
+
+    companion object {
+        fun mediaTitleMatches(query: String, title: String?): Boolean {
+            if (title.isNullOrBlank()) return false
+            if (query.isBlank()) return true
+
+            fun normalize(s: String): String =
+                s.lowercase()
+                    .replace(Regex("[^a-z0-9\u0900-\u097F ]"), " ")
+                    .replace(Regex("\\s{2,}"), " ")
+                    .trim()
+
+            val q = normalize(query)
+            val t = normalize(title)
+            if (q.isEmpty() || t.isEmpty()) return false
+            if (q in t || t in q) return true
+
+            val tokens = q.split(" ").filter { it.length >= 4 }
+            return tokens.isNotEmpty() && tokens.all { it in t }
+        }
+    }
 }
 
-/**
- * Best-effort lexical title match used to tie the observed playing metadata to the
- * requested query. Fails closed: a blank/unavailable title or a non-match returns
- * false so the verifier stays UNKNOWN instead of claiming the requested content.
- */
-fun mediaTitleMatches(query: String, title: String?): Boolean {
-    if (title.isNullOrBlank()) return false
-    if (query.isBlank()) return true
-
-    fun normalize(s: String): String =
-        s.lowercase()
-            .replace(Regex("[^a-z0-9\u0900-\u097F ]"), " ")
-            .replace(Regex("\\s{2,}"), " ")
-            .trim()
-
-    val q = normalize(query)
-    val t = normalize(title)
-    if (q.isEmpty() || t.isEmpty()) return false
-    if (q in t || t in q) return true
-
-    val tokens = q.split(" ").filter { it.length >= 4 }
-    return tokens.isNotEmpty() && tokens.all { it in t }
-}
+fun mediaTitleMatches(query: String, title: String?): Boolean = VerificationEngine.mediaTitleMatches(query, title)

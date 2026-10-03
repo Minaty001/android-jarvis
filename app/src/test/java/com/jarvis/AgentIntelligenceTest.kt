@@ -8,7 +8,6 @@ import com.jarvis.ai.ModelRouter
 import com.jarvis.execution.VerificationEngine
 import com.jarvis.execution.VerificationResult
 import com.jarvis.execution.VerificationStatus
-import com.jarvis.execution.mediaTitleMatches
 import com.jarvis.foundation.PolicyEngine
 import com.jarvis.foundation.TaskStateManager
 import com.jarvis.memory.AugmentedMemoryPipeline
@@ -235,14 +234,14 @@ class AgentIntelligenceTest {
 
     @Test
     fun testMediaTitleMatching() {
-        assertTrue(mediaTitleMatches("bassi comedy", "Anubhav Singh Bassi - Stand Up Comedy"))
-        assertTrue(mediaTitleMatches("bassi standup comedy", "bassi standup comedy full show (Official)"))
-        assertTrue(mediaTitleMatches("latest hindi song", "Latest Hindi Song 2026 - Dance Mix"))
-        assertTrue(mediaTitleMatches("", "anything at all"))
-        assertFalse(mediaTitleMatches("q", "anything at all"))
-        assertFalse(mediaTitleMatches("bassi standup comedy", "Zakir Khan standup comedy"))
-        assertFalse(mediaTitleMatches("comedy video", null))
-        assertFalse(mediaTitleMatches("comedy video", ""))
+        assertTrue(VerificationEngine.mediaTitleMatches("bassi comedy", "Anubhav Singh Bassi - Stand Up Comedy"))
+        assertTrue(VerificationEngine.mediaTitleMatches("bassi standup comedy", "bassi standup comedy full show (Official)"))
+        assertTrue(VerificationEngine.mediaTitleMatches("latest hindi song", "Latest Hindi Song 2026 - Dance Mix"))
+        assertTrue(VerificationEngine.mediaTitleMatches("", "anything at all"))
+        assertFalse(VerificationEngine.mediaTitleMatches("q", "anything at all"))
+        assertFalse(VerificationEngine.mediaTitleMatches("bassi standup comedy", "Zakir Khan standup comedy"))
+        assertFalse(VerificationEngine.mediaTitleMatches("comedy video", null))
+        assertFalse(VerificationEngine.mediaTitleMatches("comedy video", ""))
     }
 
     @Test

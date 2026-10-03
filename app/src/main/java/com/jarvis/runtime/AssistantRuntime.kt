@@ -53,7 +53,7 @@ class AssistantRuntime(
     // Voice subsystem
     val vadEngine get() = subsystems.vadEngine
     val wakeEngine: WakeWordEngine get() = subsystems.wakeEngine
-    var asrEngine: AsrEngine
+    var asrEngine: AndroidSpeechRecognizerEngine
         get() = subsystems.asrEngine
         set(value) { subsystems.asrEngine = value }
     val ttsEngine get() = subsystems.ttsEngine
@@ -65,10 +65,7 @@ class AssistantRuntime(
     val toolExecutor = ToolExecutor(
         toolRegistry,
         policyEngine,
-        verificationEngine,
-        auditSink = { actionType, risk, reason, status, details ->
-            taskStateManager.logAudit(activeTaskId, actionType, risk, reason, status, details)
-        }
+        verificationEngine
     )
 
     // Autonomous Control Plane Architecture (Layers 0 - 10)
@@ -188,6 +185,8 @@ class AssistantRuntime(
         register(com.jarvis.agent.skills.LogSkill())
         register(com.jarvis.agent.skills.TimeSkill())
         register(com.jarvis.agent.skills.LocationSkill())
+        register(com.jarvis.agent.skills.DeviceHardwareSkill())
+        register(com.jarvis.agent.skills.AppLauncherSkill())
     }
     val adaptiveSkillEvolution = com.jarvis.skilllearning.AdaptiveSkillEvolution(
         context = context,
@@ -440,6 +439,8 @@ class AssistantRuntime(
         val appListTool = ListInstalledAppsTool(context)
         toolRegistry.register(appListTool, appListTool.metadata)
         toolRegistry.register(OpenAppTool(context))
+        val installAppTool = InstallAppTool(context)
+        toolRegistry.register(installAppTool, installAppTool.metadata)
         toolRegistry.register(CloseAppTool(context))
         toolRegistry.register(AppsCloseAllTool(context))
 

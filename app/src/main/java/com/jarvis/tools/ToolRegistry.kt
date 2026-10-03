@@ -51,6 +51,10 @@ class ToolRegistry {
         "LAUNCH_APP" to "OPEN_APP",
         "APP_OPEN" to "OPEN_APP",
         "APP_CLOSE" to "CLOSE_APP",
+        "INSTALL" to "INSTALL_APP",
+        "DOWNLOAD" to "INSTALL_APP",
+        "DOWNLOAD_APP" to "INSTALL_APP",
+        "PLAYSTORE_INSTALL" to "INSTALL_APP",
         "SCAN_APPS" to "APPS_LIST",
         "LIST_APPS" to "APPS_LIST",
         "INSTALLED_APPS" to "APPS_LIST",
@@ -467,15 +471,10 @@ class ToolRegistry {
     }
 }
 
-fun interface AuditSink {
-    fun log(actionType: String, riskLevel: String, reason: String, status: String, details: String)
-}
-
 class ToolExecutor(
     val registry: ToolRegistry,
     private val policyEngine: PolicyEngine = PolicyEngine(),
-    private val verificationEngine: VerificationEngine? = null,
-    private val auditSink: AuditSink? = null
+    private val verificationEngine: VerificationEngine? = null
 ) {
     private val TAG = "ToolExecutor"
 
@@ -524,21 +523,18 @@ class ToolExecutor(
         if (!policyResult.allowed) {
             val reason = "Execution blocked by policy: ${policyResult.reason}"
             Log.w(TAG, reason)
-            auditSink?.log(canonicalType, effectiveMetadata.riskLevel.name, policyResult.reason, "BLOCKED", reason)
             return ToolResult.Failed(reason)
         }
 
         if (policyResult.requiresApproval && !userApprovalGranted) {
             val approvalPrompt = "Action '$actionType' requires confirmation: ${policyResult.reason}"
             Log.i(TAG, approvalPrompt)
-            auditSink?.log(canonicalType, effectiveMetadata.riskLevel.name, policyResult.reason, "NEEDS_CONFIRMATION", approvalPrompt)
             return ToolResult.NeedsConfirmation(actionType, approvalPrompt)
         }
 
         // Gateway schema validation: required params must be present before any execution.
         val schemaError = validateParams(canonicalType, effectiveMetadata, effectiveParams)
         if (schemaError != null) {
-            auditSink?.log(canonicalType, effectiveMetadata.riskLevel.name, "Schema validation failed", "REJECTED", schemaError)
             return ToolResult.Failed(schemaError)
         }
 
@@ -548,14 +544,12 @@ class ToolExecutor(
         } catch (e: TimeoutCancellationException) {
             val msg = "Tool '$actionType' timed out after ${tool.policy.timeoutMs}ms"
             Log.w(TAG, msg)
-            auditSink?.log(canonicalType, effectiveMetadata.riskLevel.name, "Timeout", "TIMEOUT", msg)
             return ToolResult.Failed(msg)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Tool execution failed for '$actionType'", e)
             val msg = e.message ?: "Tool execution failed"
-            auditSink?.log(canonicalType, effectiveMetadata.riskLevel.name, "Exception", "FAILED", msg)
             return ToolResult.Failed(msg)
         }
 
@@ -564,13 +558,6 @@ class ToolExecutor(
         if (!verification.verified) {
             Log.w(TAG, "Verification notice for $actionType: ${verification.message}")
         }
-        auditSink?.log(
-            canonicalType,
-            effectiveMetadata.riskLevel.name,
-            "Execution ${if (result.success) "succeeded" else "failed"}",
-            if (result.success) "EXECUTED" else "FAILED",
-            result.message.take(200)
-        )
 
         return result
     }

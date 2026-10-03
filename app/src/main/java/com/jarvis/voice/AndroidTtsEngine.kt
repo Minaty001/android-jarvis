@@ -28,6 +28,8 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
     /** Set to true when Bluetooth SCO is active so TTS routes through the BT speaker. */
     @Volatile var isBluetoothScoActive: Boolean = false
 
+    @Volatile private var isInitializing = false
+
     override fun isSpeaking(): Boolean = isSpeakingActive
 
     fun isHeadsetConnected(): Boolean {
@@ -52,9 +54,24 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         }
     }
 
+    @Synchronized
+    private fun ensureInitialized() {
+        if (isReady && tts != null) return
+        if (isInitializing) return
+        start(context.filesDir)
+    }
+
     @Suppress("UNUSED_PARAMETER")
     override fun start(ttsDir: File) {
+        if (isReady && tts != null) return
+        isInitializing = true
+        try {
+            tts?.stop()
+            tts?.shutdown()
+        } catch (_: Exception) {}
+
         tts = TextToSpeech(context) { status ->
+            isInitializing = false
             if (status == TextToSpeech.SUCCESS) {
                 tts?.language = Locale.US
                 tts?.setSpeechRate(1.05f)
@@ -64,17 +81,17 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
 
                 setupProgressListener()
                 isReady = true
-                Log.i(TAG, "Android TTS initialized successfully with maximum assistant gain")
+                Log.i(TAG, "Android TTS initialized successfully with maximum gain")
             } else {
-                Log.e(TAG, "Android TTS initialization failed")
+                isReady = false
+                Log.e(TAG, "Android TTS initialization failed with status $status")
             }
         }
     }
 
     /**
      * Applies the correct AudioAttributes based on whether Bluetooth SCO is active.
-     * When SCO is active, uses VOICE_COMMUNICATION so output routes through the BT speaker.
-     * Otherwise uses ASSISTANT for normal phone speaker playback.
+     * Uses USAGE_VOICE_COMMUNICATION for SCO headsets and USAGE_MEDIA for speaker/A2DP playback.
      */
     private fun applyAudioAttributes() {
         val attrs = if (isBluetoothScoActive) {
@@ -82,14 +99,9 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
                 .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build()
-        } else if (isHeadsetConnected()) {
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build()
         } else {
             AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build()
         }
@@ -152,7 +164,8 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
     }
 
     override fun synthesize(text: String, onAudio: (ShortArray) -> Unit) {
-        if (!isReady || text.isBlank()) return
+        if (text.isBlank()) return
+        ensureInitialized()
         applyAudioAttributes()
         val utteranceId = UUID.randomUUID().toString()
         audioFocus.requestDuckFocus()
@@ -161,15 +174,17 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
     }
 
     override suspend fun speak(text: String): Boolean {
-        if (!isReady || text.isBlank()) {
-            if (!isReady) {
-                var waited = 0
-                while (!isReady && waited < 5000) {
-                    kotlinx.coroutines.delay(100)
-                    waited += 100
-                }
-                if (!isReady) return false
-            } else {
+        if (text.isBlank()) return false
+
+        if (!isReady || tts == null) {
+            ensureInitialized()
+            var waited = 0
+            while (!isReady && waited < 3000) {
+                kotlinx.coroutines.delay(100)
+                waited += 100
+            }
+            if (!isReady || tts == null) {
+                Log.e(TAG, "Android TTS engine not ready after auto-initialization delay")
                 return false
             }
         }
@@ -180,11 +195,29 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         pendingUtterances[utteranceId] = deferred
         audioFocus.requestDuckFocus()
 
-        val res = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
+        var res = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
+
+        // Self-healing recovery if engine binding died
+        if (res != TextToSpeech.SUCCESS) {
+            Log.w(TAG, "TextToSpeech speak returned error ($res) — attempting auto-reinitialization")
+            isReady = false
+            ensureInitialized()
+            var retryWait = 0
+            while (!isReady && retryWait < 2000) {
+                kotlinx.coroutines.delay(100)
+                retryWait += 100
+            }
+            if (isReady) {
+                applyAudioAttributes()
+                res = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
+            }
+        }
+
         if (res != TextToSpeech.SUCCESS) {
             isSpeakingActive = false
             pendingUtterances.remove(utteranceId)
             audioFocus.abandon()
+            Log.e(TAG, "Android TTS speak failed after retry (code: $res)")
             return false
         }
 

@@ -241,16 +241,13 @@ class VectorDbManager(private val context: Context) {
 
     private fun floatArrayToByteArray(floats: FloatArray): ByteArray {
         val buffer = ByteBuffer.allocate(floats.size * 4).order(ByteOrder.LITTLE_ENDIAN)
-        for (f in floats) buffer.putFloat(f)
+        buffer.asFloatBuffer().put(floats)
         return buffer.array()
     }
 
     private fun byteArrayToFloatArray(bytes: ByteArray, dims: Int): FloatArray {
         val floats = FloatArray(dims)
-        val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
-        for (i in 0 until minOf(dims, bytes.size / 4)) {
-            floats[i] = buffer.getFloat()
-        }
+        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(floats)
         return floats
     }
 }

@@ -9,9 +9,10 @@ class AppControlSkill : Skill {
     override val description: String = "Controls application opening, closing, UI gestures, scanning installed apps, and system navigation."
     override val triggers: List<String> = listOf(
         "open", "launch", "kholo", "start", "close", "band karo", "hatao",
-        "scroll", "swipe", "niche karo", "uper karo", "back", "home",
+        "scroll", "swipe", "slide", "niche karo", "uper karo", "back", "home",
         "screenshot", "screen shot", "recents", "recent apps", "click", "tap",
-        "scan apps", "scan all apps", "list apps", "list installed apps", "installed apps", "installed applications"
+        "scan apps", "scan all apps", "list apps", "list installed apps", "installed apps", "installed applications",
+        "install", "download", "play store", "playstore", "google play"
     )
 
     private val compoundKeywords = listOf(
@@ -33,7 +34,11 @@ class AppControlSkill : Skill {
             if (hasSpecialized) return false
         }
 
-        if (compoundKeywords.any { lower.contains(it) }) {
+        // Allow play store / install / download commands even if they contain " play " or other keywords
+        val isPlayStoreOrInstall = lower.contains("play store") || lower.contains("playstore") ||
+                lower.contains("google play") || lower.contains("install") || lower.contains("download")
+
+        if (!isPlayStoreOrInstall && compoundKeywords.any { lower.contains(it) }) {
             return false
         }
 
@@ -56,6 +61,16 @@ class AppControlSkill : Skill {
         }
 
         return when {
+            // App Installation / Download via Play Store
+            lower.contains("install") || lower.contains("download") -> {
+                val app = extractInstallAppName(lower)
+                SkillResult(
+                    handled = true,
+                    proposedAction = AgentAction("INSTALL_APP", mapOf("app" to app), "Installing app: $app"),
+                    explanation = "Opening Play Store to search and install $app"
+                )
+            }
+
             // App Scanning / Listing
             lower.contains("scan apps") || lower.contains("scan all apps") ||
             lower.contains("list apps") || lower.contains("list installed") ||
@@ -98,8 +113,8 @@ class AppControlSkill : Skill {
                     explanation = "Opening recent applications overview"
                 )
             }
-            lower.contains("scroll") || lower.contains("swipe") || lower.contains("niche karo") || lower.contains("uper karo") -> {
-                val direction = if (lower.contains("up") || lower.contains("uper")) "up" else "down"
+            lower.contains("scroll") || lower.contains("swipe") || lower.contains("slide") || lower.contains("niche karo") || lower.contains("uper karo") -> {
+                val direction = if (lower.contains("up") || lower.contains("uper") || lower.contains("upar")) "up" else "down"
                 val session = context.activeAppSession
                 val action = if (ForegroundAppSession.supportsSharedUi(session)) "APP_AUTOPILOT" else "UI_SCROLL"
                 val params = if (action == "APP_AUTOPILOT") {
@@ -111,6 +126,22 @@ class AppControlSkill : Skill {
                     handled = true,
                     proposedAction = AgentAction(action, params, "Scrolling $direction"),
                     explanation = "Scrolling active screen $direction"
+                )
+            }
+            // On-screen Folder or File UI clicking
+            (lower.contains("folder") || lower.contains("file")) && (lower.contains("open") || lower.contains("kholo")) &&
+                    (context.activeAppSession?.lowercase()?.contains("zarchiver") == true ||
+                     context.activeAppSession?.lowercase()?.contains("myfiles") == true ||
+                     lower.contains("ishein") || lower.contains("ismain") || lower.contains("ismein")) -> {
+                val target = lower
+                    .replace(Regex("(?i)\\b(open|kholo|app|ismein|ismain|ishein|wala|folder|file|ko|usko|karo|bhi)\\b"), "")
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
+                    .ifBlank { "folder" }
+                SkillResult(
+                    handled = true,
+                    proposedAction = AgentAction("UI_CLICK", mapOf("target" to target), "Clicking on $target"),
+                    explanation = "Opening folder/file $target in foreground application"
                 )
             }
             lower.startsWith("click ") || lower.startsWith("tap ") || lower.contains(" per click") || lower.contains(" par click") -> {
@@ -154,6 +185,17 @@ class AppControlSkill : Skill {
                 )
             }
         }
+    }
+
+    private fun extractInstallAppName(text: String): String {
+        var clean = text
+            .replace(Regex("(?i)\\b(from\\s+)?(play\\s*store|google\\s*play)(\\s+se)?\\b"), "")
+            .replace(Regex("(?i)\\b(install|download)\\s+app\\b"), "")
+            .replace(Regex("(?i)\\b(install|download)\\b"), "")
+            .replace(Regex("(?i)\\b(karo|do|please|app)\\b"), "")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+        return clean.ifBlank { "play store" }
     }
 
     private fun extractAppName(text: String, isClosing: Boolean): String {

@@ -27,6 +27,7 @@ import com.jarvis.ui.screens.ApiManagerScreen
 import com.jarvis.ui.screens.DashboardScreen
 import com.jarvis.ui.screens.LogsScreen
 import com.jarvis.ui.screens.MemoryScreen
+import com.jarvis.ui.screens.RoutinesScreen
 import com.jarvis.ui.screens.SettingsScreen
 import com.jarvis.ui.screens.SkillsScreen
 import com.jarvis.ui.screens.WakeWordSetupScreen
@@ -125,6 +126,7 @@ class MainActivity : AppCompatActivity() {
                 s.tag = "skills"
                 service?.let { s.bindService(it) }
             }
+            "Routines" -> RoutinesScreen(this)
             "Memory" -> MemoryScreen(this)
             "Brain" -> ApiManagerScreen(this, this, apiManager, service?.voiceEngine) { service?.reloadConfig() }
             "WakeWordSetup" -> WakeWordSetupScreen(this, service?.voiceEngine) { showRoute("Dashboard") }

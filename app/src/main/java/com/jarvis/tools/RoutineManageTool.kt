@@ -80,7 +80,38 @@ class RoutineManageTool(private val routineEngine: SmartRoutineEngine) : Tool {
                 }
             }
 
-            else -> ToolResult.Failed("Unknown routine action: '$action'. Supported: list, run, enable, disable.")
+            "create", "add" -> {
+                val name = params["name"]?.ifBlank { null } ?: targetName.ifBlank { "Custom Routine" }
+                val timeStr = params["time"] ?: params["parameter"] ?: "08:00"
+                val speechText = params["speech"] ?: params["text"] ?: params["speak"] ?: "Scheduled task reminder: $name"
+                val id = "routine_custom_${System.currentTimeMillis()}"
+
+                val newRoutine = com.jarvis.routine.SmartRoutine(
+                    id = id,
+                    name = name,
+                    description = "Custom time-scheduled task at $timeStr",
+                    trigger = com.jarvis.routine.RoutineTrigger(com.jarvis.routine.TriggerType.TIME_SCHEDULE, parameter = timeStr),
+                    actions = listOf(
+                        com.jarvis.routine.RoutineAction("SPEAK", mapOf("text" to speechText), "Speak task announcement")
+                    ),
+                    isEnabled = true,
+                    cooldownMinutes = 1
+                )
+                routineEngine.addCustomRoutine(newRoutine)
+                ToolResult.Success("Successfully created scheduled routine '$name' at $timeStr")
+            }
+
+            "delete", "remove" -> {
+                if (targetName.isBlank()) return ToolResult.Failed("Specify routine name or ID to delete")
+                val success = routineEngine.deleteRoutine(targetName)
+                if (success) {
+                    ToolResult.Success("Deleted routine: $targetName")
+                } else {
+                    ToolResult.Failed("Routine not found: $targetName")
+                }
+            }
+
+            else -> ToolResult.Failed("Unknown routine action: '$action'. Supported: list, run, enable, disable, create, delete.")
         }
     }
 

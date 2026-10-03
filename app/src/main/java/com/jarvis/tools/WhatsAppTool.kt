@@ -3,6 +3,7 @@ package com.jarvis.tools
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.jarvis.media.WhatsAppSessionManager
 import com.jarvis.messaging.AutoReplyMode
 import com.jarvis.messaging.WhatsAppMessagingEngine
 
@@ -11,7 +12,7 @@ class WhatsAppTool(
     private val messagingEngine: WhatsAppMessagingEngine? = null
 ) : Tool {
     override val name: String = "WHATSAPP"
-    override val description: String = "Autonomous WhatsApp & WhatsApp Business messaging tool. Actions: 'send_message' (sends to recipient with text), 'send_direct_message' (sends directly via phone/contact URI), 'read_messages' (reads and summarizes recent unread WhatsApp/WhatsApp Business messages), 'reply' (interactively drafts and replies to a contact), 'auto_reply' (configures driving/meeting/off auto-reply mode), 'open' (opens WhatsApp or WhatsApp Business)."
+    override val description: String = "Autonomous WhatsApp & WhatsApp Business messaging tool. Actions: 'send_message', 'send_direct_message', 'read_messages', 'reply', 'auto_reply', 'open', 'current_chat', 'chat_history', 'previous_chat'."
 
     private val TAG = "WhatsAppTool"
 
@@ -35,11 +36,15 @@ class WhatsAppTool(
                 "open" -> {
                     val targetPkg = WhatsAppMessagingEngine.resolveTargetPackage(platform)
                     val pkgLabel = if (targetPkg == "com.whatsapp.w4b") "WhatsApp Business" else "WhatsApp"
-                    val ctx = context ?: return ToolResult.Success("$pkgLabel opened (Simulation mode).")
+                    val ctx = context ?: run {
+                        WhatsAppSessionManager.recordChat("WhatsApp Main Screen")
+                        return ToolResult.Success("$pkgLabel opened (Simulation mode).")
+                    }
                     val intent = ctx.packageManager.getLaunchIntentForPackage(targetPkg)
                         ?: return ToolResult.Failed("$pkgLabel is not installed on this device.")
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     ctx.startActivity(intent)
+                    WhatsAppSessionManager.recordChat("WhatsApp Main Screen")
                     ToolResult.Success("$pkgLabel opened.")
                 }
 
@@ -47,6 +52,7 @@ class WhatsAppTool(
                     if (recipient.isNullOrBlank() || message.isNullOrBlank()) {
                         return ToolResult.Failed("Recipient and message are required to send a WhatsApp message.")
                     }
+                    WhatsAppSessionManager.recordChat(recipient, message = message, isOutbound = true)
                     engine.sendMessage(recipient, message, platform)
                 }
 
@@ -54,6 +60,7 @@ class WhatsAppTool(
                     if (recipient.isNullOrBlank() || message.isNullOrBlank()) {
                         return ToolResult.Failed("Recipient and message are required to send a direct WhatsApp message.")
                     }
+                    WhatsAppSessionManager.recordChat(recipient, message = message, isOutbound = true)
                     engine.sendDirectMessage(recipient, message, platform)
                 }
 
@@ -64,6 +71,7 @@ class WhatsAppTool(
                     } else if (message.isNullOrBlank()) {
                         ToolResult.Success("What would you like me to say to $recipient?")
                     } else {
+                        WhatsAppSessionManager.recordChat(recipient, message = message, isOutbound = true)
                         engine.sendMessage(recipient, message, platform)
                     }
                 }
@@ -72,7 +80,31 @@ class WhatsAppTool(
                     val limit = params["limit"]?.toIntOrNull()?.coerceIn(1, 10) ?: 5
                     val senderFilter = params["sender"]?.trim()
                     val platformFilter = params["platform"]?.trim()
+                    senderFilter?.let { WhatsAppSessionManager.recordChat(it, message = "Reading recent messages", isOutbound = false) }
                     engine.readRecentWhatsApp(limit = limit, senderFilter = senderFilter, platformFilter = platformFilter)
+                }
+
+                "current_chat", "current", "status" -> {
+                    val current = WhatsAppSessionManager.getCurrentChat()
+                    return if (current != null) {
+                        ToolResult.Success("Active WhatsApp session chat with ${current.contactName}${if (current.lastMessage != null) " (Last msg: '${current.lastMessage}')" else ""}")
+                    } else {
+                        ToolResult.Success("No active WhatsApp chat session recorded.")
+                    }
+                }
+
+                "chat_history", "history" -> {
+                    val summary = WhatsAppSessionManager.getHistorySummary()
+                    ToolResult.Success(summary)
+                }
+
+                "previous_chat", "previous" -> {
+                    val prev = WhatsAppSessionManager.getPreviousChat()
+                    return if (prev != null) {
+                        ToolResult.Success("Switched to previous WhatsApp chat session with ${prev.contactName}")
+                    } else {
+                        ToolResult.Failed("No previous WhatsApp chat session found in history stack.")
+                    }
                 }
 
                 "auto_reply" -> {
@@ -99,9 +131,7 @@ class WhatsAppTool(
                 else -> ToolResult.Failed("Unknown WhatsApp action: $action")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error executing WhatsApp action: ${e.message}", e)
-            ToolResult.Failed("WhatsApp execution failed: ${e.message}")
+            ToolResult.Failed("Failed to execute WhatsApp operation: ${e.message}")
         }
     }
 }
-
