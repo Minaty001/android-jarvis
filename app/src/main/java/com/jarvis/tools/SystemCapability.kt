@@ -54,7 +54,7 @@ object SystemCapability {
         )
         else CapabilityDecision(canAttempt = true)
 
-    fun flashlightToggle(@Suppress("UNUSED_PARAMETER") api: Int): CapabilityDecision = CapabilityDecision(canAttempt = true)
+    fun flashlightToggle(@Suppress("UNUSED_PARAMETER") api: Int = 0): CapabilityDecision = CapabilityDecision(canAttempt = true)
 
     fun decide(apiLevel: Int, action: String): CapabilityDecision = when (action) {
         "wifi" -> wifiToggle(apiLevel)

@@ -1,6 +1,8 @@
 package com.jarvis.tools
 
 import android.content.Context
+import kotlin.math.abs
+import kotlin.math.sqrt
 import java.net.URLDecoder
 
 class CalculatorTool(private val context: Context? = null) : Tool {
@@ -46,10 +48,10 @@ class CalculatorTool(private val context: Context? = null) : Tool {
             var replaceStart = start
             if (start >= 4 && e.substring(start - 4, start).equals("sqrt", ignoreCase = true)) {
                 if (result < 0) throw IllegalArgumentException("Cannot calculate square root of negative number")
-                result = Math.sqrt(result)
+                result = sqrt(result)
                 replaceStart = start - 4
             } else if (start >= 3 && e.substring(start - 3, start).equals("abs", ignoreCase = true)) {
-                result = Math.abs(result)
+                result = abs(result)
                 replaceStart = start - 3
             }
             e = e.substring(0, replaceStart) + result + e.substring(end + 1)

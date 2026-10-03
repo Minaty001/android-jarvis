@@ -10,9 +10,9 @@ import org.json.JSONObject
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+
+
+
 
 data class VectorRecord(
     val id: String,
@@ -150,7 +150,7 @@ class VectorDbManager(private val context: Context) {
     fun getStats(): VectorDbStats {
         val dbFile = File(JarvisStorageHub.getVectorDbDirectory(context), VectorDatabaseHelper.DATABASE_NAME)
         val count = getCount()
-        val nowStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT).format(Date())
+        val nowStr = java.time.Instant.now().toString().replace("T", " ").take(19)
 
         return VectorDbStats(
             totalVectors = count,

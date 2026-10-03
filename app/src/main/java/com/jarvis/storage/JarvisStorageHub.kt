@@ -218,7 +218,7 @@ object JarvisStorageHub {
     fun updateManifest(context: Context): File {
         val root = getRootDirectory(context)
         val manifestFile = File(root, "jarvis_manifest.json")
-        val todayStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT).format(Date())
+        val todayStr = java.time.Instant.now().toString().replace("T", " ").take(19)
 
         val dbFiles = getDatabasesDirectory(context).listFiles()?.filter { it.name.endsWith(".db") }?.map { it.name } ?: emptyList()
         val vectorFiles = getVectorDbDirectory(context).listFiles()?.map { it.name } ?: emptyList()

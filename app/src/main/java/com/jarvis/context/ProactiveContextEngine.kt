@@ -163,7 +163,7 @@ class ProactiveContextEngine(
     fun checkBatteryStatus(): String? {
         val ctx = context ?: return null
         val state = BatteryMonitor.getBatteryState(ctx)
-        com.jarvis.runtime.JarvisEventBus.shared.emit(
+        com.jarvis.runtime.JarvisEventBus.shared.post(
             com.jarvis.runtime.JarvisEvent.BatteryStateChanged(
                 level = state.percentage,
                 isCharging = state.isCharging

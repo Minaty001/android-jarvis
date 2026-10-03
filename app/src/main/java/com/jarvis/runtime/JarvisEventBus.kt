@@ -58,10 +58,6 @@ class JarvisEventBus(bufferCapacity: Int = 64) {
         return _events.tryEmit(event)
     }
 
-    fun emit(event: JarvisEvent): Boolean {
-        return post(event)
-    }
-
     inline fun <reified T : JarvisEvent> subscribe(): Flow<T> {
         return events.filterIsInstance<T>()
     }

@@ -1,6 +1,7 @@
 package com.jarvis.memory
 
 import java.util.concurrent.TimeUnit
+import kotlin.math.pow
 
 class MemoryGarbageCollector(private val memoryStore: MemoryStore) {
 
@@ -15,7 +16,7 @@ class MemoryGarbageCollector(private val memoryStore: MemoryStore) {
         }
 
         val numHalfLives = ageMs.toDouble() / halfLifeMs.toDouble()
-        return item.importance * Math.pow(0.5, numHalfLives)
+        return item.importance * 0.5.pow(numHalfLives)
     }
 
     fun runGarbageCollection(now: Long = System.currentTimeMillis()): Int {
