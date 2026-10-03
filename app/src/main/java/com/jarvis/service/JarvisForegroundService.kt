@@ -89,6 +89,14 @@ class JarvisForegroundService : Service() {
         val (apiKey, model) = loadActiveConfig()
         voiceEngine = VoiceEngine(applicationContext, groqApiKey = apiKey, groqModel = model)
         lanServer = com.jarvis.network.JarvisLanServer(applicationContext)
+
+        // Start Background Activity Monitor Engine
+        com.jarvis.autonomous.ActivityMonitorEngine.start(applicationContext)
+        
+        // Run daily auto-schedule analysis
+        com.jarvis.routine.SmartRoutineEngine.instance?.let { engine ->
+            com.jarvis.routine.AutoScheduleEngine.analyzeAndSchedule(applicationContext, engine)
+        }
     }
 
     fun reloadConfig() {
@@ -442,6 +450,7 @@ class JarvisForegroundService : Service() {
     override fun onDestroy() {
         Log.i(TAG, "JarvisForegroundService onDestroy")
         try {
+            com.jarvis.autonomous.ActivityMonitorEngine.stop()
             headsetMediaButtonManager?.stop()
             headsetMediaButtonManager = null
             bluetoothHeadsetManager?.stop()

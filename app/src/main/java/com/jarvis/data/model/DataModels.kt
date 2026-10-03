@@ -67,3 +67,13 @@ data class TaskAuditLog(
     val details: String?,
     val timestamp: Long = System.currentTimeMillis()
 )
+
+data class ActivityMoment(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val packageName: String,
+    val appName: String,
+    val startTime: Long,
+    val durationSeconds: Long,
+    val mediaPlaying: String?,
+    val timeOfDay: String
+)

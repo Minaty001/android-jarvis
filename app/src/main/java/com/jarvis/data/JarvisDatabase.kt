@@ -17,7 +17,7 @@ class JarvisDatabase(context: Context) : SQLiteOpenHelper(
 ) {
     companion object {
         const val DATABASE_NAME = "jarvis_unified.db"
-        const val DATABASE_VERSION = 1
+        const val DATABASE_VERSION = 2
 
         @Volatile
         private var instance: JarvisDatabase? = null
@@ -137,6 +137,20 @@ class JarvisDatabase(context: Context) : SQLiteOpenHelper(
 
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_task_audit ON task_audit_logs(task_id);")
 
+            // 6. Activity Moments (App Tracking)
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS activity_moments (
+                    id TEXT PRIMARY KEY,
+                    package_name TEXT NOT NULL,
+                    app_name TEXT NOT NULL,
+                    start_time INTEGER NOT NULL,
+                    duration_seconds INTEGER NOT NULL,
+                    media_playing TEXT,
+                    time_of_day TEXT NOT NULL
+                );
+            """.trimIndent())
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_activity_moments_time ON activity_moments(start_time);")
+
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
@@ -144,6 +158,19 @@ class JarvisDatabase(context: Context) : SQLiteOpenHelper(
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // Schema migrations will be handled iteratively here
+        if (oldVersion < 2) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS activity_moments (
+                    id TEXT PRIMARY KEY,
+                    package_name TEXT NOT NULL,
+                    app_name TEXT NOT NULL,
+                    start_time INTEGER NOT NULL,
+                    duration_seconds INTEGER NOT NULL,
+                    media_playing TEXT,
+                    time_of_day TEXT NOT NULL
+                );
+            """.trimIndent())
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_activity_moments_time ON activity_moments(start_time);")
+        }
     }
 }
