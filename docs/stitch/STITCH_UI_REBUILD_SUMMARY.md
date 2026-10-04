@@ -98,4 +98,4 @@ The J.A.R.V.I.S. Android voice assistant UI has been completely rebuilt using **
 ## 5. Verification & Build Artifacts
 - **Kotlin Compilation**: `./gradlew compileDebugKotlin` completed with `BUILD SUCCESSFUL`
 - **Unit & Regression Test Suite**: `./gradlew test` completed with `BUILD SUCCESSFUL` (48 tasks passed)
-- **Production Package**: `./gradlew assembleDebug` generated `app-debug.apk` and root [`Jarvis-Final.apk`](../../Jarvis-Final.apk) (150 MB)
+- **Production Package**: `./gradlew assembleRelease` generated [`dist/jarvis-v1.1-release.apk`](../../dist/jarvis-v1.1-release.apk) (9.7 MB)

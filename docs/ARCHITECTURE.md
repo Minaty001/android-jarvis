@@ -36,7 +36,8 @@ flowchart TD
     subgraph Persistence & Learning Layer
         PS[UiPreferencesStore]
         MS[MemoryStore]
-        HM[HabitManager]
+        AME[ActivityMonitorEngine]
+        ASE[AutoScheduleEngine]
         SRE[SmartRoutineEngine]
     end
 
@@ -48,6 +49,10 @@ flowchart TD
     JWG -->|when owner profile and model are available| OVV
     JWG --> AR
     PS --> JWG
+    FS --> AME
+    AME --> MS
+    AME --> ASE
+    ASE --> SRE
     VR --> ASR
     AR --> AK
     AR --> WS

@@ -19,6 +19,7 @@
 ## 📌 Table of Contents
 - [📱 Visual Showcase (Google Stitch Material 3)](#-visual-showcase-google-stitch-material-3)
 - [💎 Navigation Tabs & App Screens](#-navigation-tabs--app-screens)
+- [📚 Documentation & Master Catalogs](#-documentation--master-catalogs)
 - [📖 Feature Guide & Capabilities](#-feature-guide--capabilities)
   - [1. 🎙️ Continuous openWakeWord & Acoustic Engine](#1-️-continuous-openwakeword--acoustic-engine)
   - [2. 🎛️ Bluetooth Earbud SCO & WearOS Sync](#2-️-bluetooth-earbud-sco--wearos-sync)
@@ -30,6 +31,17 @@
 - [🔨 Building & Verification](#-building--verification)
 - [📐 Clean Architecture](#-clean-architecture)
 - [📜 Technology Stack](#-technology-stack)
+
+---
+
+## 📚 Documentation & Master Catalogs
+
+- 🤖 **[Master Local Features & Source Code Catalog](docs/JARVIS_LOCAL_FEATURES_AND_COMMANDS.md)**: Definitive catalog of all local features, trained commands, handling tools, and Kotlin source locations.
+- 🏗️ **[System Architecture Specs](docs/ARCHITECTURE.md)**: Deep-dive architecture flowcharts, voice engine state machine, and system service bindings.
+- ⚡ **[Ponytail Optimization Report](PONYTAIL_GAIN.md)**: Scoreboard showing standard library refactorings, dead code pruning, and memory optimizations.
+- 🧩 **[Third-Party Models Catalog](THIRD_PARTY_MODELS.md)**: Specifications and licensing for openWakeWord TFLite models and Sherpa-ONNX engines.
+- 🧪 **[Device Test Matrix & Report](docs/DEVICE_TEST_REPORT.md)**: Verification results across Samsung, Google Pixel, Xiaomi, and OnePlus hardware.
+
 
 ---
 

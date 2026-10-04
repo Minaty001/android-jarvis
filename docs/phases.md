@@ -34,8 +34,16 @@ Android J.A.R.V.I.S. development is structured into incremental, verified phases
   - Smart hardware controls skill (`DeviceHardwareSkill.kt`) & Dynamic app launcher skill (`AppLauncherSkill.kt`).
   - Voice Profile HUD Card on `DashboardScreen.kt`.
 
-### Phase 5: Advanced Multimodal & Local LLM Offline Fallback (Active / Upcoming)
+### Phase 5: Advanced Multimodal & Local LLM Offline Fallback (Completed)
 - **Milestones**:
-  - Offline local small LLM (On-device GGUF / Llama.cpp fallback).
-  - Enhanced spatial screen vision & video understanding.
-  - Multi-device WearOS companion sync and remote command relay.
+  - OpenWakeWord continuous keyword spotter integration (`hey_jarvis_v0.1.tflite` & `jarvis_openwakeword.tflite`).
+  - Multimodal camera vision perception (`qwen/qwen3.6-27b` & TFLite MobileNet).
+  - Multi-device WearOS companion sync and remote command relay (`WearableCompanionReceiver.kt`).
+
+### Phase 6: Ponytail Refactoring & Engine Deadlock Stabilization (Completed)
+- **Milestones**:
+  - Voice Engine state machine deadlock fixes (`VoiceEngine`, `ConversationManager`, `DashboardScreen`).
+  - Ponytail zero-over-engineering refactor: dead code elimination, standard library math (`kotlin.math`), and thread-safe date formatting (`SimpleDateFormat`).
+  - Autonomous background daemon bug fixes (`ActivityMonitorEngine` & `AutoScheduleEngine`).
+  - Comprehensive local feature & source code cataloging (`docs/JARVIS_LOCAL_FEATURES_AND_COMMANDS.md`).
+
