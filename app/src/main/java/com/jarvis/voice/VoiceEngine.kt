@@ -631,6 +631,7 @@ class VoiceEngine(
                 ttsEngine.speak(reply)
             } finally {
                 voiceRouter.bargeInDetector.isSpeakerBleedGated = false
+                conversationManager.transitionTo(VoiceState.COMPLETED)
             }
             returnToWakeListening()
             return
@@ -696,7 +697,10 @@ class VoiceEngine(
             stopCommandSession()
             delay(150)
             val state = conversationManager.currentStateValue
-            if (state == VoiceState.LISTENING || state == VoiceState.COMPLETED || state == VoiceState.IDLE || state == VoiceState.INTERRUPTED || state == VoiceState.ERROR || state == VoiceState.WAITING_FOR_WAKE) {
+            if (state == VoiceState.LISTENING || state == VoiceState.COMPLETED || state == VoiceState.IDLE || 
+                state == VoiceState.INTERRUPTED || state == VoiceState.ERROR || state == VoiceState.WAITING_FOR_WAKE ||
+                state == VoiceState.SPEAKING || state == VoiceState.THINKING || state == VoiceState.RESEARCHING ||
+                state == VoiceState.EXECUTING || state == VoiceState.VERIFYING) {
                 startWakeSession()
             } else {
                 Log.d(TAG, "Aborting returnToWakeListening — active state is $state")
@@ -819,6 +823,7 @@ class VoiceEngine(
                     ttsEngine.speak(finalResponse)
                 } finally {
                     voiceRouter.bargeInDetector.isSpeakerBleedGated = false
+                    conversationManager.transitionTo(VoiceState.COMPLETED)
                 }
                 delay(120)
             } else if (finalResponse.isNotBlank() && wasAlreadySpoken) {
@@ -987,6 +992,7 @@ class VoiceEngine(
                     ttsEngine.speak(message)
                 } finally {
                     voiceRouter.bargeInDetector.isSpeakerBleedGated = false
+                    conversationManager.transitionTo(VoiceState.COMPLETED)
                 }
                 delay(120)
             } finally {

@@ -50,7 +50,7 @@ class ConversationManager {
             VoiceState.WAITING_FOR_USER,
             VoiceState.COMPLETED,
             VoiceState.CANCELLED -> true
-            VoiceState.SPEAKING -> to == VoiceState.WAITING_FOR_WAKE || to == VoiceState.INTERRUPTED || to == VoiceState.LISTENING || to == VoiceState.EXECUTING || to == VoiceState.IDLE || to == VoiceState.THINKING
+            VoiceState.SPEAKING -> to == VoiceState.WAITING_FOR_WAKE || to == VoiceState.INTERRUPTED || to == VoiceState.LISTENING || to == VoiceState.EXECUTING || to == VoiceState.IDLE || to == VoiceState.THINKING || to == VoiceState.COMPLETED
             VoiceState.INTERRUPTED -> to == VoiceState.LISTENING || to == VoiceState.WAITING_FOR_WAKE
             VoiceState.OFFLINE -> to == VoiceState.IDLE || to == VoiceState.WAITING_FOR_WAKE
             VoiceState.ERROR -> to == VoiceState.WAITING_FOR_WAKE || to == VoiceState.IDLE

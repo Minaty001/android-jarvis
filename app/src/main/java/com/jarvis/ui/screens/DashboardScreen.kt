@@ -511,7 +511,13 @@ class DashboardScreen(
                     protocolCard.visibility = View.GONE
                     return@launch
                 }
-                engine.processTextCommand(command)
+                val ok = engine.processTextCommand(command)
+                if (!ok) {
+                    response.text = "JARVIS  •  Busy processing previous command."
+                    status.text = "BUSY"
+                    orb.setState(engine.status.value.voiceState)
+                    waveform.setState(engine.status.value.voiceState)
+                }
             } catch (t: Throwable) {
                 Log.e("Dashboard", "Command failed", t)
                 response.text = "JARVIS  •  Failed."
