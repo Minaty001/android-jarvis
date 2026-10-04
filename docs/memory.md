@@ -48,6 +48,6 @@
 ## 3. Quick Reference & Context Restoration
 When continuing work in a new session:
 1. Refer to `docs/memory.md` for codebase index.
-2. Refer to `docs/architecture.md` for system pipeline flow.
+2. Refer to `docs/ARCHITECTURE.md` for system pipeline flow.
 3. Refer to `docs/rules.md` for engineering constraints.
 4. Verify changes via `./gradlew testDebugUnitTest` and `./export_release.sh`.
