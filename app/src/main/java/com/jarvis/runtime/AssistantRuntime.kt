@@ -551,6 +551,9 @@ class AssistantRuntime(
         toolRegistry.registerLazy("FILE_MANAGER", "Searches storage, inspects disk space, and suggests cleanup") {
             com.jarvis.tools.FileManagerTool(context)
         }
+        toolRegistry.registerLazy("FIND_IN_ZARCHIVER", "Searches for a specific file or folder and opens it directly in ZArchiver.") {
+            com.jarvis.tools.ZArchiverFindTool(context)
+        }
         toolRegistry.registerLazy("AUTONOMOUS_CONTROL", "Configures ambient autopilot and situational modes") {
             com.jarvis.tools.AutonomousModeTool(ambientContextEngine, autonomousDaemon)
         }
