@@ -68,28 +68,6 @@ object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {
         val text = utterance.trim().lowercase(Locale.ROOT)
         if (text.isBlank()) return null
-
-        // Check for compound multi-step requests
-        val subCommands = com.jarvis.agent.MultiTaskDecomposer.decompose(utterance)
-        if (subCommands.size > 1) {
-            val resolvedSubIntents = subCommands.mapNotNull { resolveSingle(it) }
-            if (resolvedSubIntents.size == subCommands.size && resolvedSubIntents.all { it.directPlan != null }) {
-                val combinedActions = resolvedSubIntents.flatMap { it.directPlan!!.actions }
-                val combinedResponse = resolvedSubIntents
-                    .map { it.directPlan!!.response }
-                    .filter { it.isNotBlank() }
-                    .joinToString(". ")
-                return ResolvedIntent(
-                    intent = AssistantIntent.COMPOUND_TASK,
-                    confidence = resolvedSubIntents.map { it.confidence }.minOrNull() ?: 0.9f,
-                    params = mapOf("subtasks_count" to resolvedSubIntents.size.toString()),
-                    directPlan = ExecutionPlan(combinedResponse, combinedActions)
-                )
-            }
-            // If any sub-intent cannot be resolved offline to a direct plan, return null so AgentKernel handles it.
-            return null
-        }
-
         return resolveSingle(utterance)
     }
 

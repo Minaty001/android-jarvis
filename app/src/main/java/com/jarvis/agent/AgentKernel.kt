@@ -70,26 +70,6 @@ import org.json.JSONObject
         val state = AgentState(taskId = taskId, goal = goal)
         val workingMemory = AgentWorkingMemory(goal = goal)
 
-        val decomposed = MultiTaskDecomposer.decompose(goal)
-        val parsedComplex = ComplexCommandParser.parse(goal)
-        val subGoals = if (decomposed.size > 1) {
-            decomposed
-        } else if (parsedComplex.segments.size > 1 && parsedComplex.segments.all { MultiTaskDecomposer.hasActionVerb(it.text) }) {
-            parsedComplex.segments.map { it.text }
-        } else {
-            emptyList()
-        }
-        if (subGoals.size > 1) {
-            workingMemory.subGoals.addAll(subGoals)
-            Log.i(TAG, "[MULTI-TASK] Decomposed compound goal '$goal' (${parsedComplex.wordCount} words, conditionals=${parsedComplex.hasConditionals}) into ${subGoals.size} sub-goals: $subGoals")
-        }
-
-        val skillProposal = skillDiscoveryEngine?.discoverProposedSkill(parsedComplex)
-        if (skillProposal != null && parsedComplex.isSkillTeachingIntent) {
-            workingMemory.facts["skill_proposal_id"] = skillProposal.skillId
-            workingMemory.facts["skill_proposal_prompt"] = skillProposal.clarificationPrompt
-        }
-
         val guard = AgentLoopGuard()
         val stepObservations = mutableListOf<AgentObservation>()
 
@@ -138,12 +118,6 @@ import org.json.JSONObject
         }
 
         val goal = restoredState.goal
-        if (restoredMemory.subGoals.isEmpty()) {
-            val subGoals = MultiTaskDecomposer.decompose(goal)
-            if (subGoals.size > 1) {
-                restoredMemory.subGoals.addAll(subGoals)
-            }
-        }
         restoredMemory.facts["user_clarification"] = clarification
 
         // Resolve ordinal/candidate selections from user clarification (e.g., "second wala", "pehla", "2", "option 1")
@@ -737,10 +711,20 @@ import org.json.JSONObject
      */
     private suspend fun directAnswer(goal: String): String? = try {
         val messages = listOf(
-            Message(role = "system", content = "You are Jarvis, a helpful voice assistant. Answer concisely in 1-2 sentences."),
+            Message(role = "system", content = "You are Jarvis, a helpful voice assistant. Answer concisely in 1-2 sentences. Return your response as a JSON object with a single string field (e.g. {\"response\": \"...\"})."),
             Message(role = "user", content = goal)
         )
-        llmClient?.chat(messages)?.getOrNull()?.trim()?.ifBlank { null }
+        val rawResponse = llmClient?.chat(messages)?.getOrNull()?.trim()?.ifBlank { null }
+        if (rawResponse != null) {
+            try {
+                val json = JSONObject(rawResponse)
+                json.keys().asSequence().firstOrNull()?.let { json.getString(it) } ?: rawResponse
+            } catch (e: Exception) {
+                rawResponse
+            }
+        } else {
+            null
+        }
     } catch (e: Exception) {
         Log.w("AgentKernel", "directAnswer failed for goal=\"$goal\": ${e.message}")
         null
