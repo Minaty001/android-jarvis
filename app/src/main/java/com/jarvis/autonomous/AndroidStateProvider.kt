@@ -25,6 +25,9 @@ class AndroidStateProvider(
         val fgPackage = JarvisAccessibilityService.currentForegroundPackage
         val activeSession = ForegroundAppSession.fromPackage(fgPackage)
 
+        val currentChat = com.jarvis.media.WhatsAppSessionManager.getCurrentChat()
+        val currentTrack = mediaManager.getCurrentTrack()
+
         return WorldStateSnapshot(
             batteryPercent = ambient.batteryPercent,
             isCharging = ambient.isCharging,
@@ -32,14 +35,16 @@ class AndroidStateProvider(
             activeMeetingTitle = ambient.activeEventTitle,
             notificationCount = activeNotificationCount(),
             mediaPlaying = mediaManager.isCurrentlyPlaying(),
-            mediaTitle = mediaManager.getCurrentTrack()?.let { c ->
+            mediaTitle = currentTrack?.let { c ->
                 if (c.artist.isBlank()) c.title else "${c.title} by ${c.artist}"
             },
             activeTaskTitle = activeTask?.goal,
             activeTaskStatus = activeTask?.status,
             missingPermissions = missingPermissions(),
             foregroundPackage = fgPackage,
-            activeAppSession = activeSession
+            activeAppSession = activeSession,
+            activeWhatsAppContact = currentChat?.contactName,
+            activeMediaTrack = currentTrack?.title
         )
     }
 
