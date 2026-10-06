@@ -86,6 +86,9 @@ This document is the definitive master catalog of all **local features, function
 | **System** | *"Turn off Wi-Fi"* / *"Open Bluetooth settings"* | `SystemSwitchboardTool` | `app/src/main/java/com/jarvis/tools/SystemSwitchboardTool.kt` |
 | **System** | *"Set volume to 80%"* / *"Set brightness to 50%"* | `DeviceSettingsTool` | `app/src/main/java/com/jarvis/tools/DeviceSettingsTool.kt` |
 | **System** | *"Check battery percentage"* / *"Battery status"* | `BatteryStatusTool` | `app/src/main/java/com/jarvis/tools/BatteryStatusTool.kt` |
+| **System** | *"Optimize battery"* / *"Check battery thermal health"* | `PowerOptimizerTool` | `app/src/main/java/com/jarvis/tools/PowerOptimizerTool.kt` |
+| **Media** | *"Set sound preset to Bass Boost"* / *"Enable Vocal Clarity"* | `AudioPresetTool` | `app/src/main/java/com/jarvis/tools/AudioPresetTool.kt` |
+| **Memory** | *"Record voice memo team sync"* / *"Summarize voice memo"* | `SmartVoiceMemoTool` | `app/src/main/java/com/jarvis/tools/SmartVoiceMemoTool.kt` |
 | **Apps** | *"Open YouTube"* / *"Launch WhatsApp"* | `OpenAppTool` | `app/src/main/java/com/jarvis/tools/OpenAppTool.kt` |
 | **Apps** | *"Close Spotify"* / *"Close all apps"* | `CloseAppTool`, `AppsCloseAllTool` | `app/src/main/java/com/jarvis/tools/AppsCloseAllTool.kt` |
 | **Apps** | *"List installed apps"* | `ListInstalledAppsTool` | `app/src/main/java/com/jarvis/tools/ListInstalledAppsTool.kt` |

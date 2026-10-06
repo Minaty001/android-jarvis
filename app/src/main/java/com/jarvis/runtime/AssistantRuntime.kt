@@ -418,7 +418,8 @@ class AssistantRuntime(
             skillRegistry = skillRegistry,
             learnedSkillStore = learnedSkillStore,
             checkpointManager = checkpointManager,
-            skillDiscoveryEngine = skillDiscoveryEngine
+            skillDiscoveryEngine = skillDiscoveryEngine,
+            llmClient = currentLlmClient
         )
     }
 

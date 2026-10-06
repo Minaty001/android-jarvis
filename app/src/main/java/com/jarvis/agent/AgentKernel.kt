@@ -2,7 +2,9 @@ package com.jarvis.agent
 
 import android.util.Log
 import com.jarvis.agent.skills.*
+import com.jarvis.ai.LlmClient
 import com.jarvis.ai.LlmPlanner
+import com.jarvis.ai.Message
 import com.jarvis.execution.VerificationEngine
 import com.jarvis.execution.VerificationResult
 import com.jarvis.execution.VerificationStatus
@@ -14,7 +16,7 @@ import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import org.json.JSONObject
 
-class AgentKernel(
+ class AgentKernel(
     private val planner: LlmPlanner?,
     private val contextRouter: AgentContextRouter,
     private val executor: ToolExecutor,
@@ -50,7 +52,9 @@ class AgentKernel(
     },
     private val learnedSkillStore: com.jarvis.skilllearning.LearnedSkillStore? = null,
     private val checkpointManager: com.jarvis.reliability.CheckpointManager? = null,
-    private val skillDiscoveryEngine: SkillDiscoveryEngine? = null
+    private val skillDiscoveryEngine: SkillDiscoveryEngine? = null,
+    /** Direct LLM client used as last-resort fallback when local rules & planner both fail. */
+    private val llmClient: LlmClient? = null
 ) {
     suspend fun run(
         goal: String,
@@ -274,11 +278,17 @@ class AgentKernel(
                             workingMemory = workingMemory,
                             context = context,
                             availableTools = toolsDescription
-                        ).getOrElse {
-                            Log.w(TAG, "Planner decision error: ${it.message}, using rule fallback")
-                            fallbackDecision(activeGoal, state, workingMemory)
+                        ).getOrElse { plannerErr ->
+                            Log.w(TAG, "Planner decision error: ${plannerErr.message}, trying direct LLM answer")
+                            val answer = directAnswer(activeGoal)
+                            if (answer != null) {
+                                speakDecision(answer)
+                            } else {
+                                fallbackDecision(activeGoal, state, workingMemory)
+                            }
                         }
                     } else {
+                        // No planner configured — fallbackDecision already tried directAnswer() via llmClient.
                         local
                     }
                 }
@@ -712,6 +722,30 @@ class AgentKernel(
         }
     }
 
+    /** Wraps an LLM text answer into a SPEAK action decision. */
+    private fun speakDecision(text: String) = AgentDecision(
+        type = DecisionType.ACT,
+        action = AgentAction(type = "SPEAK", params = mapOf("text" to text)),
+        reasonCode = "llm_direct_answer",
+        successCriteria = listOf("Replied from LLM")
+    )
+
+    /**
+     * Sends [goal] to the LLM as a plain conversational question and returns
+     * the answer, or null if the LLM is unavailable / throws.
+     * Never throws — all errors are caught and logged.
+     */
+    private suspend fun directAnswer(goal: String): String? = try {
+        val messages = listOf(
+            Message(role = "system", content = "You are Jarvis, a helpful voice assistant. Answer concisely in 1-2 sentences."),
+            Message(role = "user", content = goal)
+        )
+        llmClient?.chat(messages)?.getOrNull()?.trim()?.ifBlank { null }
+    } catch (e: Exception) {
+        Log.w("AgentKernel", "directAnswer failed for goal=\"$goal\": ${e.message}")
+        null
+    }
+
     internal suspend fun fallbackDecision(goal: String, state: AgentState, workingMemory: AgentWorkingMemory): AgentDecision {
         val lower = goal.lowercase().trim()
 
@@ -851,7 +885,22 @@ class AgentKernel(
         }
 
         // 3. Fallback rule-based matching
-        return matchFallbackRules(goal, lower)
+        val ruleDecision = matchFallbackRules(goal, lower)
+        if (ruleDecision.reasonCode != "UNRECOGNIZED_FALLBACK") return ruleDecision
+
+        // 4. Last resort: ask the LLM directly so Jarvis always has an answer.
+        val answer = directAnswer(goal)
+        return if (answer != null) {
+            Log.i(TAG, "[DIRECT_LLM] Answering unrecognized goal via LLM: \"$goal\"")
+            speakDecision(answer)
+        } else {
+            // LLM unavailable — polite degradation (lighter than old "sorry" wording).
+            AgentDecision(
+                DecisionType.ASK_USER,
+                question = "I'm not sure about that. Could you rephrase or add more detail?",
+                reasonCode = "UNRECOGNIZED_FALLBACK"
+            )
+        }
     }
 
     private fun riskOf(actionType: String): com.jarvis.foundation.RiskLevel =
