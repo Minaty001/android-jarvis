@@ -132,8 +132,6 @@ class SettingsScreen(
             val groqKey = com.jarvis.ui.security.SecureCredentialStore(context).get("groq_api_key") ?: com.jarvis.BuildConfig.GROQ_API_KEY
             if (groqKey.isNotBlank()) {
                 try {
-                    val lcAssistant = com.jarvis.ai.LangChainAssistant(context, apiKey = groqKey)
-                    lcAssistant.ingestUserProfile(updatedProfile)
                 } catch (e: Exception) {}
             }
             Toast.makeText(context, "User Profile & Personality saved & synced to RAG!", Toast.LENGTH_SHORT).show()

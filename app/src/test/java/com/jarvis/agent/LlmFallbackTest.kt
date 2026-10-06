@@ -56,7 +56,15 @@ class LlmFallbackTest {
      */
     @Test
     fun testUnknownGoalProducesUnrecognizedFallbackFromStaticMatcher() {
-        val decision = AgentKernel.matchFallbackRules("completely unknown gibberish xyz123abc")
+        val unknownInput = "completely unknown gibberish xyz123abc"
+        println("==================================================")
+        println("User speaks: \"$unknownInput\"")
+        val decision = AgentKernel.matchFallbackRules(unknownInput)
+        
+        println("AgentKernel (Local matcher) returns: ${decision.reasonCode}")
+        println("Because it returned UNRECOGNIZED_FALLBACK, the instance method fallbackDecision() will intercept it and call the LLM API.")
+        println("==================================================")
+        
         assertEquals("UNRECOGNIZED_FALLBACK", decision.reasonCode)
         assertEquals(DecisionType.ASK_USER, decision.type)
     }

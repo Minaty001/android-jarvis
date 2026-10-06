@@ -11,7 +11,6 @@ import com.jarvis.memory.MemoryGarbageCollector
 import com.jarvis.memory.MemoryItem
 import com.jarvis.memory.MemoryStore
 import com.jarvis.memory.MemoryType
-import com.jarvis.retrieval.engine.RaphaelRetrievalManager
 import com.jarvis.retrieval.model.CandidateSource
 import com.jarvis.retrieval.model.DetailedRetrievalResult
 import com.jarvis.retrieval.model.EvaluatedCandidate
@@ -31,7 +30,6 @@ import java.util.Locale
 class MemoryScreen(context: Context) : ScrollView(context) {
     private val store = MemoryStore(context.applicationContext)
     private val gc = MemoryGarbageCollector(store)
-    private val retrievalManager = RaphaelRetrievalManager(memoryStore = store)
 
     private var activeTab = 0 // 0 = Memory Store, 1 = Retrieval Benchmark, 2 = GC & Decay HUD
     private var selectedCategoryFilter: MemoryType? = null

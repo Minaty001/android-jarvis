@@ -451,7 +451,7 @@ class VoiceEngine(
                     _status.value = _status.value.copy(statusMessage = "Yes boss")
                     voiceRouter.mute()
                     ttsEngine.speak("Yes boss")
-                    delay(120)
+                    delay(40)
                     routeToAppropriateAsr(16000 * 1)
                 }
                 "BOTH" -> {
@@ -459,7 +459,7 @@ class VoiceEngine(
                     _status.value = _status.value.copy(statusMessage = "Yes boss")
                     voiceRouter.mute()
                     ttsEngine.speak("Yes boss")
-                    delay(120)
+                    delay(40)
                     routeToAppropriateAsr(16000 * 1)
                 }
                 "SILENT" -> {
@@ -479,7 +479,7 @@ class VoiceEngine(
         // Samsung audio policy needs a short settling window after the passive
         // AudioRecord is released; starting SpeechRecognizer immediately loses
         // the first command or returns NO_MATCH in background mode.
-        delay(250)
+        delay(100)
 
         acousticFeedbackEngine.playListeningTone()
 
@@ -734,11 +734,23 @@ class VoiceEngine(
 
             wakeOnlyCommandRetryUsed.set(false)
 
-            conversationManager.transitionTo(VoiceState.THINKING)
-            _status.value = _status.value.copy(
-                partialTranscript = cleanCommand,
-                statusMessage = "Thinking..."
-            )
+            val wordCount = cleanCommand.split("\\s+".toRegex()).count { it.isNotBlank() }
+            val showThinking = wordCount > 8
+
+            if (showThinking) {
+                conversationManager.transitionTo(VoiceState.THINKING)
+                _status.value = _status.value.copy(
+                    partialTranscript = cleanCommand,
+                    statusMessage = "Thinking..."
+                )
+            } else {
+                conversationManager.transitionTo(VoiceState.EXECUTING)
+                _status.value = _status.value.copy(
+                    partialTranscript = cleanCommand,
+                    statusMessage = "Processing..."
+                )
+            }
+
             if (isBargeInEnabled) {
                 voiceRouter.routeToBargeIn()
             } else {
@@ -749,12 +761,18 @@ class VoiceEngine(
                 assistantRuntime.executeCommand(cleanCommand) { event ->
                     when (event) {
                         is com.jarvis.agent.AgentEvent.BuildingContext -> {
-                            conversationManager.transitionTo(VoiceState.CHECKING_MEMORY)
-                            _status.value = _status.value.copy(statusMessage = "Checking context & memory...")
+                            if (showThinking) {
+                                conversationManager.transitionTo(VoiceState.CHECKING_MEMORY)
+                                _status.value = _status.value.copy(statusMessage = "Checking context & memory...")
+                            }
                         }
                         is com.jarvis.agent.AgentEvent.Thinking -> {
-                            conversationManager.transitionTo(VoiceState.THINKING)
-                            _status.value = _status.value.copy(statusMessage = "Thinking...")
+                            if (showThinking) {
+                                conversationManager.transitionTo(VoiceState.THINKING)
+                                _status.value = _status.value.copy(statusMessage = "Thinking...")
+                            } else {
+                                conversationManager.transitionTo(VoiceState.EXECUTING)
+                            }
                         }
                         is com.jarvis.agent.AgentEvent.Researching -> {
                             conversationManager.transitionTo(VoiceState.RESEARCHING)

@@ -93,11 +93,11 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
         putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 150L)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 50L)
         // Background wake handoff can add a few hundred milliseconds on Samsung devices;
         // do not finalize a valid command while the user is still speaking.
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2200L)
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2200L)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 700L)
     }
 
     open suspend fun startListening(

@@ -1,7 +1,6 @@
 package com.jarvis.agent
 
 import com.jarvis.memory.AugmentedMemoryPipeline
-import com.jarvis.retrieval.engine.RaphaelRetrievalManager
 import com.jarvis.ai.Message
 import com.jarvis.runtime.MemoryNamespaces
 import java.util.Locale
@@ -18,7 +17,6 @@ class AgentContextRouter(
     private val memoryPipeline: AugmentedMemoryPipeline? = null,
     private val ragInjector: com.jarvis.rag.RagContextInjector? = null,
     private val stateProvider: com.jarvis.autonomous.AndroidStateProvider? = null,
-    private val raphaelRetrievalManager: RaphaelRetrievalManager? = null
 ) {
     fun activeAppSession(): String? = stateProvider?.snapshot()?.activeAppSession
 
@@ -80,17 +78,6 @@ class AgentContextRouter(
         workingMemory: AgentWorkingMemory,
         history: List<Message> = emptyList()
     ): String {
-        // If RaphaelRetrievalManager is available, leverage intelligent multi-domain retrieval & re-ranking
-        raphaelRetrievalManager?.let { manager ->
-            val systemOverview = stateProvider?.snapshot()?.overview() ?: ""
-            val intelligentContext = manager.retrieve(
-                query = goal,
-                stateContext = systemOverview,
-                activeTask = state.goal
-            )
-            if (intelligentContext.isNotBlank()) {
-                val formattedHistory = if (history.isNotEmpty()) {
-                    "\nRECENT CONVERSATION HISTORY:\n" + history.takeLast(6).joinToString("\n") { "${it.role.uppercase()}: ${it.content}" }
                 } else ""
                 return intelligentContext + formattedHistory
             }

@@ -108,7 +108,7 @@ class OpenWakeWordDetector(
             stream.channel.map(FileChannel.MapMode.READ_ONLY, descriptor.startOffset, descriptor.declaredLength)
         }
         descriptor.close()
-        return Interpreter(mapped, Interpreter.Options().apply { setNumThreads(2); setUseNNAPI(false) })
+        return Interpreter(mapped, Interpreter.Options().apply { setNumThreads(4); setUseNNAPI(false) })
     }
 
     private fun validateHead(model: Interpreter) {

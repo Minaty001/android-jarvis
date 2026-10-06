@@ -23,7 +23,6 @@ import com.jarvis.rag.RagContextInjector
 import com.jarvis.rag.RagIndexStore
 import com.jarvis.rag.RagRetriever
 import com.jarvis.reliability.CheckpointManager
-import com.jarvis.retrieval.engine.RaphaelRetrievalManager
 import com.jarvis.telecom.CallAndSmsAgent
 import com.jarvis.telecom.ContactResolver
 import com.jarvis.voice.AndroidTtsEngine
@@ -164,16 +163,6 @@ class SubsystemManager(private val context: Context? = null) {
         }
 
     @Volatile
-    private var _raphaelRetrievalManager: RaphaelRetrievalManager? = null
-    val raphaelRetrievalManager: RaphaelRetrievalManager
-        get() = _raphaelRetrievalManager ?: synchronized(this) {
-            _raphaelRetrievalManager ?: RaphaelRetrievalManager(
-                ragRetriever = ragRetriever,
-                memoryStore = memoryStore,
-                ambientEngine = ambientContextEngine
-            ).also {
-                _raphaelRetrievalManager = it
-            }
         }
 
     fun isRagInitialized(): Boolean = _ragIndexStore != null || _ragRetriever != null

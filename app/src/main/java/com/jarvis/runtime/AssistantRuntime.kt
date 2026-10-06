@@ -373,16 +373,8 @@ class AssistantRuntime(
             // Initialize LangChain Assistant for Memory and RAG
             if (effectiveGroqKey.isNotBlank()) {
                 try {
-                    val lcAssistant = com.jarvis.ai.LangChainAssistant(
-                        context = context,
-                        apiKey = effectiveGroqKey,
-                        modelName = groqModel,
-                        baseUrl = "https://api.groq.com/openai/v1"
-                    )
-                    llmPlanner?.langchainAssistant = lcAssistant
                     ensureActiveScope().launch(Dispatchers.IO) {
                         try {
-                            lcAssistant.ingestUserProfile(activeUserProfile)
                         } catch (e: Throwable) {
                             android.util.Log.e("AssistantRuntime", "Failed to ingest profile: ${e.message}", e)
                         }
@@ -501,7 +493,6 @@ class AssistantRuntime(
             SearchMemoryTool(memoryStore)
         }
         toolRegistry.registerLazy("REMEMBER", "Saves facts, notes, or long-term memories using LangChain vector storage") {
-            com.jarvis.tools.LangChainIngestTool(llmPlanner?.langchainAssistant)
         }
 
         // Foundation File & System tools
