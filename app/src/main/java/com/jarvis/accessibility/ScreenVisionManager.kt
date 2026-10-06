@@ -35,6 +35,9 @@ object ScreenVisionManager {
     private const val MAX_DIMENSION = 1024
     private const val JPEG_QUALITY = 80
 
+    var lastAssistScreenshot: Bitmap? = null
+    var lastAssistScreenshotTime: Long = 0
+
     suspend fun captureScreen(): ScreenCaptureResult = withContext(Dispatchers.Default) {
         val service = JarvisAccessibilityService.instance
         val pkg = JarvisAccessibilityService.currentForegroundPackage
@@ -78,18 +81,27 @@ object ScreenVisionManager {
             }
         }
 
-        // 2. Try to capture real screenshot bitmap via AccessibilityService (API 30+)
+        // 2. Try to capture real screenshot bitmap
         var base64Img: String? = null
-        try {
-            val bitmap = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                service?.takeScreenshotAsync()
-            } else null
-            if (bitmap != null) {
-                base64Img = encodeBitmapToBase64(bitmap)
-                bitmap.recycle()
+        
+        // Fast path: use native Assist API screenshot if it's recent (within last 10 seconds)
+        if (lastAssistScreenshot != null && (System.currentTimeMillis() - lastAssistScreenshotTime) < 10000) {
+            base64Img = encodeBitmapToBase64(lastAssistScreenshot!!)
+            Log.i(TAG, "Used cached native Assist API screenshot")
+        } else {
+            // Fallback path: Accessibility Service screenshot (API 30+)
+            try {
+                val bitmap = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    service?.takeScreenshotAsync()
+                } else null
+                if (bitmap != null) {
+                    base64Img = encodeBitmapToBase64(bitmap)
+                    bitmap.recycle()
+                    Log.i(TAG, "Used AccessibilityService screenshot")
+                }
+            } catch (e: Throwable) {
+                Log.w(TAG, "Screenshot capture failed or unsupported: ${e.message}")
             }
-        } catch (e: Throwable) {
-            Log.w(TAG, "Screenshot capture failed or unsupported: ${e.message}")
         }
 
         ScreenCaptureResult(

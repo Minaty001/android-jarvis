@@ -414,7 +414,9 @@ class JarvisVoiceInteractionSession(context: Context) : VoiceInteractionSession(
     override fun onHandleScreenshot(screenshot: Bitmap?) {
         super.onHandleScreenshot(screenshot)
         if (screenshot != null) {
-            Log.i(TAG, "onHandleScreenshot received ${screenshot.width}x${screenshot.height} bitmap")
+            Log.i(TAG, "onHandleScreenshot received ${screenshot.width}x${screenshot.height} bitmap. Saving for Screen Vision.")
+            com.jarvis.accessibility.ScreenVisionManager.lastAssistScreenshot = screenshot
+            com.jarvis.accessibility.ScreenVisionManager.lastAssistScreenshotTime = System.currentTimeMillis()
         }
     }
 
