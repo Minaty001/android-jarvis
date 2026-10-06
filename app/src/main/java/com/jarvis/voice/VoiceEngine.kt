@@ -273,7 +273,6 @@ class VoiceEngine(
             ensureActiveScope().launch {
                 conversationManager.transitionTo(VoiceState.INTERRUPTED)
                 val preRoll = voiceRouter.routeToAsr(preRollSamples = 16000 * 1)
-                delay(40)
                 startListeningForCommand(isFollowUp = true, initialAudio = preRoll)
             }
             return true
@@ -451,7 +450,6 @@ class VoiceEngine(
                     _status.value = _status.value.copy(statusMessage = "Yes boss")
                     voiceRouter.mute()
                     ttsEngine.speak("Yes boss")
-                    delay(40)
                     routeToAppropriateAsr(16000 * 1)
                 }
                 "BOTH" -> {
@@ -459,7 +457,6 @@ class VoiceEngine(
                     _status.value = _status.value.copy(statusMessage = "Yes boss")
                     voiceRouter.mute()
                     ttsEngine.speak("Yes boss")
-                    delay(40)
                     routeToAppropriateAsr(16000 * 1)
                 }
                 "SILENT" -> {
@@ -472,14 +469,8 @@ class VoiceEngine(
                 }
             }
         } else {
-            delay(60)
             routeToAppropriateAsr(16000 * 1)
         }
-
-        // Samsung audio policy needs a short settling window after the passive
-        // AudioRecord is released; starting SpeechRecognizer immediately loses
-        // the first command or returns NO_MATCH in background mode.
-        delay(100)
 
         acousticFeedbackEngine.playListeningTone()
 
