@@ -63,14 +63,15 @@ class ScreenVisionTool(
                 """.trimIndent()
                 else -> """
                     You are JARVIS on-device Screen Vision Assistant.
-                    Analyze the provided screenshot and/or UI accessibility context to directly and concisely answer the user's query:
+                    Analyze the provided screenshot and/or UI accessibility context to directly answer what is on the screen.
                     Query: "$query"
 
-                    Rules:
-                    - Be concise, natural, and direct.
+                    Rules for the Report:
+                    - Start directly without filler (e.g., "On your screen, I see...").
+                    - Keep it concise, natural, and under 3 sentences.
                     - Focus on what the user specifically asked.
                     - Mention the active application name if relevant.
-                    - Keep the response within 2-4 sentences suitable for speech synthesis.
+                    - Make it sound natural for a Voice Assistant to speak aloud.
                 """.trimIndent()
             }
 
