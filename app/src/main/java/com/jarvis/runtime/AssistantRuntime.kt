@@ -97,13 +97,11 @@ class AssistantRuntime(
     val ambientContextEngine get() = subsystems.ambientContextEngine
     val worldStateProvider by lazy { com.jarvis.autonomous.AndroidStateProvider(context, ambientContextEngine, mediaSessionManager, taskStateManager) }
     val worldStateService by lazy { com.jarvis.foundation.worldstate.WorldStateService(worldStateProvider) }
-    val raphaelRetrievalManager get() = subsystems.raphaelRetrievalManager
     val contextRouter by lazy {
         AgentContextRouter(
             memoryPipeline = augmentedMemoryPipeline,
             ragInjector = ragContextInjector,
-            stateProvider = worldStateProvider,
-            raphaelRetrievalManager = raphaelRetrievalManager
+            stateProvider = worldStateProvider
         )
     }
     val recoveryManager = AgentRecoveryManager()
@@ -492,8 +490,7 @@ class AssistantRuntime(
         toolRegistry.registerLazy("SEARCH_MEMORY", "Searches encrypted on-device memory store") {
             SearchMemoryTool(memoryStore)
         }
-        toolRegistry.registerLazy("REMEMBER", "Saves facts, notes, or long-term memories using LangChain vector storage") {
-        }
+
 
         // Foundation File & System tools
         val jarvisDbTool = JarvisDbTool(context)

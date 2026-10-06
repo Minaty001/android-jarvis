@@ -162,8 +162,6 @@ class SubsystemManager(private val context: Context? = null) {
             }
         }
 
-    @Volatile
-        }
 
     fun isRagInitialized(): Boolean = _ragIndexStore != null || _ragRetriever != null
 

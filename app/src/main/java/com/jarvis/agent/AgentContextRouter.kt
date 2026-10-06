@@ -78,11 +78,6 @@ class AgentContextRouter(
         workingMemory: AgentWorkingMemory,
         history: List<Message> = emptyList()
     ): String {
-                } else ""
-                return intelligentContext + formattedHistory
-            }
-        }
-
         val needs = routeNeeds(goal)
         if (needs.contains(ContextNeed.NONE) && needs.size == 1 && history.isEmpty()) {
             return ""

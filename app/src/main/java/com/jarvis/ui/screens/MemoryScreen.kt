@@ -11,9 +11,7 @@ import com.jarvis.memory.MemoryGarbageCollector
 import com.jarvis.memory.MemoryItem
 import com.jarvis.memory.MemoryStore
 import com.jarvis.memory.MemoryType
-import com.jarvis.retrieval.model.CandidateSource
-import com.jarvis.retrieval.model.DetailedRetrievalResult
-import com.jarvis.retrieval.model.EvaluatedCandidate
+
 import com.jarvis.ui.components.Ui
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -95,7 +93,7 @@ class MemoryScreen(context: Context) : ScrollView(context) {
 
     private fun setupTabStrip() {
         tabContainer.removeAllViews()
-        val tabTitles = listOf("1. MEMORY STORE", "2. RETRIEVAL INSPECTOR", "3. GC & DECAY HUD", "4. LANGCHAIN RAG")
+        val tabTitles = listOf("1. MEMORY STORE", "2. GC & DECAY HUD", "3. LANGCHAIN RAG")
         tabTitles.forEachIndexed { index, title ->
             val tabButton = Button(context).apply {
                 text = title
@@ -122,9 +120,8 @@ class MemoryScreen(context: Context) : ScrollView(context) {
         contentContainer.removeAllViews()
         when (activeTab) {
             0 -> renderMemoryStoreTab()
-            1 -> renderRetrievalInspectorTab()
-            2 -> renderGcAndDecayTab()
-            3 -> renderLangChainRagTab()
+            1 -> renderGcAndDecayTab()
+            2 -> renderLangChainRagTab()
         }
     }
 
@@ -466,174 +463,7 @@ class MemoryScreen(context: Context) : ScrollView(context) {
     // String helper for null safety
     private fun String?.isNull_or_blank(): Boolean = this == null || this.trim().isEmpty()
 
-    // ==========================================
-    // TAB 1: RETRIEVAL & ROUTING INSPECTOR
-    // ==========================================
-    private fun renderRetrievalInspectorTab() {
-        contentContainer.addView(Ui.sectionLabel(context, "Raphael Pipeline Query Simulator"))
 
-        val benchmarkResultsContainer = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        val queryRow = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            background = Ui.rounded(context, Ui.SURFACE_2, Ui.CYAN, 8)
-            setPadding(Ui.dp(context, 10), 0, Ui.dp(context, 6), 0)
-            layoutParams = LinearLayout.LayoutParams(-1, Ui.dp(context, 44)).apply { bottomMargin = Ui.dp(context, 10) }
-        }
-        val benchmarkQueryInput = EditText(context).apply {
-            hint = "e.g. What is my favorite music album?, Turn on flight mode"
-            setSingleLine(true)
-            textSize = 12f
-            setTextColor(Ui.TEXT)
-            setHintTextColor(Ui.MUTED)
-            setBackgroundColor(Color.TRANSPARENT)
-            setText(lastBenchmarkQuery)
-            layoutParams = LinearLayout.LayoutParams(0, -1, 1f)
-        }
-        queryRow.addView(benchmarkQueryInput)
-
-        val runBtn = Ui.primaryButton(context, "BENCHMARK") {
-            lastBenchmarkQuery = benchmarkQueryInput.text?.toString()?.trim().orEmpty()
-            runRetrievalBenchmark(lastBenchmarkQuery, benchmarkResultsContainer)
-        }
-        queryRow.addView(runBtn)
-        contentContainer.addView(queryRow)
-        contentContainer.addView(benchmarkResultsContainer)
-
-        if (lastBenchmarkQuery.isNotBlank()) {
-            runRetrievalBenchmark(lastBenchmarkQuery, benchmarkResultsContainer)
-        }
-    }
-
-    private fun runRetrievalBenchmark(query: String, resultsContainer: LinearLayout) {
-        if (query.isBlank()) return
-
-        val detailedResult: DetailedRetrievalResult = retrievalManager.retrieveDetailed(query)
-        resultsContainer.removeAllViews()
-
-        // 1. Overview Card
-        val overviewCard = Ui.glassCard(context, Ui.BORDER_GLOW)
-        val overviewInner = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(Ui.dp(context, 12), Ui.dp(context, 10), Ui.dp(context, 12), Ui.dp(context, 10))
-        }
-
-        overviewInner.addView(TextView(context).apply {
-            text = "RETRIEVAL ANALYSIS RESULT"
-            textSize = 13f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.CYAN)
-        })
-
-        val detailsGrid = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 6))
-        }
-
-        detailsGrid.addView(buildInfoRow("QUERY INTENT", detailedResult.intent.name, Ui.CYAN))
-        detailsGrid.addView(buildInfoRow("RETRIEVAL ROUTE", detailedResult.route.name, Ui.SUCCESS))
-        detailsGrid.addView(buildInfoRow("RE-RANKER EXECUTED", detailedResult.rerankerName, Ui.WARNING))
-        detailsGrid.addView(buildInfoRow("CANDIDATES RETURNED", "${detailedResult.candidates.size} Candidate(s)", Ui.TEXT))
-        detailsGrid.addView(buildInfoRow("LATENCY", "${detailedResult.latencyMs} ms", Ui.CYAN))
-
-        overviewInner.addView(detailsGrid)
-        overviewCard.addView(overviewInner)
-        resultsContainer.addView(overviewCard)
-
-        // 2. Candidates Breakdown
-        resultsContainer.addView(Ui.sectionLabel(context, "Evaluated Candidates & Fusion Ranks"))
-
-        if (detailedResult.candidates.isEmpty()) {
-            resultsContainer.addView(TextView(context).apply {
-                text = "Zero retrieval route selected for this command/intent."
-                textSize = 12f
-                setTextColor(Ui.MUTED)
-                setPadding(0, Ui.dp(context, 8), 0, Ui.dp(context, 8))
-            })
-        } else {
-            detailedResult.candidates.forEachIndexed { index, candidate ->
-                resultsContainer.addView(buildCandidateCard(index + 1, candidate))
-            }
-        }
-
-        // 3. Formatted Context Preview
-        if (detailedResult.structuredContext.isNotBlank()) {
-            resultsContainer.addView(Ui.sectionLabel(context, "LLM Context Window Preview"))
-            val contextCard = Ui.glassCard(context, Ui.CYAN_DIM)
-            val contextInner = LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(Ui.dp(context, 10), Ui.dp(context, 8), Ui.dp(context, 10), Ui.dp(context, 8))
-            }
-            contextInner.addView(TextView(context).apply {
-                text = detailedResult.structuredContext
-                textSize = 10.5f
-                typeface = Typeface.MONOSPACE
-                setTextColor(Ui.TEXT)
-            })
-            contextCard.addView(contextInner)
-            resultsContainer.addView(contextCard)
-        }
-    }
-
-    private fun buildInfoRow(label: String, valText: String, valColor: Int): View {
-        val row = Ui.row(context)
-        row.addView(TextView(context).apply {
-            text = label
-            textSize = 10f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.MUTED)
-        }, LinearLayout.LayoutParams(Ui.dp(context, 140), -2))
-        row.addView(TextView(context).apply {
-            text = valText
-            textSize = 11f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(valColor)
-        })
-        return row
-    }
-
-    private fun buildCandidateCard(rank: Int, evaluated: EvaluatedCandidate): View {
-        val candidate = evaluated.candidate
-        val card = Ui.glassCard(context, Ui.BORDER)
-        val inner = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(Ui.dp(context, 10), Ui.dp(context, 8), Ui.dp(context, 10), Ui.dp(context, 8))
-        }
-
-        val top = Ui.row(context)
-        top.addView(TextView(context).apply {
-            text = "#$rank • ${candidate.source.name}"
-            textSize = 11f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.CYAN)
-        }, LinearLayout.LayoutParams(0, -2, 1f))
-
-        top.addView(Ui.hudBadge(context, String.format(Locale.US, "SCORE: %.2f", evaluated.compositeScore), Ui.SUCCESS))
-        inner.addView(top)
-
-        inner.addView(TextView(context).apply {
-            text = candidate.text
-            textSize = 11.5f
-            setTextColor(Ui.TEXT)
-            setPadding(0, Ui.dp(context, 4), 0, Ui.dp(context, 4))
-        })
-
-        inner.addView(TextView(context).apply {
-            text = String.format(
-                Locale.US,
-                "Dense: %.2f  •  Lexical: %.2f  •  Importance: %.2f  •  Re-rank: %.2f",
-                candidate.denseScore, candidate.lexicalScore, candidate.importanceScore, evaluated.rerankScore
-            )
-            textSize = 9f
-            setTextColor(Ui.MUTED)
-        })
-
-        card.addView(inner)
-        return card
-    }
 
     // ==========================================
     // TAB 2: GARBAGE COLLECTOR & DECAY HUD
