@@ -599,6 +599,10 @@ class AssistantRuntime(
 
     private val commandMutex = Mutex()
 
+    private var lastInteractionTime: Long = 0
+    private var currentSessionId: String = "session_${System.currentTimeMillis()}"
+    private val SESSION_TIMEOUT_MS = 30 * 60 * 1000L // 30 minutes
+
     suspend fun executeCommand(
         utterance: String,
         userApprovalGranted: Boolean = false,   // SECURITY: fail-closed — callers must explicitly grant approval
@@ -614,6 +618,16 @@ class AssistantRuntime(
         onEvent: (AgentEvent) -> Unit = {}
     ): RuntimeExecutionResult {
         Log.i(TAG, "Runtime executing command: '$utterance'")
+        
+        val now = System.currentTimeMillis()
+        if (now - lastInteractionTime > SESSION_TIMEOUT_MS) {
+            com.jarvis.memory.MemorySummarizerJob.summarizeAndArchive(currentSessionId, augmentedMemoryPipeline)
+            currentSessionId = "session_$now"
+            Log.i(TAG, "Starting new conversation session: $currentSessionId")
+        }
+        lastInteractionTime = now
+        contextRouter.activeSessionId = currentSessionId
+        
         clearRecentlySpoken()
         val currentWorldState = worldStateService.fresh()
         conversationManager.addMessage("user", utterance)
@@ -691,8 +705,8 @@ class AssistantRuntime(
                 }
             }
 
-            augmentedMemoryPipeline.rememberUserTurn(MemoryNamespaces.CONVERSATION, utterance)
-            augmentedMemoryPipeline.rememberAssistantTurn(MemoryNamespaces.CONVERSATION, directPlan.response)
+            augmentedMemoryPipeline.rememberUserTurn(currentSessionId, utterance)
+            augmentedMemoryPipeline.rememberAssistantTurn(currentSessionId, directPlan.response)
             conversationManager.addMessage("assistant", directPlan.response)
             onEvent(AgentEvent.Completed(directPlan.response))
 
@@ -757,8 +771,8 @@ class AssistantRuntime(
         }
 
         if (agentResult.response.isNotBlank()) {
-            augmentedMemoryPipeline.rememberUserTurn(MemoryNamespaces.CONVERSATION, utterance)
-            augmentedMemoryPipeline.rememberAssistantTurn(MemoryNamespaces.CONVERSATION, agentResult.response)
+            augmentedMemoryPipeline.rememberUserTurn(currentSessionId, utterance)
+            augmentedMemoryPipeline.rememberAssistantTurn(currentSessionId, agentResult.response)
             conversationManager.addMessage("assistant", agentResult.response)
         }
 
@@ -845,8 +859,8 @@ class AssistantRuntime(
                 pendingResumeStrikes = 0
             }
 
-            augmentedMemoryPipeline.rememberUserTurn(MemoryNamespaces.CONVERSATION, clarification)
-            augmentedMemoryPipeline.rememberAssistantTurn(MemoryNamespaces.CONVERSATION, agentResult.response)
+            augmentedMemoryPipeline.rememberUserTurn(currentSessionId, clarification)
+            augmentedMemoryPipeline.rememberAssistantTurn(currentSessionId, agentResult.response)
 
             val toolResults = agentResult.steps.map {
                 ToolResult(it.success, it.message)

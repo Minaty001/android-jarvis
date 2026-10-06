@@ -18,6 +18,7 @@ class AgentContextRouter(
     private val ragInjector: com.jarvis.rag.RagContextInjector? = null,
     private val stateProvider: com.jarvis.autonomous.AndroidStateProvider? = null,
 ) {
+    var activeSessionId: String = "default"
     fun activeAppSession(): String? = stateProvider?.snapshot()?.activeAppSession
 
     fun routeNeeds(goal: String): Set<ContextNeed> {
@@ -102,7 +103,7 @@ class AgentContextRouter(
             val memoryHistoryContext = memoryPipeline?.build(
                 currentRequest = goal,
                 history = history,
-                sessionId = MemoryNamespaces.CONVERSATION,
+                sessionId = activeSessionId,
                 ragLimit = 3,
                 magLimit = 3
             )?.formatted ?: ""
