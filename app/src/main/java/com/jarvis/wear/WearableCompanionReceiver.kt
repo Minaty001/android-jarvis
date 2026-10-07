@@ -30,6 +30,12 @@ class WearableCompanionReceiver : BroadcastReceiver() {
             if (intent?.action != ACTION_WEAR_COMMAND) return null
             return intent.getStringExtra(EXTRA_COMMAND_TEXT)?.trim()?.ifBlank { null }
         }
+
+        fun serviceActionFor(action: String?): String? = when (action) {
+            ACTION_WEAR_WAKE -> JarvisForegroundService.ACTION_START_WITH_WAKE
+            ACTION_WEAR_COMMAND -> JarvisForegroundService.ACTION_EXECUTE
+            else -> null
+        }
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -42,11 +48,18 @@ class WearableCompanionReceiver : BroadcastReceiver() {
             return
         }
 
+        val command = parseCommandFromIntent(intent)
+        if (action == ACTION_WEAR_COMMAND && command == null) return
+
         val service = JarvisForegroundService.instance
         if (service == null) {
+            val serviceAction = serviceActionFor(action) ?: return
             Log.w(TAG, "JarvisForegroundService not running; starting service...")
             val startIntent = Intent(context, JarvisForegroundService::class.java).apply {
-                this.action = JarvisForegroundService.ACTION_START
+                this.action = serviceAction
+                if (action == ACTION_WEAR_COMMAND) {
+                    putExtra("command", command)
+                }
             }
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 context?.startForegroundService(startIntent)
@@ -62,7 +75,6 @@ class WearableCompanionReceiver : BroadcastReceiver() {
                 service.voiceEngine?.startManualListening()
             }
             ACTION_WEAR_COMMAND -> {
-                val command = intent.getStringExtra(EXTRA_COMMAND_TEXT)?.trim()
                 if (!command.isNullOrBlank()) {
                     Log.i(TAG, "Executing wearable command: '$command'")
                     service.executeTextCommand(command)

@@ -43,23 +43,34 @@ class PocketAndMotionManager(
     }
 
     fun start(): Boolean {
-        if (sensorManager == null) {
+        val manager = sensorManager
+        if (manager == null) {
             Log.w(TAG, "SensorManager not available")
             return false
         }
         if (!isRunning.compareAndSet(false, true)) return true
 
         try {
+            var registered = false
             proximitySensor?.let {
-                sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
-                Log.i(TAG, "Proximity sensor registered: ${it.name}")
+                if (manager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)) {
+                    registered = true
+                    Log.i(TAG, "Proximity sensor registered: ${it.name}")
+                }
             }
             accelerometer?.let {
-                sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
-                Log.i(TAG, "Accelerometer registered: ${it.name}")
+                if (manager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)) {
+                    registered = true
+                    Log.i(TAG, "Accelerometer registered: ${it.name}")
+                }
             }
-            return true
+            if (registered) return true
+            runCatching { manager.unregisterListener(this) }
+            isRunning.set(false)
+            return false
         } catch (e: Exception) {
+            runCatching { manager.unregisterListener(this) }
+            isRunning.set(false)
             Log.w(TAG, "Error registering motion sensors: ${e.message}")
             return false
         }

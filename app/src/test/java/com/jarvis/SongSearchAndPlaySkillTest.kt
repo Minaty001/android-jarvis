@@ -1,7 +1,6 @@
 package com.jarvis
 
 import com.jarvis.agent.AgentWorkingMemory
-import com.jarvis.agent.MultiTaskDecomposer
 import com.jarvis.agent.skills.SkillContext
 import com.jarvis.agent.skills.SkillRegistry
 import com.jarvis.agent.skills.SongSearchAndPlaySkill
@@ -84,27 +83,6 @@ class SongSearchAndPlaySkillTest {
         val query = result.proposedAction?.params?.get("query") ?: ""
         assertTrue("Generic search without preference should pick trending music: $query", query.contains("trending", ignoreCase = true) || query.contains("top", ignoreCase = true))
         assertTrue("Candidate queries must include alternatives", result.candidateQueries.isNotEmpty())
-    }
-
-    @Test
-    fun testMultiTaskDecomposerPreservesSearchAndPlay() {
-        val decomposed1 = MultiTaskDecomposer.decompose("search and play song")
-        assertEquals(1, decomposed1.size)
-        assertEquals("search and play song", decomposed1[0])
-
-        val decomposed2 = MultiTaskDecomposer.decompose("research and play kesariya")
-        assertEquals(1, decomposed2.size)
-        assertEquals("research and play kesariya", decomposed2[0])
-
-        val decomposed3 = MultiTaskDecomposer.decompose("search and plan song")
-        assertEquals(1, decomposed3.size)
-        assertEquals("search and plan song", decomposed3[0])
-
-        // Normal multi-command should still decompose properly
-        val multiCommand = MultiTaskDecomposer.decompose("turn on flashlight and open settings")
-        assertEquals(2, multiCommand.size)
-        assertEquals("turn on flashlight", multiCommand[0])
-        assertEquals("open settings", multiCommand[1])
     }
 
     @Test

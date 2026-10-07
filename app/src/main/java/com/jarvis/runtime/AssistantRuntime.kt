@@ -621,7 +621,7 @@ class AssistantRuntime(
         
         val now = System.currentTimeMillis()
         if (now - lastInteractionTime > SESSION_TIMEOUT_MS) {
-            com.jarvis.memory.MemorySummarizerJob.summarizeAndArchive(currentSessionId, augmentedMemoryPipeline)
+            com.jarvis.memory.MemorySummarizerJob.summarizeSession(currentSessionId, augmentedMemoryPipeline, currentLlmClient)
             currentSessionId = "session_$now"
             Log.i(TAG, "Starting new conversation session: $currentSessionId")
         }

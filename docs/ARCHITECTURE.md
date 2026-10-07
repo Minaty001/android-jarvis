@@ -2,7 +2,7 @@
 
 ## Overview
 
-J.A.R.V.I.S. is an autonomous AI assistant operating as an Android System Foreground Service. It combines real-time streaming voice interaction, multi-provider LLM orchestration, local RAG vector search, proactive device context monitoring, accessibility automation, and local routine learning.
+J.A.R.V.I.S. is an Android assistant operating through a foreground service. It combines streaming voice interaction, multi-provider LLM orchestration, SQLite memory and document retrieval, device context monitoring, accessibility automation, and local routines. The main `MemoryStore` uses FTS4 and lexical/recency ranking. The separate document RAG retriever combines BM25, lexical cosine, and optional deterministic character n-gram cosine; the latter is not semantic language-model embedding.
 
 ```mermaid
 flowchart TD
@@ -72,6 +72,7 @@ flowchart TD
 
 ### 2. Real-Time Streaming Voice Pipeline (`com.jarvis.voice`)
 - **`ContinuousAudioStream`**: Low-latency 16kHz PCM audio stream reader managing `AudioRecord` hardware, echo cancellation (AEC), noise suppression (NS), and hardware suspend/resume during voice enrollment or external audio capture.
+- The capture loop backs off on zero-length reads, retries recoverable hardware failures, and clears its running state after unrecoverable errors so it can be restarted.
 - **`VoiceRouter`**: High-performance audio frame dispatcher that routes continuous PCM samples between `WakeWordEngine`, `BargeInDetector`, and `AsrEngine`.
 - **`WakeWordEngine`**: The only production wake-word path. It receives audio from `ContinuousAudioStream`, feeds openWakeWord shared frontend feature models (`melspectrogram.tflite`, `embedding_model.tflite`), and invokes the classifier heads (`hey_jarvis_v0.1.tflite` and optional `jarvis_openwakeword.tflite`). The energy gate is separate from the manifest threshold; 2-of-3 temporal confirmation runs inside the detector. Optional owner verification is disabled by default and fails closed when required but unavailable.
 - **`VoiceEnrollmentDialog` / `WakeWordDatasetStore`**: Records 16 kHz mono PCM16 WAVs under app-private storage and exports the positive dataset. Enrollment updates dataset provenance only; offline openWakeWord training performs actual weight optimization from positive, unknown, and background recordings.
@@ -97,3 +98,9 @@ flowchart TD
 ### 6. Local Routine Learning & Memory (`com.jarvis.habit`, `com.jarvis.memory`, `com.jarvis.routine`)
 - **`HabitManager`**: Local privacy-focused habit miner capturing app usage, Wi-Fi network transitions, and charging events. Stored locally in `MemoryStore` under `LEARNED_PATTERN`.
 - **`SmartRoutineEngine`**: Evaluates learned habit patterns and executes routines only when explicitly requested or confirmed by the user. Location data is never used.
+- **`MemoryStore`**: SQLite FTS4 keyword candidates ranked by lexical overlap, importance, recency, and access count. TTL-expired rows and their FTS entries are purged before memory reads.
+- **Session summaries**: When an LLM client is configured, a bounded session transcript may be summarized asynchronously and stored as a conversation task artifact. Empty or `NONE` summaries are ignored.
+
+### 7. LAN and wearable entry points
+- **`JarvisLanServer`**: Serves packaged web assets as raw bytes and accepts UTF-8 API bodies using byte-based content lengths, with API authentication and a bounded request size.
+- **`WearableCompanionReceiver`**: Wake and command broadcasts preserve their action when starting a cold foreground service; stop is handled only when the service is already active.

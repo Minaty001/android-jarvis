@@ -113,10 +113,11 @@ class JarvisLanServer(
     private suspend fun handleClient(socket: Socket) = withContext(Dispatchers.IO) {
         try {
             socket.soTimeout = 10_000
-            val input = BufferedReader(InputStreamReader(socket.getInputStream()))
-            val output = OutputStreamWriter(socket.getOutputStream())
+            val input = BufferedInputStream(socket.getInputStream())
+            val outputStream = socket.getOutputStream()
+            val output = OutputStreamWriter(outputStream, Charsets.UTF_8)
 
-            val requestLine = input.readLine() ?: return@withContext
+            val requestLine = readHttpLine(input) ?: return@withContext
             val parts = requestLine.split(" ")
             if (parts.size < 2) return@withContext
 
@@ -124,50 +125,50 @@ class JarvisLanServer(
             val uri = parts[1]
 
             val headers = mutableMapOf<String, String>()
-            var line: String? = input.readLine()
+            var line = readHttpLine(input)
             var contentLength = 0
 
-            while (!line.isNullOrBlank()) {
+            while (!line.isNullOrEmpty()) {
                 val headerParts = line.split(":", limit = 2)
                 if (headerParts.size == 2) {
                     val key = headerParts[0].trim().lowercase()
                     val value = headerParts[1].trim()
                     headers[key] = value
                     if (key == "content-length") {
-                        contentLength = value.toIntOrNull() ?: 0
+                        contentLength = value.toIntOrNull() ?: -1
                     }
                 }
-                line = input.readLine()
+                line = readHttpLine(input)
             }
 
-            var body = ""
+            // Authenticate header-only before spending time reading an API request body.
+            val isApi = uri.startsWith("/api/")
+            val requestPin = headers["x-jarvis-pin"]
+                ?: uri.substringAfter("pin=", "").substringBefore("&")
+            if (isApi && requestPin != pairingPin) {
+                sendJsonResponse(output, 401, JSONObject().put("error", "Unauthorized: Invalid or missing X-Jarvis-Pin header"))
+                return@withContext
+            }
+
+            if (contentLength < 0) {
+                sendJsonResponse(output, 400, JSONObject().put("error", "Invalid Content-Length"))
+                return@withContext
+            }
             // SECURITY: Enforce a max body size BEFORE reading — an attacker can set
             // Content-Length to an arbitrarily large number to exhaust device memory.
-            // We also authenticate before reading any body (except the header is already parsed).
             val MAX_BODY_BYTES = 64 * 1024 // 64 KB is generous for any valid command payload
             if (contentLength > MAX_BODY_BYTES) {
                 sendJsonResponse(output, 413, JSONObject().put("error", "Request body too large"))
                 return@withContext
             }
+            var body = ""
             if (contentLength > 0) {
-                val charArray = CharArray(contentLength)
-                var readTotal = 0
-                while (readTotal < contentLength) {
-                    val read = input.read(charArray, readTotal, contentLength - readTotal)
-                    if (read == -1) break
-                    readTotal += read
+                val bodyBytes = readHttpBody(input, contentLength)
+                if (bodyBytes == null) {
+                    sendJsonResponse(output, 400, JSONObject().put("error", "Incomplete request body"))
+                    return@withContext
                 }
-                body = String(charArray, 0, readTotal)
-            }
-
-            // PIN check for API endpoints
-            val isApi = uri.startsWith("/api/")
-            val requestPin = headers["x-jarvis-pin"]
-                ?: uri.substringAfter("pin=", "").substringBefore("&")
-
-            if (isApi && requestPin != pairingPin) {
-                sendJsonResponse(output, 401, JSONObject().put("error", "Unauthorized: Invalid or missing X-Jarvis-Pin header"))
-                return@withContext
+                body = String(bodyBytes, Charsets.UTF_8)
             }
 
             when {
@@ -239,7 +240,7 @@ class JarvisLanServer(
                 }
 
                 method == "GET" && uri.startsWith("/apps/") -> {
-                    handleWebAppFileRequest(output, uri)
+                    handleWebAppFileRequest(outputStream, uri)
                 }
 
                 else -> {
@@ -253,10 +254,10 @@ class JarvisLanServer(
         }
     }
 
-    private fun handleWebAppFileRequest(writer: OutputStreamWriter, uri: String) {
+    private fun handleWebAppFileRequest(output: OutputStream, uri: String) {
         val cleanPath = uri.substringAfter("/apps/").substringBefore("?").trim('/')
         if (cleanPath.isBlank() || cleanPath.contains("..")) {
-            sendHtmlResponse(writer, "<h3>400 Bad Request</h3>")
+            sendHtmlResponse(OutputStreamWriter(output, Charsets.UTF_8), "<h3>400 Bad Request</h3>")
             return
         }
 
@@ -269,7 +270,7 @@ class JarvisLanServer(
         val targetFile = File(appDir, subPath)
 
         if (!targetFile.exists() || !targetFile.isFile) {
-            sendHtmlResponse(writer, "<h3>404 WebApp File Not Found ($appId / $subPath)</h3>")
+            sendHtmlResponse(OutputStreamWriter(output, Charsets.UTF_8), "<h3>404 WebApp File Not Found ($appId / $subPath)</h3>")
             return
         }
 
@@ -284,23 +285,7 @@ class JarvisLanServer(
             else -> "text/plain; charset=utf-8"
         }
 
-        val bytes = targetFile.readBytes()
-        writer.write("HTTP/1.1 200 OK\r\n")
-        writer.write("Content-Type: $mimeType\r\n")
-        writer.write("Content-Length: ${bytes.size}\r\n")
-        writer.write("Access-Control-Allow-Origin: *\r\n")
-        writer.write("Connection: close\r\n\r\n")
-        writer.flush()
-
-        // Write raw file bytes
-        targetFile.inputStream().use { input ->
-            val buf = ByteArray(8192)
-            var n: Int
-            while (input.read(buf).also { n = it } > 0) {
-                writer.write(String(buf, 0, n, Charsets.UTF_8))
-            }
-        }
-        writer.flush()
+        writeWebAppFileResponse(output, targetFile, mimeType)
     }
 
     private fun sendJsonResponse(writer: OutputStreamWriter, code: Int, json: JSONObject) {
@@ -447,4 +432,41 @@ class JarvisLanServer(
 </body>
 </html>
     """.trimIndent()
+}
+
+internal fun readHttpLine(input: InputStream): String? {
+    val bytes = ByteArrayOutputStream()
+    while (true) {
+        val value = input.read()
+        if (value == -1) return if (bytes.size() == 0) null else bytes.toByteArray().toString(Charsets.ISO_8859_1)
+        if (value == '\n'.code) {
+            val line = bytes.toByteArray()
+            val length = if (line.lastOrNull() == '\r'.code.toByte()) line.size - 1 else line.size
+            return String(line, 0, length, Charsets.ISO_8859_1)
+        }
+        bytes.write(value)
+    }
+}
+
+internal fun readHttpBody(input: InputStream, contentLength: Int): ByteArray? {
+    if (contentLength < 0) return null
+    val bytes = ByteArray(contentLength)
+    var offset = 0
+    while (offset < contentLength) {
+        val count = input.read(bytes, offset, contentLength - offset)
+        if (count < 0) return null
+        offset += count
+    }
+    return bytes
+}
+
+internal fun writeWebAppFileResponse(output: OutputStream, file: File, mimeType: String) {
+    val headers = "HTTP/1.1 200 OK\r\n" +
+            "Content-Type: $mimeType\r\n" +
+            "Content-Length: ${file.length()}\r\n" +
+            "Access-Control-Allow-Origin: *\r\n" +
+            "Connection: close\r\n\r\n"
+    output.write(headers.toByteArray(Charsets.UTF_8))
+    file.inputStream().use { it.copyTo(output) }
+    output.flush()
 }

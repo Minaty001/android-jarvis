@@ -5,7 +5,7 @@ The J.A.R.V.I.S. Android voice assistant UI has been completely rebuilt using **
 - **Wake-Word Runtime**: The single continuous stream feeds openWakeWord shared frontend feature models and classifier heads (`Hey Jarvis`, `Jarvis`) verified via `openwakeword_models.json`.
 - **Autonomous Agent Intelligence**: Goal evaluation, step-by-step reasoning, loop guards, and outcome verification.
 - **Subsystem Automation**: Media & Music (Spotify, YouTube Music, YMusic), WhatsApp Direct Dispatch, Deep Research with candidate ranking, OS Device Controls, and Natural Language Calculation.
-- **Memory Subsystem**: Local SQLite RAG (FTS + BM25), CAG session awareness, and MAG persistent facts.
+- **Memory Subsystem**: SQLite `MemoryStore` (FTS4 + lexical/importance/recency ranking), a separate document RAG retriever (BM25 plus optional hashed character n-gram similarity), conversation context, and persistent facts.
 - **Security & APIs**: Hardware-backed Android Keystore AES-GCM encrypted LLM credentials and Groq model switching (`gpt-oss-20b`, `gpt-oss-120b`, `llama-3.3-70b-versatile`).
 
 ---
@@ -80,7 +80,7 @@ The J.A.R.V.I.S. Android voice assistant UI has been completely rebuilt using **
 ### 4.3. Memory Core Screen (`MemoryScreen.kt`)
 1. **Health Metrics HUD**: 4 cards for `ACTIVE`, `PREFERENCES`, `DOC CHUNKS`, `MESSAGES`
 2. **Store New Memory**: Form to save custom key-value memories into SQLite
-3. **FTS Query & Relevance Search**: Search with live BM25 scoring
+3. **Memory Search**: Search local memories through the SQLite FTS4 and ranking path. Document RAG uses a separate BM25-based retriever.
 4. **Memory Cards**: Source provenance, timestamps, and `ARCHIVE` button
 
 ### 4.4. API & Model Manager (`ApiManagerScreen.kt`)
@@ -96,6 +96,11 @@ The J.A.R.V.I.S. Android voice assistant UI has been completely rebuilt using **
 ---
 
 ## 5. Verification & Build Artifacts
-- **Kotlin Compilation**: `./gradlew compileDebugKotlin` completed with `BUILD SUCCESSFUL`
-- **Unit & Regression Test Suite**: `./gradlew test` completed with `BUILD SUCCESSFUL` (48 tasks passed)
-- **Production Package**: `./gradlew assembleRelease` generated [`dist/jarvis-v1.1-release.apk`](../../dist/jarvis-v1.1-release.apk) (9.7 MB)
+
+This section records the latest local export. It is not a UI or feature regression report.
+
+- **Build**: `./gradlew assembleDebug assembleRelease` completed successfully on 2026-10-07.
+- **Debug APK**: [`dist/jarvis-v1.1-debug.apk`](../../dist/jarvis-v1.1-debug.apk) (about 97 MB).
+- **Release APK**: [`dist/jarvis-v1.1-release.apk`](../../dist/jarvis-v1.1-release.apk) (about 69 MB).
+- **Checksums**: SHA-256 sidecars are stored next to the APKs.
+- **Tests**: The complete Gradle unit-test suite was not successfully run in this stabilization pass.

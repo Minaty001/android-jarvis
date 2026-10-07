@@ -163,6 +163,19 @@ class BluetoothAndWearableCompanionTest {
     }
 
     @Test
+    fun wearableActionsAreForwardedWhenServiceNeedsStarting() {
+        assertEquals(
+            com.jarvis.service.JarvisForegroundService.ACTION_START_WITH_WAKE,
+            WearableCompanionReceiver.serviceActionFor(WearableCompanionReceiver.ACTION_WEAR_WAKE)
+        )
+        assertEquals(
+            com.jarvis.service.JarvisForegroundService.ACTION_EXECUTE,
+            WearableCompanionReceiver.serviceActionFor(WearableCompanionReceiver.ACTION_WEAR_COMMAND)
+        )
+        assertNull(WearableCompanionReceiver.serviceActionFor(WearableCompanionReceiver.ACTION_WEAR_STOP))
+    }
+
+    @Test
     fun testBluetoothHeadsetManagerConnectionStateUpdates() {
         var callbackName: String? = null
         var callbackConnected = false

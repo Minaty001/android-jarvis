@@ -3,10 +3,10 @@
 <div align="center">
 
 [![Build Status](https://img.shields.io/badge/Build-Passing-00E676?style=for-the-badge&logo=android&logoColor=white)](https://github.com/1209codex/android-jarvis)
-[![Unit Tests](https://img.shields.io/badge/Unit%20Tests-503%20Passed-00E676?style=for-the-badge&logo=pytest&logoColor=white)](https://github.com/1209codex/android-jarvis)
+[![Unit Tests](https://img.shields.io/badge/Unit%20Tests-JUnit-607D8B?style=for-the-badge&logo=pytest&logoColor=white)](https://github.com/1209codex/android-jarvis)
 [![Platform](https://img.shields.io/badge/Platform-Android%209.0%2B%20(API%2028%2B)-00E5FF?style=for-the-badge&logo=android&logoColor=white)](https://github.com/1209codex/android-jarvis)
 [![Google Stitch](https://img.shields.io/badge/Design-Google%20Stitch%20Material%203-7B1FA2?style=for-the-badge&logo=materialdesign&logoColor=white)](https://github.com/1209codex/android-jarvis)
-[![Release APK](https://img.shields.io/badge/Release%20APK-9.7%20MB-blue?style=for-the-badge&logo=googleplay&logoColor=white)](dist/jarvis-v1.1-release.apk)
+[![Release APK](https://img.shields.io/badge/Release%20APK-1.1-blue?style=for-the-badge&logo=googleplay&logoColor=white)](dist/jarvis-v1.1-release.apk)
 
 <p align="center">
   <b>Closed-loop Android AI super-agent featuring continuous openWakeWord activation, multi-provider LLM reasoning, deep OS-level accessibility automation, Bluetooth SCO earbud routing, WearOS synchronization, and Google Stitch Material 3 cyber-slate design.</b>
@@ -25,7 +25,7 @@
   - [2. 🎛️ Bluetooth Earbud SCO & WearOS Sync](#2-️-bluetooth-earbud-sco--wearos-sync)
   - [3. 💬 Telephony, SMS & Autonomous WhatsApp](#3--telephony-sms--autonomous-whatsapp)
   - [4. 👁️ Vision Perception & Proactive Context](#4-️-vision-perception--proactive-context)
-  - [5. 🧠 Neural Memory Core & Local Semantic RAG](#5--neural-memory-core--local-semantic-rag)
+  - [5. 🧠 Local Memory & Hybrid Retrieval](#5--local-memory--hybrid-retrieval)
 - [🗣️ Bilingual Command Reference](#️-bilingual-command-reference)
 - [📦 Download & Installation](#-download--installation)
 - [🔨 Building & Verification](#-building--verification)
@@ -38,7 +38,7 @@
 
 - 🤖 **[Master Local Features & Source Code Catalog](docs/JARVIS_LOCAL_FEATURES_AND_COMMANDS.md)**: Definitive catalog of all local features, trained commands, handling tools, and Kotlin source locations.
 - 🏗️ **[System Architecture Specs](docs/ARCHITECTURE.md)**: Deep-dive architecture flowcharts, voice engine state machine, and system service bindings.
-- ⚡ **[Ponytail Optimization Report](PONYTAIL_GAIN.md)**: Scoreboard showing standard library refactorings, dead code pruning, and memory optimizations.
+- ⚡ **[Stabilization Notes](PONYTAIL_GAIN.md)**: Concrete fixes from the latest maintenance pass; no unmeasured benchmark claims.
 - 🧩 **[Third-Party Models Catalog](THIRD_PARTY_MODELS.md)**: Specifications and licensing for openWakeWord TFLite models and Sherpa-ONNX engines.
 - 🧪 **[Device Test Matrix & Report](docs/DEVICE_TEST_REPORT.md)**: Verification results across Samsung, Google Pixel, Xiaomi, and OnePlus hardware.
 
@@ -82,7 +82,7 @@ J.A.R.V.I.S. provides a streamlined **5-tab navigation bar** alongside a persist
 | :--- | :--- |
 | **🏠 HOME** | Interactive `JarvisOrbView` Arc Reactor core, live `JarvisWaveformView` audio spectrum, real-time multi-step task protocol tracker (`PLANNING`, `EXECUTING`, `VERIFYING`), and smart command vector bar. |
 | **⚡ SKILLS** | Modular one-touch automation cards: Music Transport Controls & Presets, Telephony Quick Actions, WhatsApp Comm Link, Optical Vision AI, Driving/Meeting Autopilot switches, and NL Calculator. |
-| **🧠 MEMORY** | Health Metrics HUD, structured SQLite memory browser (`USER_PREFERENCE`, `EPISODIC_EVENT`, `FACTUAL_KNOWLEDGE`), BM25 keyword relevance, half-life decay visualization, and automatic garbage collector. |
+| **🧠 MEMORY** | SQLite memory browser for preferences, facts, task artifacts, and conversation history; FTS4 keyword retrieval with lexical, importance, recency, and usage ranking. |
 | **🔑 BRAIN** | Unified provider key management (Groq, Gemini, Ollama), personal wake-word sample enrollment, hardware AES-GCM-256 Keystore status, model chip selection, and live ping latency verifier. |
 | **⚙️ CONFIG** | Acoustic options, lock-screen HUD toggle, continuous conversation & full-duplex barge-in switches, Android permission shortcuts, Bluetooth SCO routing, morning briefing alarm picker, and live embedded logcat telemetry viewer. |
 
@@ -127,10 +127,11 @@ J.A.R.V.I.S. provides a streamlined **5-tab navigation bar** alongside a persist
 </details>
 
 <details>
-<summary><b>5. 🧠 Neural Memory Core & Local Semantic RAG</b></summary>
+<summary><b>5. 🧠 Local Memory & Hybrid Retrieval</b></summary>
 
-- **Hybrid SQLite Vector Vault**: Combines FTS BM25 keyword relevance with dense cosine vector embeddings, maintaining sliding conversation turn history and persistent user facts.
-- **Subsystem Container & RAM Optimization**: Boot-critical subsystems load in <50ms while heavy RAG vector stores and vision models lazy-load on demand. Listens to Android `ComponentCallbacks2.onTrimMemory()` signals to automatically flush vector caches during OS RAM pressure.
+- **Memory retrieval**: The main SQLite `MemoryStore` uses FTS4 candidates and lexical overlap, importance, recency, and prior usage. The separate document RAG index combines BM25, lexical cosine, and deterministic character n-gram vectors; those vectors are not semantic LLM embeddings.
+- **Conversation Memory**: Stores recent conversation history and can asynchronously summarize a session when an LLM client is configured. Empty or `NONE` summaries are discarded.
+- **Expiry**: TTL-expired memories are removed before memory retrieval.
 </details>
 
 ---
@@ -154,7 +155,9 @@ J.A.R.V.I.S. provides a streamlined **5-tab navigation bar** alongside a persist
 ## 📦 Download & Installation
 
 ### Option 1: Direct Production Release APK
-- 📥 **[`dist/jarvis-v1.1-release.apk`](dist/jarvis-v1.1-release.apk)** (**9.7 MB**, R8 minified, production signed)
+- 📥 **[`dist/jarvis-v1.1-release.apk`](dist/jarvis-v1.1-release.apk)** (R8 minified; signed with the configured debug signing key)
+- 🧪 **[`dist/jarvis-v1.1-debug.apk`](dist/jarvis-v1.1-debug.apk)** (debug build)
+- SHA-256 checksum files are alongside both APKs in `dist/`.
 
 #### Android Setup Steps:
 1. Download `jarvis-v1.1-release.apk` directly on your Android device.
@@ -164,7 +167,7 @@ J.A.R.V.I.S. provides a streamlined **5-tab navigation bar** alongside a persist
 ### Option 2: ADB Command Line Installation
 ```bash
 # Install APK directly via connected ADB interface:
-adb install -r -d dist/jarvis-v1.1-release.apk
+adb install -r dist/jarvis-v1.1-release.apk
 
 # Launch J.A.R.V.I.S. main activity:
 adb shell am start -n com.jarvis/.ui.MainActivity
@@ -175,21 +178,24 @@ adb shell am start -n com.jarvis/.ui.MainActivity
 ## 🔨 Building & Verification
 
 ### Build Requirements
-- Android Studio Ladybug / Koala / Iguana
-- Android SDK Target API 34 (Min API 28 / Android 9.0+)
+- Android SDK Platform 35 (minimum supported API 28 / Android 9.0+)
 - Java 17 / OpenJDK 17
 
 ### Build & Test Commands
 ```bash
-# Run complete unit test suite (503 passed tests across 91 test suites)
+# Run the local unit test suite
 ./gradlew testDebugUnitTest
 
-# Build optimized debug APK
-./gradlew assembleDebug
+# Build both APK variants
+./gradlew assembleDebug assembleRelease
 
-# Build production R8 minified release package (9.7 MB)
-./gradlew assembleRelease
+# Export release APK and checksum to dist/
+./export_release.sh
 ```
+
+`export_release.sh` exports release only. Gradle outputs are
+`app/build/outputs/apk/debug/app-debug.apk` and
+`app/build/outputs/apk/release/app-release.apk`.
 
 ---
 
@@ -201,12 +207,12 @@ J.A.R.V.I.S. is architected using strict **Clean Architecture** boundaries organ
 |:---:|---|---|
 | **1** | **Presentation Layer** | Google Stitch Material 3 HUD, cyber-slate navigation screens, interactive `JarvisOrbView` & `JarvisWaveformView`. |
 | **2** | **Application & Runtime** | Persistent `JarvisForegroundService`, `AssistantRuntime` coordinator, `SubsystemManager`, and `JarvisEventBus`. |
-| **3** | **Domain & Autonomous Reasoning**| `MultiTaskDecomposer` planning engine, `HallucinationFirewall` safety bounds, and `AutonomousDaemon` supervisor. |
+| **3** | **Domain & Autonomous Reasoning**| `AgentKernel` planning, policy checks, and tool execution. |
 | **4** | **Device Tools & Automation** | 44+ automated capabilities, Android Accessibility Services, synthetic UI automation, WhatsApp, and telephony drivers. |
 | **5** | **Voice & Acoustic Perception** | `WakeWordEngine` stream, openWakeWord TFLite heads (`hey_jarvis_v0.1.tflite`, `jarvis_openwakeword.tflite`), owner voice verifier, and Bluetooth SCO. |
 | **6** | **AI Inference & Computer Vision** | Multi-provider LLM client (Groq `openai/gpt-oss-20b`/`120b`, Gemini `gemini-2.5-flash`, OpenRouter, Ollama) and Camera2 perception (`qwen/qwen3.6-27b`). |
-| **7** | **Neural Memory & Vector RAG** | Dense vector embeddings, BM25 relevance re-ranking, half-life decay garbage collection, and AES-GCM-256 Keystore encryption. |
-| **8** | **Test & Verification Suite** | 91 test suites containing 503 automated unit and integration tests with a 100% pass rate. |
+| **7** | **Local Memory** | SQLite FTS4 candidate retrieval and lexical, importance, recency, and usage ranking. |
+| **8** | **Test & Verification Suite** | JUnit tests under `app/src/test`; run `./gradlew testDebugUnitTest` for current results. |
 | **9** | **Build & Infrastructure** | Gradle R8 code/resource shrinking, ProGuard optimizations, and native binary compression. |
 
 ---
@@ -218,7 +224,7 @@ J.A.R.V.I.S. is architected using strict **Clean Architecture** boundaries organ
 | **AI Models & Frameworks** | TensorFlow Lite (Quantized INT8 openWakeWord KWS), Groq Cloud LLMs (`gpt-oss-20b`/`120b`), Google Gemini (`gemini-2.5-flash`), Sherpa-ONNX |
 | **Audio & Acoustics** | Android AudioRecord (`VOICE_RECOGNITION`), Bluetooth SCO (`setCommunicationDevice`), Native `MediaSession`, `AcousticEchoCanceler` |
 | **UI & Design System** | **Google Stitch Material 3**, Custom Holographic Canvas (`JarvisOrbView`, `JarvisWaveformView`), Jetpack Components |
-| **Storage & Security** | SQLite v4 (FTS + BM25 vector index), Android Keystore (AES-GCM-256), Encrypted SharedPreferences |
+| **Storage & Security** | SQLite v4 with FTS4 and app preference storage |
 | **OS Automation** | Android Accessibility Service (`GLOBAL_ACTION_HOME`), Telecom Manager, Notification Listener (`RemoteInput`), AlarmManager |
 | **Language & Concurrency** | Kotlin 1.9+, Kotlin Coroutines & Flow, SupervisorJob Scopes |
 

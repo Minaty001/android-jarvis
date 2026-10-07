@@ -137,8 +137,9 @@ class JarvisForegroundService : Service() {
         val action = intent?.action
         when {
             action == ACTION_START -> startEngine()
+            action == ACTION_START_WITH_WAKE -> startEngine { voiceEngine?.startManualListening() }
             action == ACTION_STOP -> stopEngine()
-            action == "com.jarvis.action.EXECUTE" || action == "com.jarvis.action.EXECUTE_COMMAND" -> {
+            action == ACTION_EXECUTE || action == ACTION_EXECUTE_COMMAND -> {
                 val command = intent.getStringExtra("command")
                     ?: intent.getStringExtra("query")
                     ?: intent.getStringExtra("command_text")
@@ -153,7 +154,7 @@ class JarvisForegroundService : Service() {
         return START_STICKY
     }
 
-    fun startEngine() {
+    fun startEngine(onStarted: (() -> Unit)? = null) {
         acquireWakeLock()
         ensureActiveScope().launch {
             if (voiceEngine == null) {
@@ -273,6 +274,7 @@ class JarvisForegroundService : Service() {
             
             startNotificationObserver()
             scheduleHeartbeatWatchdog()
+            onStarted?.invoke()
         }
     }
 
@@ -455,6 +457,14 @@ class JarvisForegroundService : Service() {
             headsetMediaButtonManager = null
             bluetoothHeadsetManager?.stop()
             bluetoothHeadsetManager = null
+            pocketAndMotionManager?.stop()
+            pocketAndMotionManager = null
+            earbudsAssistantEngine?.stop()
+            earbudsAssistantEngine = null
+            clipboardIntelligenceEngine?.stop()
+            clipboardIntelligenceEngine = null
+            ambientContextEngine?.stop()
+            ambientContextEngine = null
             com.jarvis.wear.WearableNotificationDispatcher.dismiss(applicationContext)
         } catch (_: Exception) {}
         try {
@@ -525,7 +535,10 @@ class JarvisForegroundService : Service() {
         const val CHANNEL_ID = "jarvis_service_channel"
         const val NOTIFICATION_ID = 1001
         const val ACTION_START = "com.jarvis.action.START"
+        const val ACTION_START_WITH_WAKE = "com.jarvis.action.START_WITH_WAKE"
         const val ACTION_STOP = "com.jarvis.action.STOP"
+        const val ACTION_EXECUTE = "com.jarvis.action.EXECUTE"
+        const val ACTION_EXECUTE_COMMAND = "com.jarvis.action.EXECUTE_COMMAND"
 
         fun startService(context: Context) {
             val intent = Intent(context, JarvisForegroundService::class.java).apply {

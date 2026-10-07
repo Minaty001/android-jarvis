@@ -214,6 +214,7 @@ class MemoryStore(context: android.content.Context) {
     }
 
     fun queryByKey(key: String, namespace: String? = null): List<MemoryItem> {
+        purgeExpired()
         val db = dbHelper.readableDatabase
         val isAll = namespace.isNullOrBlank() || namespace.equals("all", ignoreCase = true)
         val selection = if (isAll) "key = ? AND archived = 0" else "key = ? AND namespace = ? AND archived = 0"
@@ -231,6 +232,7 @@ class MemoryStore(context: android.content.Context) {
     }
 
     fun getAllActiveMemories(namespace: String? = null): List<MemoryItem> {
+        purgeExpired()
         val db = dbHelper.readableDatabase
         val isAll = namespace.isNullOrBlank() || namespace.equals("all", ignoreCase = true)
         val selection = if (isAll) "archived = 0" else "namespace = ? AND archived = 0"
@@ -317,6 +319,7 @@ class MemoryStore(context: android.content.Context) {
     }
 
     fun getPreferences(limit: Int = 8): List<MemoryItem> {
+        purgeExpired()
         val db = dbHelper.readableDatabase
         val cursor = db.query(
             "memory_items",
@@ -332,6 +335,7 @@ class MemoryStore(context: android.content.Context) {
     }
 
     fun getHabits(limit: Int = 30): List<MemoryItem> {
+        purgeExpired()
         val db = dbHelper.readableDatabase
         val cursor = db.query(
             "memory_items",
@@ -501,6 +505,7 @@ class MemoryStore(context: android.content.Context) {
     }
 
     fun recentMemories(limit: Int = 20): List<MemoryItem> {
+        purgeExpired()
         val db = dbHelper.readableDatabase
         val cursor = db.query(
             "memory_items", null, "archived = 0", null, null, null,

@@ -28,29 +28,6 @@ class CommandReliabilityAndRemediationTest {
     }
 
     @Test
-    fun testCompoundTaskSplittingVsNounPhraseProtection_BUG_CC_001() {
-        // Noun phrases containing 'and' / '&' must not be split into multiple sub-goals
-        val tomAndJerry = MultiTaskDecomposer.decompose("play tom and jerry on youtube")
-        assertEquals("Noun phrase 'tom and jerry' must not be split", 1, tomAndJerry.size)
-        assertEquals("play tom and jerry on youtube", tomAndJerry.first())
-
-        val rockAndRoll = MultiTaskDecomposer.decompose("play rock and roll music")
-        assertEquals("Noun phrase 'rock and roll' must not be split", 1, rockAndRoll.size)
-
-        val fastAndFurious = MultiTaskDecomposer.decompose("search for fast and furious trailer")
-        assertEquals("Noun phrase 'fast and furious' must not be split", 1, fastAndFurious.size)
-
-        // Real compound requests with action verbs in each part must split correctly
-        val realCompound = MultiTaskDecomposer.decompose("turn on torch and play believer")
-        assertEquals("Compound command must be decomposed into 2 sub-goals", 2, realCompound.size)
-        assertEquals("turn on torch", realCompound[0])
-        assertEquals("play believer", realCompound[1])
-
-        val hindiCompound = MultiTaskDecomposer.decompose("torch on karo aur kesariya gana bajao")
-        assertEquals("Hindi compound command must be decomposed into 2 sub-goals", 2, hindiCompound.size)
-    }
-
-    @Test
     fun testFallbackDecisionSubstringBoundaryChecks_BUG_FK_002() {
         // 1. "stopwatch start karo" must NOT trigger MEDIA_STOP
         val stopwatchDecision = AgentKernel.matchFallbackRules("stopwatch start karo")

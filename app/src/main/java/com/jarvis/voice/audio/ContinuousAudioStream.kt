@@ -242,7 +242,12 @@ class ContinuousAudioStream(
                 }
                 continue
             }
-            val read = record.read(readBuffer, 0, readBuffer.size)
+            val read = try {
+                record.read(readBuffer, 0, readBuffer.size)
+            } catch (e: Exception) {
+                Log.e(TAG, "AudioRecord read failed", e)
+                break
+            }
 
             if (read > 0) {
                 rollingBuffer.write(readBuffer, 0, read)
@@ -255,6 +260,11 @@ class ContinuousAudioStream(
                     } catch (e: Throwable) {
                         Log.e(TAG, "Error in audio consumer: ${e.message}")
                     }
+                }
+            } else if (read == 0) {
+                // AudioRecord may return zero transiently; avoid a hot loop.
+                try { Thread.sleep(10) } catch (_: InterruptedException) {
+                    if (!isRunning.get()) break
                 }
             } else if (read < 0) {
                 if (isSuspended.get() || !isRunning.get()) continue
@@ -288,7 +298,23 @@ class ContinuousAudioStream(
                         Log.e(TAG, "All AudioRecord recovery attempts failed; terminating loop")
                         break
                     }
+                } else {
+                    Log.e(TAG, "Unrecoverable AudioRecord read error: $read")
+                    break
                 }
+            }
+        }
+
+        // A dead worker must not leave start() believing capture is still alive.
+        synchronized(this) {
+            if (isRunning.get()) {
+                isRunning.set(false)
+                isSuspended.set(false)
+                releaseAudioEffects()
+                runCatching { audioRecord?.stop() }
+                runCatching { audioRecord?.release() }
+                audioRecord = null
+                workerThread = null
             }
         }
     }

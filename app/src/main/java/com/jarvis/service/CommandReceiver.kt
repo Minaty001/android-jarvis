@@ -28,8 +28,15 @@ class CommandReceiver : BroadcastReceiver() {
             if (service != null) {
                 service.executeTextCommand(command)
             } else {
-                JarvisForegroundService.startService(context)
-                JarvisForegroundService.instance?.executeTextCommand(command)
+                val serviceIntent = Intent(context, JarvisForegroundService::class.java).apply {
+                    this.action = JarvisForegroundService.ACTION_EXECUTE
+                    putExtra(EXTRA_COMMAND, command)
+                }
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
             }
         }
     }

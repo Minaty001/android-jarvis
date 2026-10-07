@@ -79,6 +79,22 @@ class AugmentedMemoryPipeline(private val memoryStore: MemoryStore) {
         memoryStore.saveConversation(sessionId, "assistant", text)
     }
 
+    fun sessionTranscript(sessionId: String, limit: Int = 40): String = formatSessionTranscript(
+        memoryStore.getRecentConversation(sessionId, limit.coerceIn(1, 40))
+    )
+
+    fun rememberSessionSummary(sessionId: String, summary: String): Long {
+        val cleanSummary = usableSessionSummary(summary) ?: return -1L
+        return memoryStore.saveMemory(
+            type = MemoryType.TASK_ARTIFACT,
+            key = "session_summary_$sessionId",
+            content = cleanSummary,
+            provenance = "session_summarizer",
+            importance = 0.4,
+            namespace = "conversation"
+        )
+    }
+
     fun rememberFact(
         key: String,
         value: String,
@@ -166,3 +182,11 @@ class AugmentedMemoryPipeline(private val memoryStore: MemoryStore) {
         return sb.toString().trim()
     }
 }
+
+internal fun formatSessionTranscript(records: List<ConversationRecord>): String =
+    records.joinToString("\n") { "${it.role}: ${it.content.take(1_000)}" }.takeLast(12_000)
+
+internal fun usableSessionSummary(summary: String?): String? = summary
+    ?.trim()
+    ?.takeIf { it.isNotBlank() && !it.equals("NONE", ignoreCase = true) }
+    ?.take(1_500)

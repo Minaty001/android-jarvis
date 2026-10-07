@@ -22,7 +22,7 @@ This document is the definitive master catalog of all **local features, function
 ├────────────────────────────────────────┼─────────────────────────────────────────┤
 │ ⚡ Autonomous Daemons & Routines       │ 💾 Memory Vault & Local RAG             │
 │  • ActivityMonitorEngine (App Tracker) │  • FTS4 SQLite MemoryStore              │
-│  • AutoScheduleEngine (Habit Miner)    │  • LangChain4j Local Vector Index       │
+│  • AutoScheduleEngine (Habit Miner)    │  • SQLite FTS4 MemoryStore              │
 │  • SmartRoutineEngine & Macro Workflows│  • Activity Moments Ledger              │
 └────────────────────────────────────────┴─────────────────────────────────────────┘
 ```
@@ -39,7 +39,7 @@ This document is the definitive master catalog of all **local features, function
 
 ### B. Voice & Acoustic Engine
 * **Continuous Wake-Word Detection**: Runs on-device `openWakeWord` classifier heads (`"Hey Jarvis"`, `"Jarvis"`) over continuous PCM stream without cloud dependency.
-* **Full-Duplex Acoustic Barge-In**: Instantaneously interrupts TTS playback (<50ms cutoff) when human speech is detected.
+* **Full-Duplex Acoustic Barge-In**: Detects speech or interruption controls while TTS is playing and requests playback interruption. Response time depends on device and audio route.
 * **Bluetooth SCO Audio Router**: Routes microphone input and speaker output seamlessly through Bluetooth headsets/earbuds.
 * **Live Conversation Mode**: Zero-wake-word continuous turn-taking conversation loop.
 
@@ -60,8 +60,10 @@ This document is the definitive master catalog of all **local features, function
 
 ### F. Memory, RAG & Knowledge Vault
 * **FTS4 MemoryStore**: SQLite full-text search database storing user preferences, structured facts, task artifacts, and episodic events.
-* **LangChain4j RAG Vault**: Embeds and indexes local document files (`.txt`, `.md`, `.pdf`) for local retrieval-augmented generation.
-* **Memory Decay & Garbage Collection**: Automatically decays memory importance scores over time and archives obsolete memories.
+* **MemoryStore retrieval**: SQLite FTS4 keyword candidates are ranked by lexical overlap, importance, recency, and access count; this store does not use dense embeddings.
+* **Document RAG**: `RagIndexStore` chunks and indexes documents; `RagRetriever` combines BM25, lexical cosine, and optional deterministic character n-gram cosine from `EmbeddingVectorizer`. These n-gram vectors are not semantic language-model embeddings.
+* **Expiry and memory management**: TTL-expired memories and their FTS entries are purged before retrieval; active records can be archived through memory tools and UI.
+* **Conversation summaries**: When an LLM client is configured, a bounded session transcript can be summarized asynchronously and stored as a conversation task artifact. Empty and `NONE` summaries are skipped.
 
 ### G. Autonomous Daemon & Background Activity Monitor
 * **ActivityMonitorEngine**: Background service daemon that tracks foreground app sessions, duration of use (in seconds), and active media playback, saving them as `ActivityMoment` entries.

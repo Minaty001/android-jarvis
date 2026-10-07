@@ -1,5 +1,7 @@
 # 📱 JARVIS ADB Autopilot Test Report
 
+> **Historical report:** The 34-command matrix below was recorded for version 1.0 on 2026-09-19. It does not describe the current 1.1 build. The latest install check is recorded at the end; installation alone does not verify feature behavior.
+
 **Date:** 2026-09-19  
 **Device:** Samsung SM-A515F (Galaxy A51)  
 **Android Version:** 13 (API 33)  
@@ -269,7 +271,7 @@ The only issue found (SMS database access) is a minor permission/database lock i
 
 ---
 
-## 📦 Installation Summary
+## 📦 Historical Installation Summary (2026-09-19)
 
 ### Build Information
 - **Build Command:** `./gradlew assembleRelease`
@@ -304,3 +306,14 @@ adb install -r -d /home/shanu/Desktop/android-jarvis/exports/Jarvis-0.1.apk
 ```bash
 adb shell am start -n com.jarvis/.ui.MainActivity
 ```
+
+---
+
+## Current Build Install Check
+
+- **Date:** 2026-10-07
+- **Build:** version 1.1 (`versionCode=2`), release APK
+- **Device:** Samsung SM-A515F (Galaxy A51), connected over USB
+- **Command:** `adb install -r dist/jarvis-v1.1-release.apk`
+- **Result:** `Success`
+- **Scope:** Confirms package installation only. No current feature-level ADB matrix was run.

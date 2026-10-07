@@ -1,5 +1,7 @@
 # 🤖 J.A.R.V.I.S. — Complete Capabilities, Features, & Action Guide (With 5 Examples Each)
 
+> **Implementation note:** The examples are illustrative, not a guarantee that every action, provider fallback, response time, or tool name is supported by the current build. Check `docs/JARVIS_LOCAL_FEATURES_AND_COMMANDS.md` and the registered tools in source. The main memory store uses SQLite FTS4. A separate document RAG pipeline combines BM25 with lexical and optional hashed character n-gram similarity; it is not a semantic LLM embedding store.
+
 This document provides a comprehensive, easy-to-understand guide to all **features, functions, systems, tasks, and actions** supported by J.A.R.V.I.S., complete with **5 real-world voice commands / usage examples for every single feature**.
 
 ---
@@ -10,9 +12,9 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                            J.A.R.V.I.S. BRAIN                               │
 ├──────────────────────────────────────┬──────────────────────────────────────┤
-│ 🎙️ Voice & Acoustic Engine           │ 🧠 Multi-Provider AI & LangChain4j   │
+│ 🎙️ Voice & Acoustic Engine           │ 🧠 Multi-Provider AI & SQLite Memory │
 │  • Continuous Wake-Word ("Jarvis")   │  • Groq / Gemini / OpenRouter / Ollama│
-│  • Wake-Word Dataset & KWS Diagnostics│  • LangChain4j RAG & Chat Memory     │
+│  • Wake-Word Dataset & KWS Diagnostics│  • FTS4 Retrieval & Conversation Memory│
 │  • Full-Duplex Barge-In Interrupt    │  • ReAct Multi-Step Task Planner     │
 ├──────────────────────────────────────┼──────────────────────────────────────┤
 │ 📱 OS & Hardware Automation          │ 👁️ Vision & Accessibility Automator │
@@ -57,7 +59,7 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 4. Run `scripts/train_kws.py` and `scripts/validate_kws_model.py`; install the generated INT8 asset and metadata to activate the newly trained model.
 
 #### D. Full-Duplex Acoustic Barge-In (Interrupting Jarvis):
-1. While Jarvis reads a long briefing, say *"Jarvis, stop"* $\to$ Mutes TTS in <50ms.
+1. While Jarvis reads a long briefing, say *"Jarvis, stop"* $\to$ Requests TTS interruption (latency depends on device and audio route).
 2. While Jarvis explains weather, say *"Skip"* $\to$ Halts playback immediately.
 3. While Jarvis speaks news, say *"Quiet"* $\to$ Mutes and waits for next input.
 4. While Jarvis reads SMS, say *"Jarvis"* $\to$ Intercepts audio and opens mic.
@@ -72,27 +74,27 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 
 ---
 
-## 2. 🧠 LangChain4j & AI Reasoning Core
+## 2. 🧠 AI Reasoning & Local Memory
 
 ### Features & Functions:
-* **LangChain4j `MessageWindowChatMemory`**: Retains 10-turn sliding context window.
-* **Persistent Vector Store (`InMemoryEmbeddingStore`)**: Auto-serializes embeddings to `langchain_rag.json`.
-* **`REMEMBER` Voice Tool**: Ingests new facts into persistent RAG vector memory.
+* **Conversation context**: Combines the current request with recent persisted conversation and available memory context.
+* **SQLite FTS4 memory**: Persists facts and task artifacts and ranks keyword candidates by lexical overlap, importance, recency, and usage. Document RAG is a separate indexed pipeline.
+* **Session summaries**: Generated asynchronously only when an LLM client is available; empty or `NONE` output is ignored.
 * **Multi-Provider LLM Router**: Automatic fallback between Groq, Gemini, OpenRouter, and Ollama.
-* **Fast-Path Intent Routing (<50ms)**: Direct execution of 35+ non-LLM actions.
+* **Fast-Path Intent Routing**: Some common actions can be handled locally without an LLM request; latency depends on the action and device.
 
 ### 5 Examples per Feature:
 
-#### A. LangChain Conversational Memory:
+#### A. Conversation Context (illustrative examples):
 1. User: *"My name is Vikram"* $\to$ Jarvis: *"Got it, Vikram."*
 2. User: *"What is my name?"* $\to$ Jarvis: *"Your name is Vikram."*
 3. User: *"I am going to Delhi tomorrow"* $\to$ Jarvis remembers location in turn history.
 4. User: *"Where am I going tomorrow?"* $\to$ Jarvis: *"You are going to Delhi."*
-5. User: *"Summarize our conversation so far"* $\to$ Recalls recent 10-turn context.
+5. User: *"Summarize our conversation so far"* $\to$ Uses available recent conversation context.
 
-#### B. Persistent RAG Vector Memory:
-1. Ingest document: *"Office Wi-Fi password is Cyberpunk2077"* $\to$ Saved to vector store.
-2. Next day (after phone restart): *"What is the office Wi-Fi password?"* $\to$ Retrieves from vector store.
+#### B. Persistent SQLite Memory (keyword retrieval):
+1. Save a note: *"Office Wi-Fi details are in my notes"* $\to$ Stored locally if accepted by memory tooling.
+2. Later ask: *"What are my office Wi-Fi details?"* $\to$ Retrieval depends on keyword overlap and saved content.
 3. Ingest note: *"Doctor appointment is on Friday at 4 PM at Max Hospital"*.
 4. Query: *"Where is my doctor appointment?"* $\to$ Returns *"Max Hospital"*.
 5. Ingest: *"My blood group is O positive"*. Query: *"What is my blood group?"* $\to$ Returns *"O positive"*.
@@ -111,12 +113,12 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 4. Complex reasoning goal $\to$ Routes to `Groq-Strong` (`openai/gpt-oss-120b`).
 5. Multimodal vision query $\to$ Routes to `qwen/qwen3.6-27b`.
 
-#### E. Fast-Path Intent Routing (<50ms Execution):
-1. *"Turn on flashlight"* $\to$ Executed in 12ms (No cloud LLM call).
-2. *"Set volume to 50%"* $\to$ Executed in 15ms.
-3. *"Check battery percentage"* $\to$ Executed in 10ms.
-4. *"Pause music"* $\to$ Executed in 18ms.
-5. *"What time is it?"* $\to$ Executed in 8ms.
+#### E. Fast-Path Intent Routing (illustrative; no timing benchmark):
+1. *"Turn on flashlight"* $\to$ May use a local hardware tool without an LLM call.
+2. *"Set volume to 50%"* $\to$ May use a local device settings tool.
+3. *"Check battery percentage"* $\to$ May use a local battery status tool.
+4. *"Pause music"* $\to$ May use Android media controls.
+5. *"What time is it?"* $\to$ May be handled by a local clock tool.
 
 ---
 
