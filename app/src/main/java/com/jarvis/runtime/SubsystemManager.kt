@@ -239,6 +239,8 @@ class SubsystemManager(private val context: Context? = null) {
                 val settings = runCatching { com.jarvis.ui.data.UiPreferencesStore(ctx).loadSettings() }.getOrDefault(com.jarvis.ui.model.AppSettings())
                 val engine: TtsEngine = if (settings.ttsProvider.equals("android", ignoreCase = true)) {
                     fallback
+                } else if (settings.ttsProvider.equals("sherpa", ignoreCase = true)) {
+                    com.jarvis.voice.SherpaTtsEngine(ctx, fallback)
                 } else {
                     GroqTtsEngine(
                         context = ctx,

@@ -167,6 +167,15 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         if (text.isBlank()) return
         ensureInitialized()
         applyAudioAttributes()
+        
+        // Dynamically switch Locale based on script
+        val hasDevanagari = text.any { it.code in 0x0900..0x097F }
+        if (hasDevanagari) {
+            tts?.language = Locale("hi", "IN")
+        } else {
+            tts?.language = Locale("en", "IN")
+        }
+        
         val utteranceId = UUID.randomUUID().toString()
         audioFocus.requestDuckFocus()
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
@@ -190,6 +199,15 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         }
 
         applyAudioAttributes()
+        
+        // Dynamically switch Locale based on script
+        val hasDevanagari = text.any { it.code in 0x0900..0x097F }
+        if (hasDevanagari) {
+            tts?.language = Locale("hi", "IN")
+        } else {
+            tts?.language = Locale("en", "IN")
+        }
+        
         val utteranceId = UUID.randomUUID().toString()
         val deferred = CompletableDeferred<Boolean>()
         pendingUtterances[utteranceId] = deferred

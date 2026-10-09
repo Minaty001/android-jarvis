@@ -90,18 +90,11 @@ class ContinuousAudioStream(
                         val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
                         val isScoOn = am?.isBluetoothScoOn == true
                         val inputDevices = am?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-                        val btInput = if (isScoOn) {
-                            inputDevices?.firstOrNull {
-                                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && it.type == AudioDeviceInfo.TYPE_BLE_HEADSET) ||
-                                it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                                it.type == AudioDeviceInfo.TYPE_USB_HEADSET
-                            }
-                        } else {
-                            inputDevices?.firstOrNull {
-                                it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                                it.type == AudioDeviceInfo.TYPE_USB_HEADSET
-                            }
+                        val btInput = inputDevices?.firstOrNull {
+                            it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && it.type == AudioDeviceInfo.TYPE_BLE_HEADSET) ||
+                            it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                            it.type == AudioDeviceInfo.TYPE_USB_HEADSET
                         }
                         if (btInput != null) {
                             val ok = record.setPreferredDevice(btInput)
@@ -131,18 +124,11 @@ class ContinuousAudioStream(
                 val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
                 val isScoOn = am?.isBluetoothScoOn == true
                 val inputDevices = am?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-                val btInput = if (isScoOn) {
-                    inputDevices?.firstOrNull {
-                        it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                        (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && it.type == AudioDeviceInfo.TYPE_BLE_HEADSET) ||
-                        it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                        it.type == AudioDeviceInfo.TYPE_USB_HEADSET
-                    }
-                } else {
-                    inputDevices?.firstOrNull {
-                        it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                        it.type == AudioDeviceInfo.TYPE_USB_HEADSET
-                    }
+                val btInput = inputDevices?.firstOrNull {
+                    it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                    (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && it.type == AudioDeviceInfo.TYPE_BLE_HEADSET) ||
+                    it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    it.type == AudioDeviceInfo.TYPE_USB_HEADSET
                 }
                 synchronized(this) {
                     val currentRecord = audioRecord
