@@ -191,6 +191,7 @@ class TelephonyTool(
                     "meeting" to com.jarvis.messaging.AutoReplyMode.MEETING, "meet" to com.jarvis.messaging.AutoReplyMode.MEETING,
                     "busy" to com.jarvis.messaging.AutoReplyMode.BUSY,
                     "custom" to com.jarvis.messaging.AutoReplyMode.CUSTOM,
+                    "ai" to com.jarvis.messaging.AutoReplyMode.AI_SMART_REPLY, "smart" to com.jarvis.messaging.AutoReplyMode.AI_SMART_REPLY,
                     "on" to com.jarvis.messaging.AutoReplyMode.DRIVING, "enable" to com.jarvis.messaging.AutoReplyMode.DRIVING
                 )[modeStr] ?: com.jarvis.messaging.AutoReplyMode.OFF
 

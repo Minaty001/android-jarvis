@@ -592,10 +592,12 @@ object IntentResolver {
         )
         if (isScreenQuery) {
             val mode = when {
-                text.contains("summariz") || text.contains("short") || text.contains("summary") -> "summarize"
-                text.contains("error") || text.contains("crash") || text.contains("bug") || text.contains("issue") || text.contains("fail") -> "error_check"
-                text.contains("extract") || text.contains("code") || text.contains("otp") || text.contains("number") -> "extract"
-                else -> "explain"
+                text.contains("off") || text.contains("stop") || text.contains("band") -> "off"
+                text.contains("driving") || text.contains("drive") -> "driving"
+                text.contains("meeting") || text.contains("meet") -> "meeting"
+                text.contains("ai") || text.contains("smart") -> "ai"
+                text.contains("busy") -> "busy"
+                else -> "driving"
             }
             return ResolvedIntent(
                 intent = AssistantIntent.SCREEN_VISION,
@@ -919,32 +921,38 @@ object IntentResolver {
         }
 
         if (text.contains("driving mode")) {
-            val params = mapOf("action" to "set_ambient_mode", "mode" to "driving")
+            val isOff = text.contains("off") || text.contains("disable") || text.contains("stop") || text.contains("band")
+            val modeVal = if (isOff) "standby" else "driving"
+            val params = mapOf("action" to "set_ambient_mode", "mode" to modeVal)
             return ResolvedIntent(
                 intent = AssistantIntent.AUTONOMOUS_CONTROL,
                 confidence = 0.97f,
                 params = params,
-                directPlan = ExecutionPlan("Activating Driving Ambient Mode.", listOf(ActionPlan("AUTONOMOUS_CONTROL", params)))
+                directPlan = ExecutionPlan("Setting Driving Ambient Mode.", listOf(ActionPlan("AUTONOMOUS_CONTROL", params)))
             )
         }
 
         if (text.contains("meeting mode")) {
-            val params = mapOf("action" to "set_ambient_mode", "mode" to "meeting")
+            val isOff = text.contains("off") || text.contains("disable") || text.contains("stop") || text.contains("band")
+            val modeVal = if (isOff) "standby" else "meeting"
+            val params = mapOf("action" to "set_ambient_mode", "mode" to modeVal)
             return ResolvedIntent(
                 intent = AssistantIntent.AUTONOMOUS_CONTROL,
                 confidence = 0.97f,
                 params = params,
-                directPlan = ExecutionPlan("Activating Meeting Ambient Mode.", listOf(ActionPlan("AUTONOMOUS_CONTROL", params)))
+                directPlan = ExecutionPlan("Setting Meeting Ambient Mode.", listOf(ActionPlan("AUTONOMOUS_CONTROL", params)))
             )
         }
 
         if (text.contains("focus mode") || text.contains("deep work")) {
-            val params = mapOf("action" to "set_ambient_mode", "mode" to "focus")
+            val isOff = text.contains("off") || text.contains("disable") || text.contains("stop") || text.contains("band")
+            val modeVal = if (isOff) "standby" else "focus"
+            val params = mapOf("action" to "set_ambient_mode", "mode" to modeVal)
             return ResolvedIntent(
                 intent = AssistantIntent.AUTONOMOUS_CONTROL,
                 confidence = 0.97f,
                 params = params,
-                directPlan = ExecutionPlan("Activating Deep Focus Mode.", listOf(ActionPlan("AUTONOMOUS_CONTROL", params)))
+                directPlan = ExecutionPlan("Setting Deep Focus Mode.", listOf(ActionPlan("AUTONOMOUS_CONTROL", params)))
             )
         }
 
@@ -1081,6 +1089,7 @@ object IntentResolver {
                 text.contains("off") || text.contains("stop") || text.contains("band") -> "off"
                 text.contains("driving") || text.contains("drive") -> "driving"
                 text.contains("meeting") || text.contains("meet") -> "meeting"
+                text.contains("ai") || text.contains("smart") -> "ai"
                 text.contains("busy") -> "busy"
                 else -> "driving"
             }

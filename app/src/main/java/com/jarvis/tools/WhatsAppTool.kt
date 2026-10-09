@@ -140,10 +140,11 @@ class WhatsAppTool(
                         "meeting" to AutoReplyMode.MEETING, "meet" to AutoReplyMode.MEETING,
                         "busy" to AutoReplyMode.BUSY,
                         "custom" to AutoReplyMode.CUSTOM,
+                        "ai" to AutoReplyMode.AI_SMART_REPLY, "smart" to AutoReplyMode.AI_SMART_REPLY,
                         "on" to AutoReplyMode.DRIVING, "enable" to AutoReplyMode.DRIVING
                     )[modeStr] ?: AutoReplyMode.OFF
 
-                    engine.setAutoReplyMode(targetMode, template)
+                    com.jarvis.messaging.AutoReplyPolicyManager.setMode(targetMode, template)
 
                     if (targetMode == AutoReplyMode.OFF)
                         ToolResult.Success("WhatsApp auto-reply has been turned off.")

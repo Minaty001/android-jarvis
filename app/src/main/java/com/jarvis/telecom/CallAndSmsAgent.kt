@@ -9,6 +9,9 @@ import android.telephony.SmsManager
 import android.util.Log
 import com.jarvis.accessibility.JarvisAccessibilityService
 import com.jarvis.accessibility.UiAutomationManager
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -32,6 +35,7 @@ class CallAndSmsAgent(
     context: Context? = null,
     private val contactResolver: ContactResolver = ContactResolver(context?.applicationContext ?: context)
 ) {
+    var llmClient: com.jarvis.ai.LlmClient? = null
     private val context: Context? = context?.applicationContext ?: context
 
     companion object {
@@ -111,7 +115,9 @@ class CallAndSmsAgent(
 
         // Evaluate SMS Auto-Reply via AutoReplyPolicyManager
         if (com.jarvis.messaging.AutoReplyPolicyManager.isEnabled()) {
-            com.jarvis.messaging.AutoReplyPolicyManager.handleIncomingSmsAutoReply(context, cleanSender)
+            GlobalScope.launch(Dispatchers.IO) {
+                com.jarvis.messaging.AutoReplyPolicyManager.handleIncomingSmsAutoReply(context, cleanSender, cleanBody, llmClient)
+            }
         }
 
         Log.i(TAG, "SMS received from $displayName: \"${cleanBody.take(40)}\" (OTP: $otp)")

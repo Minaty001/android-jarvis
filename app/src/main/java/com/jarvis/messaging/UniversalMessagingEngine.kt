@@ -15,6 +15,9 @@ import com.jarvis.notification.NotificationStore
 import com.jarvis.telecom.ContactResolver
 import com.jarvis.tools.ToolResult
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Dispatchers
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
@@ -24,6 +27,7 @@ enum class AutoReplyMode {
     MEETING,
     BUSY,
     CUSTOM
+, AI_SMART_REPLY
 }
 
 data class DirectReplyAction(
@@ -42,7 +46,7 @@ data class AutoReplyRecord(
 
 class UniversalMessagingEngine(
     context: Context? = null,
-    private val llmClient: com.jarvis.ai.LlmClient? = null,
+    var llmClient: com.jarvis.ai.LlmClient? = null,
     private val contactResolver: ContactResolver = ContactResolver(context?.applicationContext ?: context)
 ) {
     private val context: Context? = context?.applicationContext ?: context
@@ -94,10 +98,6 @@ class UniversalMessagingEngine(
     private val replyActions = ConcurrentHashMap<String, DirectReplyAction>()
 
     // Auto-reply configuration
-    var autoReplyMode: AutoReplyMode = AutoReplyMode.OFF
-        private set
-    var customAutoReplyTemplate: String = "I am currently unavailable. Jarvis (AI Assistant) has notified me of your message."
-        private set
 
     // Cooldown tracker: normalized sender -> last auto-replied timestamp
     private val lastAutoRepliedMap = ConcurrentHashMap<String, Long>()
@@ -120,15 +120,7 @@ class UniversalMessagingEngine(
         }
     }
 
-    fun setAutoReplyMode(mode: AutoReplyMode, customTemplate: String? = null) {
-        this.autoReplyMode = mode
-        if (!customTemplate.isNullOrBlank()) {
-            this.customAutoReplyTemplate = customTemplate.trim()
-        }
-        Log.i(TAG, "Auto-reply mode updated to $mode")
-    }
 
-    fun isAutoReplyActive(): Boolean = autoReplyMode != AutoReplyMode.OFF
 
     fun getAutoReplyHistory(): List<AutoReplyRecord> = synchronized(autoReplyHistory) {
         autoReplyHistory.toList()
@@ -453,11 +445,12 @@ class UniversalMessagingEngine(
                     
                     // Check for images
                     val imageNodes = nodes.filter { it.className == "android.widget.ImageView" || it.className == "android.widget.Image" }
-                    if (imageNodes.isNotEmpty() && llmClient != null) {
+                    val currentLlm = llmClient
+                    if (imageNodes.isNotEmpty() && currentLlm != null) {
                         try {
                             val screenshot = com.jarvis.accessibility.ScreenVisionManager.captureScreen().base64Image
                             if (screenshot != null) {
-                                val visionResult = llmClient.chatVision("Describe the images in this chat briefly.", screenshot)
+                                val visionResult = currentLlm.chatVision("Describe the images in this chat briefly.", screenshot)
                                 if (visionResult.isSuccess) {
                                     chatText += "\n[Image Content: ${visionResult.getOrNull()}]"
                                 }
@@ -638,7 +631,7 @@ class UniversalMessagingEngine(
      * Handles incoming WhatsApp notification for potential auto-reply.
      */
     fun processIncomingNotification(sbn: StatusBarNotification?, item: NotificationItem) {
-        if (!AutoReplyPolicyManager.isEnabled() && !isAutoReplyActive()) return
+        if (!AutoReplyPolicyManager.isEnabled()) return
         if (item.packageName != "com.whatsapp" && item.packageName != "com.whatsapp.w4b") return
 
         if (sbn != null) {
@@ -651,37 +644,41 @@ class UniversalMessagingEngine(
         val sender = item.title.trim()
         if (sender.isBlank() || sender.equals("WhatsApp", ignoreCase = true)) return
 
-        // Check cooldown from AutoReplyPolicyManager or local map
+        // Check cooldown from AutoReplyPolicyManager
         if (!AutoReplyPolicyManager.canReplyTo(sender)) {
             Log.d(TAG, "Auto-reply suppressed for '$sender' (cooldown active)")
             return
         }
 
-        val effectiveMode = if (AutoReplyPolicyManager.isEnabled()) AutoReplyPolicyManager.mode else autoReplyMode
-        val replyText = if (AutoReplyPolicyManager.isEnabled()) {
-            AutoReplyPolicyManager.getTemplateForCurrentMode()
-        } else {
-            when (autoReplyMode) {
-                AutoReplyMode.DRIVING -> "I am currently driving. Jarvis (AI Assistant) has notified me of your message."
-                AutoReplyMode.MEETING -> "I am in a meeting right now. Jarvis (AI Assistant) will notify me as soon as I am free."
-                AutoReplyMode.BUSY -> "I am currently occupied. Jarvis AI will remind me to get back to you shortly."
-                AutoReplyMode.CUSTOM -> customAutoReplyTemplate
-                AutoReplyMode.OFF -> return
-            }
-        }
+        val effectiveMode = AutoReplyPolicyManager.mode
 
-        if (replyText.isBlank()) return
-
-        val sent = sendDirectNotificationReply(sender, replyText)
-        if (sent) {
-            AutoReplyPolicyManager.recordReplySent(sender, "WHATSAPP", replyText)
-            val now = System.currentTimeMillis()
-            lastAutoRepliedMap[sender.lowercase(Locale.ROOT)] = now
-            synchronized(autoReplyHistory) {
-                autoReplyHistory.add(0, AutoReplyRecord(sender, replyText, effectiveMode, now))
-                while (autoReplyHistory.size > 20) autoReplyHistory.removeAt(autoReplyHistory.size - 1)
+        GlobalScope.launch(Dispatchers.IO) {
+            val currentLlm = llmClient
+            val replyText = if (effectiveMode == AutoReplyMode.AI_SMART_REPLY && currentLlm != null) {
+                val prompt = "You are Jarvis, an AI assistant. The user is currently unavailable. Generate a very short, polite auto-reply to this message from $sender: \"${item.text}\". Let them know Jarvis is answering and will remind the user. Do not use placeholders, and keep it under 30 words."
+                val result = currentLlm.chat(listOf(com.jarvis.ai.Message("user", prompt)))
+                if (result.isSuccess) {
+                    result.getOrNull()?.trim() ?: AutoReplyPolicyManager.getTemplateForCurrentMode()
+                } else {
+                    AutoReplyPolicyManager.getTemplateForCurrentMode()
+                }
+            } else {
+                AutoReplyPolicyManager.getTemplateForCurrentMode()
             }
-            Log.i(TAG, "Auto-replied to '$sender' on WhatsApp in mode $effectiveMode: \"$replyText\"")
+
+            if (replyText.isBlank()) return@launch
+
+            val sent = sendDirectNotificationReply(sender, replyText)
+            if (sent) {
+                AutoReplyPolicyManager.recordReplySent(sender, "WHATSAPP", replyText)
+                val now = System.currentTimeMillis()
+                lastAutoRepliedMap[sender.lowercase(Locale.ROOT)] = now
+                synchronized(autoReplyHistory) {
+                    autoReplyHistory.add(0, AutoReplyRecord(sender, replyText, effectiveMode, now))
+                    while (autoReplyHistory.size > 20) autoReplyHistory.removeAt(autoReplyHistory.size - 1)
+                }
+                Log.i(TAG, "Auto-replied to '$sender' on WhatsApp in mode $effectiveMode: \"$replyText\"")
+            }
         }
     }
 }

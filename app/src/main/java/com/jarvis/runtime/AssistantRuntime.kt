@@ -381,6 +381,10 @@ class AssistantRuntime(
 
         currentLlmClient = client
         currentStrongClient = strongClient
+        
+        // Inject LlmClient into messaging subsystems for AI smart reply
+        subsystems.whatsappMessagingEngine.llmClient = client
+        subsystems.callAndSmsAgent.llmClient = client
 
         val userProfileStore = com.jarvis.ui.data.UserProfileStore(context)
         val activeUserProfile = userProfileStore.loadProfile()
