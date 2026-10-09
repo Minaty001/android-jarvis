@@ -36,7 +36,7 @@ class JarvisNotificationListenerService : NotificationListenerService() {
         sbn?.let {
             val notifId = "${it.packageName}:${it.id}"
             NotificationStore.removeNotification(notifId)
-            com.jarvis.messaging.WhatsAppMessagingEngine.instance?.removeReplyAction(notifId)
+            com.jarvis.messaging.UniversalMessagingEngine.instance?.removeReplyAction(notifId)
         }
     }
 
@@ -99,11 +99,11 @@ class JarvisNotificationListenerService : NotificationListenerService() {
         }
         if (replyAction != null && title.isNotBlank()) {
             val notifId = "${pkg}:${sbn.id}"
-            com.jarvis.messaging.WhatsAppMessagingEngine.instance?.registerReplyAction(notifId, title.trim(), replyAction)
+            com.jarvis.messaging.UniversalMessagingEngine.instance?.registerReplyAction(notifId, title.trim(), replyAction)
         }
 
         // Evaluate contextual auto-reply
-        com.jarvis.messaging.WhatsAppMessagingEngine.instance?.processIncomingNotification(sbn, item)
+        com.jarvis.messaging.UniversalMessagingEngine.instance?.processIncomingNotification(sbn, item)
 
         if (pkg.contains("whatsapp", ignoreCase = true)) {
             val platformLabel = if (pkg == "com.whatsapp.w4b") "WhatsApp Business" else "WhatsApp"

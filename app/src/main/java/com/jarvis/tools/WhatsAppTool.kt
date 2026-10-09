@@ -5,11 +5,12 @@ import android.content.Intent
 import android.util.Log
 import com.jarvis.media.WhatsAppSessionManager
 import com.jarvis.messaging.AutoReplyMode
-import com.jarvis.messaging.WhatsAppMessagingEngine
+import com.jarvis.messaging.UniversalMessagingEngine
 
 class WhatsAppTool(
     private val context: Context? = null,
-    private val messagingEngine: WhatsAppMessagingEngine? = null
+    private val messagingEngine: UniversalMessagingEngine? = null,
+    private val llmClient: com.jarvis.ai.LlmClient? = null
 ) : Tool {
     override val name: String = "WHATSAPP"
     override val description: String = "Autonomous WhatsApp & WhatsApp Business messaging tool. Actions: 'send_message', 'send_direct_message', 'read_messages', 'reply', 'auto_reply', 'open', 'current_chat', 'chat_history', 'previous_chat'."
@@ -30,11 +31,11 @@ class WhatsAppTool(
         }
 
         return try {
-            val engine = messagingEngine ?: WhatsAppMessagingEngine.instance ?: WhatsAppMessagingEngine(context)
+            val engine = messagingEngine ?: UniversalMessagingEngine.instance ?: UniversalMessagingEngine(context)
 
             when (action) {
                 "open" -> {
-                    val targetPkg = WhatsAppMessagingEngine.resolveTargetPackage(platform)
+                    val targetPkg = UniversalMessagingEngine.resolveTargetPackage(platform)
                     val pkgLabel = if (targetPkg == "com.whatsapp.w4b") "WhatsApp Business" else "WhatsApp"
                     val ctx = context ?: run {
                         WhatsAppSessionManager.recordChat("WhatsApp Main Screen")
@@ -66,7 +67,7 @@ class WhatsAppTool(
 
                 "reply", "reply_message", "respond" -> {
                     if (recipient.isNullOrBlank()) {
-                        val recent = engine.readRecentWhatsApp(limit = 5, platformFilter = platform)
+                        val recent = engine.readRecentMessages(limit = 5, platformFilter = platform)
                         ToolResult.Success("Who would you like me to reply to? ${recent.message}")
                     } else if (message.isNullOrBlank()) {
                         ToolResult.Success("What would you like me to say to $recipient?")
@@ -81,7 +82,29 @@ class WhatsAppTool(
                     val senderFilter = params["sender"]?.trim()
                     val platformFilter = params["platform"]?.trim()
                     senderFilter?.let { WhatsAppSessionManager.recordChat(it, message = "Reading recent messages", isOutbound = false) }
-                    engine.readRecentWhatsApp(limit = limit, senderFilter = senderFilter, platformFilter = platformFilter)
+                    
+                    // Priority 1: Check UI fallback if requested explicitly or if senderFilter is provided
+                    if (!senderFilter.isNullOrBlank() && params["visual"]?.toBoolean() == true) {
+                        return engine.readChatVisually(senderFilter, platformFilter)
+                    }
+
+                    val result = engine.readRecentMessages(limit = limit, senderFilter = senderFilter, platformFilter = platformFilter)
+                    
+                    if (result.success && llmClient != null && result.message.contains("recent WhatsApp message")) {
+                        // Pass raw notification dump to LLM to summarize and detect urgency
+                        val prompt = "You are JARVIS. Summarize this message dump naturally. Extract concrete tasks as <ACTION: task>. Suggest 2 short auto-replies. YOU MUST end your response by asking: \"Would you like to reply?\". Dump:\n${result.message}"
+                        val llmResult = llmClient.chat(listOf(com.jarvis.ai.Message("user", prompt)))
+                        if (llmResult.isSuccess) {
+                            return ToolResult.Success(llmResult.getOrNull() ?: result.message)
+                        }
+                    }
+                    
+                    // Fallback to visual read if nothing found but a specific sender was asked
+                    if (!senderFilter.isNullOrBlank() && result.message.contains("No recent WhatsApp messages")) {
+                        return engine.readChatVisually(senderFilter, platformFilter)
+                    }
+                    
+                    result
                 }
 
                 "current_chat", "current", "status" -> {

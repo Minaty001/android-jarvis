@@ -17,7 +17,7 @@ class JarvisDatabase(context: Context) : SQLiteOpenHelper(
 ) {
     companion object {
         const val DATABASE_NAME = "jarvis_unified.db"
-        const val DATABASE_VERSION = 2
+        const val DATABASE_VERSION = 3
 
         @Volatile
         private var instance: JarvisDatabase? = null
@@ -151,6 +151,20 @@ class JarvisDatabase(context: Context) : SQLiteOpenHelper(
             """.trimIndent())
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_activity_moments_time ON activity_moments(start_time);")
 
+            // 7. Financial Transactions
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS financial_transactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    transaction_type TEXT NOT NULL,
+                    amount REAL NOT NULL,
+                    currency TEXT NOT NULL DEFAULT 'INR',
+                    vendor TEXT,
+                    account_tail TEXT,
+                    timestamp INTEGER NOT NULL
+                );
+            """.trimIndent())
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_finance_time ON financial_transactions(timestamp);")
+
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
@@ -171,6 +185,21 @@ class JarvisDatabase(context: Context) : SQLiteOpenHelper(
                 );
             """.trimIndent())
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_activity_moments_time ON activity_moments(start_time);")
+        }
+        
+        if (oldVersion < 3) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS financial_transactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    transaction_type TEXT NOT NULL,
+                    amount REAL NOT NULL,
+                    currency TEXT NOT NULL DEFAULT 'INR',
+                    vendor TEXT,
+                    account_tail TEXT,
+                    timestamp INTEGER NOT NULL
+                );
+            """.trimIndent())
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_finance_time ON financial_transactions(timestamp);")
         }
     }
 }

@@ -41,3 +41,4 @@
 2. [Local features and commands](JARVIS_LOCAL_FEATURES_AND_COMMANDS.md)
 3. [System overview](Jarvis_System_Overview.md)
 4. [Device test report](DEVICE_TEST_REPORT.md)
+- `autonomous/PassiveMemoryEngine.kt`: Silently logs context (foreground apps, screen text) in the background to build proactive context for future interactions.

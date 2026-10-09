@@ -29,9 +29,10 @@ class LlmPlanner(
         workingMemory: AgentWorkingMemory,
         context: String,
         availableTools: String,
+        resolvedIntent: AssistantIntent? = null,
         onToken: (String) -> Unit = {}
     ): Result<AgentDecision> {
-        val route = router?.route(goal)
+        val route = router?.route(goal, resolvedIntent)
         if (route != null) {
             if (route.privacySensitive) {
                 return Result.failure(
@@ -144,6 +145,19 @@ class LlmPlanner(
             if (embeddedJson.startsWith("{") && embeddedJson.endsWith("}")) {
                 val parsed = runCatching { parseDecision(embeddedJson, goal) }.getOrNull()
                 if (parsed != null && parsed.action != null) return parsed
+            }
+            val isInformationalQuestion = Regex("^(?:what|who|when|where|why|how|explain|describe|define|tell me)\\b")
+                .containsMatchIn(lowerGoal) && IntentResolver.resolve(goal)?.directPlan == null &&
+                listOf("screen", "message", "sms", "whatsapp", "battery", "notification", "weather", "location", "time", "alarm", "call", "open", "play", "send", "turn on", "turn off")
+                    .none { lowerGoal.contains(it) }
+            if (isInformationalQuestion) {
+                return AgentDecision(
+                    type = DecisionType.ACT,
+                    action = AgentAction(type = "SPEAK", params = mapOf("text" to cleanText)),
+                    reasonCode = "llm_informational_answer",
+                    successCriteria = listOf("Answered the user's informational question"),
+                    confidence = 0.9f
+                )
             }
             throw IllegalStateException("LLM produced conversational text without structured action for actionable goal: '$goal'")
         }

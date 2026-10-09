@@ -5,7 +5,7 @@ import android.util.Log
 import com.jarvis.bluetooth.BluetoothHeadsetManager
 import com.jarvis.runtime.JarvisEvent
 import com.jarvis.runtime.JarvisEventBus
-import com.jarvis.messaging.WhatsAppMessagingEngine
+import com.jarvis.messaging.UniversalMessagingEngine
 import com.jarvis.telecom.CallAndSmsAgent
 import com.jarvis.telecom.ContactResolver
 import com.jarvis.ui.data.UiPreferencesStore

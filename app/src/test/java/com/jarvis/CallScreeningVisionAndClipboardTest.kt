@@ -173,7 +173,18 @@ class CallScreeningVisionAndClipboardTest {
 
     @Test
     fun testScreenVisionToolExecution() = runBlocking {
-        val tool = ScreenVisionTool(context = null, llmClient = null)
+        val tool = ScreenVisionTool(context = null, llmClient = null, captureScreen = {
+            com.jarvis.accessibility.ScreenCaptureResult(
+                null,
+                "Visible UI Elements (1 items):\n1. [An error occurred]",
+                "com.example.app",
+                null,
+                false,
+                elements = listOf(com.jarvis.accessibility.ScreenElement(
+                    1, "An error occurred", null, null, false, false, android.graphics.Rect(), emptyList()
+                ))
+            )
+        })
         val result = tool.execute(mapOf("query" to "check error", "mode" to "error_check"))
         assertTrue(result is com.jarvis.tools.ToolResult.Success)
         val success = result as com.jarvis.tools.ToolResult.Success

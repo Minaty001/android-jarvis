@@ -187,6 +187,14 @@ class HabitManager(private val memoryStore: MemoryStore? = null) {
         memoryFallback.clear()
     }
 
+    fun clearHabits() {
+        val store = memoryStore ?: return
+        store.getHabits(limit = 1000).forEach { 
+            store.archiveMemory(it.id)
+        }
+        memoryFallback.clear()
+    }
+
     companion object {
         private const val TAG = "HabitManager"
     }

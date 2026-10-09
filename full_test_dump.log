@@ -1,0 +1,765 @@
+--------- beginning of main
+10-09 04:26:05.923 28960 28960 I adbd    : adbd service requested 'shell,v2,TERM=dumb,raw:am broadcast -a com.jarvis.action.EXECUTE_COMMAND -e command "how much money did I spend?"'
+10-09 04:26:06.285  5661  6134 D WifiConnectivityMonitor.NetworkStatsAnalyzer: Backhaul result - RSSI:-61, CE:21, PE:22, TI:31, PTI:34, TW:14, PTW:13, Tx:74, Rx:64, TxS:74, RxS:61, RESULT:true, IC:0, ICT:5, WC:0, WCT:5, R:0, RC:0, IE:0, EC:0
+10-09 04:26:06.421  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:06.426  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:06.430  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:06.431  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:06.522  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:06.523  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:06.640  6221  6350 D MobileStatusTracker(1/2): onSignalStrengthsChanged level=3, vendorLevel=3
+10-09 04:26:06.646  6221  6350 D MobileSignalController(1/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=LTE (4G), emergencyOnly=false, roaming=false, isDefault=false, dataActivity=, level=3, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+10-09 04:26:06.646  6221  6350 D NetworkController: SignalStrength from intent slotId=1
+10-09 04:26:06.699  1213  1858 D SoLoadManagerExample: exitProcess 为 false，继续监控
+--------- beginning of system
+10-09 04:26:06.869  5661  5754 I ActivityManager: Changes in 10101 5 to 15, 8 to 0
+10-09 04:26:06.875  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:06.883  5661  5754 I ActivityManager: Changes in 10214 5 to 15, 8 to 0
+10-09 04:26:06.884  5661  5754 I ActivityManager: Changes in 10058 5 to 10, 8 to 0
+10-09 04:26:06.885  5661  5754 I ActivityManager: Changes in 5004 5 to 15, 8 to 0
+10-09 04:26:06.887  5661  6311 W BroadcastQueue: Background execution not allowed: receiving Intent { act=com.jarvis.action.EXECUTE_COMMAND flg=0x400010 (has extras) } to com.jarvis/.service.CommandReceiver
+10-09 04:26:06.888  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:06.889  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:06.900  5661  5869 I UMR     : B|Compact android.process.media(9774)
+10-09 04:26:06.903  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:06.906  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:06.961  5661  5754 I ActivityManager: Changes in 10162 5 to 15, 8 to 0
+10-09 04:26:06.963  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:06.997  5661  5869 I UMR     : E|Compact d_rss=-9396KB
+10-09 04:26:07.024  9774 22416 D OpenGLRenderer: setSurface called with nullptr
+10-09 04:26:07.029  9774 22416 D OpenGLRenderer: setSurface called with nullptr
+10-09 04:26:07.044  9774  9790 W System  : A resource failed to call close. 
+10-09 04:26:07.260  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) doesDataKeepChanging: postpone count: 0 - source count: very first = 523, previous = 523, current = 523
+10-09 04:26:07.260  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) [CONTACTS-0] entering in collectChanges():  
+10-09 04:26:07.304  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) fetchInternal values : maxSyncId: 30991 indexCount: 506 sourceCount: 506
+10-09 04:26:07.312  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) collectUpdatedIds: query with selection = _id <= 30991 AND ( contact_last_updated_timestamp > 1791500095279 OR (contact_last_updated_timestamp = 1791500095279 AND _id > 30653 ))
+10-09 04:26:07.313  8250  9417 I SDHMS:D : SIOP:: AP:417 BAT:352 USB:0 CHG:401 WIFI:393 SKIN:382 SKINF:375 SKINB:382 LRP:382 LRF:375 LRB:382 
+10-09 04:26:07.356  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) fetchSelection() called
+10-09 04:26:07.435  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:07.436  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:07.441  4589  4589 D io_stats: !@ 179,0 r 1116 11848 w 66 224 d 0 0 f 0 0 iot 4652 0 th 0 0 0 pt 0 inp 0 0 40281.025
+10-09 04:26:07.442  4589  4589 D io_stats: !@   8,0 r 4859945 100472132 w 2371968 76217048 d 0 0 f 0 0 iot 2168848 0 th 0 0 0 pt 0 inp 0 0 40281.025
+10-09 04:26:07.445  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) fetchSelection: Duration: 89 ms
+10-09 04:26:07.445  3293  3369 I SCS@AiSearch user 0: (IndexManager) [CONTACTS-0] entering in updateIndex():  
+10-09 04:26:07.455  3293  3369 I SCS@AiSearch user 0: (IndexManager) [UPDATE] index=com.samsung.android.contacts, size=17, documents=[30997, 30998, 30999, 31000, 31003, 31004, 31005, 31006, 31007, 31008]
+10-09 04:26:07.456  3293  3369 I SCS@AiSearch user 0: (IndexManager) [CONTACTS-0] entering in updateDocumentList():  index: com.samsung.android.contacts, updateList.size:17
+10-09 04:26:07.457  3293  3369 I SCS@AiSearch user 0: (IndexManager) getIndexWriter(): indexName com.samsung.android.contacts
+10-09 04:26:07.573 14137 14137 I wpa_supplicant: Heartbeat 1952
+10-09 04:26:07.894  5661  5754 I ActivityManager: Changes in 10098 5 to 15, 8 to 0
+10-09 04:26:07.895  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:07.927  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:07.934  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:08.126  5661  9267 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 6508, isSameBssidAndFreq true
+10-09 04:26:08.129  5661  6112 I SemWifiLinkQualityMonitor: Link Qos Query: 0.027 ms / 300.000 Mbps (390 / 0.000 / 1.300)
+10-09 04:26:08.223  6221  6350 D MobileStatusTracker(0/1): onSignalStrengthsChanged level=3, vendorLevel=4
+10-09 04:26:08.227  6221  6350 D MobileSignalController(0/1): notifyListener: enabled=true, connected=true, dataConnected=false, networkType=LTE (LTE), emergencyOnly=false, roaming=false, isDefault=false, dataActivity=, level=4, ca=false, mmWave=false, disabledDataIcon=false, simCard=RELIANCE
+10-09 04:26:08.227  6221  6350 D NetworkController: SignalStrength from intent slotId=0
+10-09 04:26:08.414  3293  3369 I SCS@AiSearch user 0: (IndexManager) [UPDATE] Done indexName: com.samsung.android.contacts updateList.size():17
+10-09 04:26:08.416  3293  3369 I SCS@AiSearch user 0: (IndexSearcherManager) [CONTACTS-0] entering in refreshSearcherManager():  refreshSearcherManager for com.samsung.android.contacts
+10-09 04:26:08.709  5661  6069 W DeviceStorageMonitorService: updateBroadcasts(/data) oldLevel:0, newLevel:0, seq:1
+10-09 04:26:08.710  5661  6069 D DeviceStorageMonitorService: Available File Node Number is [13173839]
+10-09 04:26:08.717  5661  6069 W DeviceStorageMonitorService: updateBroadcasts_filenode(/data) fn_oldLevel:0, fn_newLevel:0, seq:1
+10-09 04:26:08.740  5661  6135 D WifiConnectivityMonitor: called startWcmPoll but already Ongoing
+10-09 04:26:08.740  5661  6135 D SemWifiRssiBasePoller: RSSI_BASE_STOP
+10-09 04:26:08.848  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:08.917  3293  3369 I SCS@AiSearch user 0: (IndexSearcherManager) [CONTACTS-0] leaving from refreshSearcherManager():  
+10-09 04:26:08.917  3293  3369 I SCS@AiSearch user 0: (IndexManager) [CONTACTS-0] leaving from updateIndex, result = true():  
+10-09 04:26:08.918  3293  3408 I SCS@AiSearch user 0: (IndexManager) [pool-14-thread-1] entering in commitIndexWriter():  
+10-09 04:26:08.921  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:08.922  5661  5760 W libprocessgroup: Failed to open /dev/blkio//cgroup.procs: No such file or directory
+10-09 04:26:08.923  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) fetch: fetching took  1642 ms
+10-09 04:26:08.923  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) fetchChanges: applied 17 items
+10-09 04:26:08.924  7305   410 I NearbyMediums: No BLE Fast/GATT advertisements found in the latest cycle.
+10-09 04:26:08.924  7305   410 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+10-09 04:26:08.951  5661  8270 I ActivityManager: Killing 32042:com.samsung.android.app.contacts/u0a103 (adj 925): empty #31
+10-09 04:26:08.954  5661  5758 I libprocessgroup: Successfully killed process cgroup uid 10103 pid 32042 in 0ms
+10-09 04:26:08.956  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:08.960  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:08.961  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:08.961  3293  3408 I SCS@AiSearch user 0: (IndexManager) [pool-14-thread-1] leaving from commitIndexWriter():  
+10-09 04:26:08.992  5292  5292 I Zygote  : Process 32042 exited due to signal 9 (Killed)
+10-09 04:26:08.994 31933 31933 I [SCPMV2][ConfigurationFileFunction]: ParcelFileDescriptor close. name=invisible_readonly_account_list_plain.csv, size=532 bytes
+10-09 04:26:09.148  5661  5844 D BatteryService: Sending ACTION_BATTERY_CHANGED: level:75, status:2, health:2, ac:false, usb:true, wireless:false, pogo:false, misc:0xf0000, charge_type:1, charger_type:0, voltage:3952, temperature:352, online:4, current_avg:-8, ps:false, hvc:false, capacity:280000, current_event:0x0, current_now:-8, mcc:0, mcv:0, cc:2881158, present:true, scale:100, technology:Li-ion
+10-09 04:26:09.149  5329  5329 E sehhealth-service: Could not open /sys/class/power_supply/battery/lrp
+10-09 04:26:09.152  5661  5897 D MotionRecognitionService: [SAR]  onReceive : ACTION_BATTERY_CHANGED, Plugged: 2
+10-09 04:26:09.153  5661  5661 D PhoneWindowManagerExt: ACTION_BATTERY_CHANGED - Level=75, status=2
+10-09 04:26:09.156  5661  6147 I DeviceBatteryInfoService: action: android.intent.action.BATTERY_CHANGED
+10-09 04:26:09.156  5661  6147 I DeviceBatteryInfoService: phone battery level: 75
+10-09 04:26:09.157  5661  6147 I DeviceBatteryInfoService: phone battery status: 2
+10-09 04:26:09.157  5661  5661 D AdaptiveBrightnessLongtermModelBuilder: Received android.intent.action.BATTERY_CHANGED
+10-09 04:26:09.159  5661  5661 D SemWifiApBroadcastReceiver: Received : android.intent.action.BATTERY_CHANGED
+10-09 04:26:09.160  6206  6206 D SemBigDataInfoController: Intent: android.intent.action.BATTERY_CHANGED
+10-09 04:26:09.161  6221  6221 I PowerUI : mBootCompleted = true |  mFullyConnected = true
+10-09 04:26:09.161  6221  6221 I PowerUI : BATTERY_HEALTH_CHECK extraHealth=2 mBatteryMiscEvent=983040
+10-09 04:26:09.161  6221  6221 W PowerUI : Plug reason
+10-09 04:26:09.161  6221  6221 W PowerUI : Skip charging animation - by plug status
+10-09 04:26:09.162  6221  6221 D PowerUI : priorPlugType = 2 mPlugType = 2 priorBatteryStatus = 2 mBatteryStatus = 2
+10-09 04:26:09.162  6221  6221 W PowerUI : Plug reason
+10-09 04:26:09.162  6221  6221 W PowerUI : Skip charging sound - by plug status
+10-09 04:26:09.162  6221  6221 I PowerUI : oldMisalign : false, curMisalign : false
+10-09 04:26:09.162  6206  6206 D SemBigDataInfoController: Intent: android.intent.action.BATTERY_CHANGED
+10-09 04:26:09.164  6221 16377 D SecPowerUI.Notification: dismissing low battery warning: level=75
+10-09 04:26:09.164  6221 16377 D SecPowerUI.Notification: updateNotification mWarning=false mPlaySound=false
+10-09 04:26:09.164  6221 16377 D SecPowerUI.Notification: SecBatteryStatsSnapshot{batteryLevel=75, currentBatteryMode=0, chargingTime=6219000, chargingType=11, batteryHealth=2, automaticTestMode=false, isHiccupState=false}
+10-09 04:26:09.167  6221 16377 D SecPowerUI.Notification: 1. restoreScreenTimeOut - saved_value : :
+10-09 04:26:09.167  6221 16377 E SecPowerUI.Notification: no saved value, so we do nothing !!
+10-09 04:26:09.168  6221  6221 D SecPowerUI.Notification: showChargingNotice oldChargingType : 11 / currentChargingType : 11, oldChargingTime : 6219000 / mChargingTime : 6219000
+10-09 04:26:09.168  6221  6221 D SecPowerUI.Notification: There is no change about charging status, so return!
+10-09 04:26:09.169  6221  6221 D PowerUI : Battery swelling mode - priorBatterySwellingMode = 0 mBatterySwellingMode = 0 mBatteryStatus = 2
+10-09 04:26:09.169  6221  6221 I PowerUI : mBatteryMiscEvent = 983040
+10-09 04:26:09.169  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:09.170  5661  5755 D BaseRestrictionMgr: Package: com.google.android.youtube, userid: 0, hostingType: broadcast is Restricted by policy: 4 caller is: null
+10-09 04:26:09.170  5661  5755 W BroadcastQueue: intent:Intent { act=android.intent.action.BATTERY_CHANGED flg=0x60000010 (has extras) } is skipped in RestrictedPackage to ProcessRecord{ba864c7 15371:com.google.android.youtube/u0a240}
+10-09 04:26:09.170  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:09.171  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:09.172  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:09.173  6221  6221 D KeyguardUpdateMonitor: received broadcast android.intent.action.BATTERY_CHANGED
+10-09 04:26:09.173  6221  6221 I AODBatteryManager: updateBatteryData: ACTION_BATTERY_CHANGED
+10-09 04:26:09.175  6221  6221 I AODBatteryManager: saveBatteryData : AOD BatteryData [mBatteryLevel=75, mBatteryStatus=CHARGING, mBatteryPlugType=USB, mBatteryPlugged=true, mRemainingChargeTime=6219000, mBatteryChargingType=1, mBatteryChargerType=NORMAL, mBatteryOnline=USB, mBatterySwellingMode=NONE, mBatteryProtectMode=false]
+10-09 04:26:09.175  6221  6221 D KeyguardUpdateMonitor: handleBatteryUpdate
+10-09 04:26:09.177  5661  5755 D BaseRestrictionMgr: Package: com.facebook.katana, userid: 0, hostingType: broadcast is Restricted by policy: 4 caller is: null
+10-09 04:26:09.177  5661  5755 W BroadcastQueue: intent:Intent { act=android.intent.action.BATTERY_CHANGED flg=0x60000010 (has extras) } is skipped in RestrictedPackage to ProcessRecord{dd3e353 1581:com.facebook.katana/u0a156}
+10-09 04:26:09.179  5661  5755 D BaseRestrictionMgr: Package: com.facebook.katana, userid: 0, hostingType: broadcast is Restricted by policy: 4 caller is: null
+10-09 04:26:09.179  5661  5755 W BroadcastQueue: intent:Intent { act=android.intent.action.BATTERY_CHANGED flg=0x60000010 (has extras) } is skipped in RestrictedPackage to ProcessRecord{dd3e353 1581:com.facebook.katana/u0a156}
+10-09 04:26:09.184 31933 31933 I [SCPMV2][SystemMonitorReceiver]: onReceive: android.intent.action.BATTERY_CHANGED
+10-09 04:26:09.444  4589  4589 D io_stats: !@   8,0 r 4859953 100472188 w 2372089 76218020 d 0 0 f 0 0 iot 2168900 0 th 0 0 0 pt 0 inp 0 0 40283.028
+10-09 04:26:09.653  5661  5844 D SGM:GameManager: identifyForegroundApp. com.android.settings, mCurrentUserId: 0, callerUserId: 0
+10-09 04:26:09.653  5661  5844 D SGM:PkgDataHelper: getGamePkgData(). com.android.settings
+10-09 04:26:09.654 19740 19774 I PolicyManager: [#CMH#] Is foreground game app: false
+10-09 04:26:09.943  5661  6986 D FreecessController: com.sec.android.app.sbrowser(10281) is important[!isUidIdle]
+10-09 04:26:09.977  5661  8221 W ProcessStats: Tracking association SourceState{766ba74 system/1000 BTopFgs #133314} whose proc state 2 is better than process ProcessState{730c324 com.jarvis/10450 pkg=com.jarvis} proc state 3 (92 skipped)
+10-09 04:26:09.982  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:09.986  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:10.765  5661  8221 I ActivityManager: Changes in 10098 15 to 5, 0 to 8
+10-09 04:26:10.768  5661  5760 W libprocessgroup: Failed to open /dev/blkio//cgroup.procs: No such file or directory
+10-09 04:26:10.772  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:10.942 22628 22634 I d.process.acore: Method exceeds compiler instruction limit: 19824 in android.database.Cursor com.android.providers.contacts.ContactsProvider2.c4(android.net.Uri, java.lang.String[], java.lang.String, java.lang.String[], java.lang.String, long, android.os.CancellationSignal, com.android.providers.contacts.util.sec.KnoxUtils)
+10-09 04:26:10.960  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) doesDataKeepChanging: postpone count: 0 - source count: very first = 523, previous = 523, current = 523
+10-09 04:26:10.960  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) [CONTACTS-0] entering in collectChanges():  
+10-09 04:26:11.002  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:11.016  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:11.020  5661  8017 E ActivityManager: Sending non-protected broadcast com.samsung.systemui.clipboard.UPDATE_CONNECTION_STATE from system 6221:com.android.systemui/u0a47 pkg com.android.systemui
+10-09 04:26:11.020  5661  8017 E ActivityManager: java.lang.Throwable
+10-09 04:26:11.020  5661  8017 E ActivityManager: 	at com.android.server.am.ActivityManagerService.checkBroadcastFromSystem(ActivityManagerService.java:16073)
+10-09 04:26:11.020  5661  8017 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentLocked(ActivityManagerService.java:16759)
+10-09 04:26:11.020  5661  8017 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentLocked(ActivityManagerService.java:16092)
+10-09 04:26:11.020  5661  8017 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentWithFeature(ActivityManagerService.java:17069)
+10-09 04:26:11.020  5661  8017 E ActivityManager: 	at android.app.IActivityManager$Stub.onTransact(IActivityManager.java:2728)
+10-09 04:26:11.020  5661  8017 E ActivityManager: 	at com.android.server.am.ActivityManagerService.onTransact(ActivityManagerService.java:3135)
+10-09 04:26:11.020  5661  8017 E ActivityManager: 	at android.os.Binder.execTransactInternal(Binder.java:1321)
+10-09 04:26:11.020  5661  8017 E ActivityManager: 	at android.os.Binder.execTransact(Binder.java:1280)
+10-09 04:26:11.024  5661  8017 E ActivityManager: Sending non-protected broadcast com.samsung.systemui.clipboard.UPDATE_CONNECTION_STATE from system 6221:com.android.systemui/u0a47 pkg com.android.systemui
+10-09 04:26:11.024  5661  8017 E ActivityManager: java.lang.Throwable
+10-09 04:26:11.024  5661  8017 E ActivityManager: 	at com.android.server.am.ActivityManagerService.checkBroadcastFromSystem(ActivityManagerService.java:16073)
+10-09 04:26:11.024  5661  8017 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentLocked(ActivityManagerService.java:16890)
+10-09 04:26:11.024  5661  8017 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentLocked(ActivityManagerService.java:16092)
+10-09 04:26:11.024  5661  8017 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentWithFeature(ActivityManagerService.java:17069)
+10-09 04:26:11.024  5661  8017 E ActivityManager: 	at android.app.IActivityManager$Stub.onTransact(IActivityManager.java:2728)
+10-09 04:26:11.024  5661  8017 E ActivityManager: 	at com.android.server.am.ActivityManagerService.onTransact(ActivityManagerService.java:3135)
+10-09 04:26:11.024  5661  8017 E ActivityManager: 	at android.os.Binder.execTransactInternal(Binder.java:1321)
+10-09 04:26:11.024  5661  8017 E ActivityManager: 	at android.os.Binder.execTransact(Binder.java:1280)
+10-09 04:26:11.037  5661  5755 I DropBoxManagerService: add tag=system_server_wtf isTagEnabled=true flags=0x2
+10-09 04:26:11.045  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) fetchInternal values : maxSyncId: 31015 indexCount: 523 sourceCount: 523
+10-09 04:26:11.061  9195  9195 I [MCFDs]_IntentUtil: emitToConsumer - (com.samsung.systemui.clipboard.UPDATE_CONNECTION_STATE) ACTION_ID_CUSTOM, consumer size=1
+10-09 04:26:11.066  5661  5755 I DropBoxManagerService: add tag=system_server_wtf isTagEnabled=true flags=0x2
+10-09 04:26:11.077  9195  9195 I [MCFDs]_CopyPasteHandler: putNearbyDeviceValue - value = 0
+10-09 04:26:11.083  5661  8017 D SettingsProvider: isChangeAllowed() : name = mcf_continuity_nearby_device_state
+10-09 04:26:11.084  5661  8017 D SettingsProvider: edmUri: content://com.sec.knox.provider/RestrictionPolicy3
+10-09 04:26:11.084  5661  8017 D SettingsProvider: projectionArgs: isSettingsChangesAllowed
+10-09 04:26:11.084  5661  8017 D SettingsProvider: selectionArgs: false
+10-09 04:26:11.084  5661  8017 D SettingsProvider: selectionArgs: 10081
+10-09 04:26:11.086  5661  8017 D SecContentProvider: query(), uri = 17 selection = isSettingsChangesAllowed
+10-09 04:26:11.086  5661  8017 D SecContentProvider: called from com.samsung.android.mcfds
+10-09 04:26:11.086  5661  8017 D RestrictionPolicy: isSettingsChangesAllowedAsUser, userId 0 : true
+10-09 04:26:11.087  5661  8017 D SettingsProvider: ret = 1
+10-09 04:26:11.089  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) collectUpdatedIds: query with selection = _id <= 31015 AND ( contact_last_updated_timestamp > 1791500095344 OR (contact_last_updated_timestamp = 1791500095344 AND _id > 31012 ))
+10-09 04:26:11.127  3293  3369 I SCS@AiSearch user 0: (IndexManager) [CONTACTS-0] entering in updateIndex():  
+10-09 04:26:11.132  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) fetch: fetching took  149 ms
+10-09 04:26:11.132  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) fetchChanges: applied 0 items
+10-09 04:26:11.133  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) Collect finished. Result: true
+10-09 04:26:11.138  3293  3323 I WM-WorkerWrapper: Worker result SUCCESS for Work [ id=72b16e51-357b-4248-857f-db8559d1f067, tags={ com.samsung.android.contacts, com.samsung.android.scs.ai.search.data.collector.ObserverWorker } ]
+10-09 04:26:11.141  3293  3369 I SCS@AiSearch user 0: (BaseCollector::CONTACTS) enqueue ObserverWorker name: com.samsung.android.contacts, policy: APPEND_OR_REPLACE
+10-09 04:26:11.142  5661  9267 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 6509, isSameBssidAndFreq true
+10-09 04:26:11.143  5661  6112 I SemWifiLinkQualityMonitor: Link Qos Query: 0.052 ms / 153.563 Mbps (351 / 0.000 / 2.286)
+10-09 04:26:11.159  5661  8017 D PackageManager: setEnabledSetting : userId = 0 packageName = com.samsung.android.scs cmp = androidx.work.impl.background.systemalarm.RescheduleReceiver newState = 1 callingPackage = 10101/com.samsung.android.scs
+10-09 04:26:11.160  5661  8017 D ApplicationPolicy: getApplicationStateEnabled : pkg = com.samsung.android.scs userId : 0
+10-09 04:26:11.161  5661  8017 D ApplicationPolicy: getApplicationComponentState : pkg = com.samsung.android.scs userId : 0
+10-09 04:26:11.448  4589  4589 D io_stats: !@   8,0 r 4859977 100472284 w 2372110 76218128 d 0 0 f 0 0 iot 2168940 0 th 0 0 0 pt 0 inp 0 0 40285.032
+10-09 04:26:12.036  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:12.041  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:12.063  6221  6350 D MobileStatusTracker(0/1): onSignalStrengthsChanged level=4, vendorLevel=4
+10-09 04:26:12.066  6221  6350 D MobileSignalController(0/1): notifyListener: enabled=true, connected=true, dataConnected=false, networkType=LTE (LTE), emergencyOnly=false, roaming=false, isDefault=false, dataActivity=, level=4, ca=false, mmWave=false, disabledDataIcon=false, simCard=RELIANCE
+10-09 04:26:12.068  6221  6350 D NetworkController: SignalStrength from intent slotId=0
+10-09 04:26:12.229 22628 22903 I ContactsProvider_EventLog: cp_s: [CONTACT con(684) dat(10338) acc({com.whatsapp(18)=394, google(8)=382, phone(2)=1, google(7)=1, google(256)=37, com.whatsapp.w4b(19)=394, google(3)=196, google(280)=16, sim(4)=8, sim2(5)=17, org.telegram.messenger(416)=215, google(24)=17, sec(12)=203, org.telegram.messenger(417)=165, org.telegram.messenger(418)=1}) calls([logtype:100 cnt:10, logtype:300 cnt:500, logtype:500 cnt:2, logtype:1000 cnt:883, logtype:1150 cnt:7]) Iso(IN) uId(0) ]
+10-09 04:26:12.229 22628 22903 I ContactsProvider_EventLog: cp_s: [ agr({[3 ,8 ,12]=2, [3 ,8 ,19 ,24 ,18 ,416]=1, [417]=5, [416 ,416]=1, [256 ,18]=2, [3 ,4 ,8 ,19 ,18]=1, [3 ,19 ,19 ,18 ,18 ,417]=1, [24]=1, [12]=22, [280 ,19 ,18 ,416 ,417]=1, [8 ,24]=3, [8 ,12]=21, [3 ,12 ,19]=1, [3 ,417]=1, [3 ,8 ,19 ,18]=45, [3 ,8 ,19 ,18 ,416 ,416]=1, [8 ,18 ,416]=1, [19 ,18]=6, [256 ,417]=1, [3]=10, [418]=1, [12 ,19 ,18]=18, [3 ,256]=2, [3 ,5]=1, [3 ,8 ,19 ,24 ,18]=2, [8 ,19 ,24 ,18 ,417]=3, [3 ,12]=1, [8 ,18 ,19]=1, [7 ,8]=1, [256 ,19 ,18]=9, [3 ,12 ,19 ,18]=1, [8 ,12 ,12 ,19 ,19 ,18 ,18 ,417 ,416]=1, [3 ,8 ,12 ,19 ,18 ,417]=9, [19 ,256]=1, [3 ,8 ,19 ,18 ,416 ,417]=1, [256 ,19 ,18 ,417]=2, [3 ,8 ,19 ,19 ,18 ,18]=1, [8 ,19 ,18 ,416 ,417]=1, [12 ,19 ,280 ,18]=1, [3 ,8 ,256]=2, [280 ,19 ,18 ,416]=1, [8]=7, [19 ,18 ,417]=1, [3 ,19]=1, [3 ,8 ,19 ,256 ,18 ,417]=3, [4]=1, [280 ,19 ,18]=4, [12 ,19 ,18 ,416]=5, [3 ,8 ,12 ,19 ,18]=9, [8 ,417]=1, [3 ,8 ,12 ,12 ,19 ,18]=1, [3 ,8]=20, [8 ,19 ,24 ,18 ,416]=1, [8 ,12 ,19 ,18 ,417]=34, [8 ,18]=1, [3 ,8 ,19 ,18 ,416]=13, [8 ,12 ,19 ,18]=38, [280]=1, [256 ,19 ,18 ,416]=3, [3 ,4 ,8]=2, [3 ,8 ,12 ,19 ,18 ,416]=7, [8 ,24 ,19 ,18 ,416]=1, [8 ,12 ,19 ,280 ,18 ,417]=1, [256]=10, [3 ,8 ,19 ,5 ,18]=1, [3 ,8 ,18 ,19]=2, [4 ,8]=1, [8 ,19 ,18 ,416]=8, [280 ,19 ,18 ,417]=7, [5]=8, [416]=154, [3 ,8 ,19 ,256 ,18]=2, [12 ,19 ,18 ,417]=16, [12 ,416]=1, [3 ,8 ,19]=1, [3 ,8 ,12 ,19 ,19 ,18 ,18 ,416 ,417]=1, [2 ,8]=1, [8 ,12 ,19 ,18 ,416]=10, [8 ,19 ,18]=32, [8 ,19 ,24 ,18]=5, [3 ,4 ,8 ,5]=3, [3 ,8 ,19 ,18 ,417]=43, [8 ,12 ,417]=1, [3 ,8 ,5]=4, [8 ,19 ,18 ,417]=31}) ]
+10-09 04:26:12.229 22628 22903 I ContactsProvider_EventLog: cp_s: [ cnt({acore(22628)=1, gms(7305)=65, scs(3293)=28}) ]
+10-09 04:26:12.229 22628 22903 I ContactsProvider_EventLog: cp_s: [PROFILE ] [SAPROFILE ]
+10-09 04:26:12.229 22628 22903 I ContactsProvider_EventLog: cp_s: [STATE R(F) ]
+10-09 04:26:12.461  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10292
+10-09 04:26:12.939 28960 28960 I adbd    : adbd service requested 'shell,v2,TERM=dumb:export ANDROID_LOG_TAGS="''"; exec logcat '-d''
+10-09 04:26:13.058  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:13.061  5661  5755 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras) } to com.google.android.gms/.stats.service.DropBoxEntryAddedReceiver
+10-09 04:26:13.069  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:13.075  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10292
+10-09 04:26:13.451  4589  4589 D io_stats: !@   8,0 r 4859984 100472384 w 2372184 76218644 d 0 0 f 0 0 iot 2168964 0 th 0 0 0 pt 0 inp 0 0 40287.035
+10-09 04:26:13.643  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:13.648  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:13.652  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:13.653  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:13.825  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10292
+10-09 04:26:14.016  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:14.091  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:14.103  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:14.159  5661  9267 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 6510, isSameBssidAndFreq true
+10-09 04:26:14.161  5661  6112 I SemWifiLinkQualityMonitor: Link Qos Query: 0.033 ms / 243.307 Mbps (351 / 0.000 / 1.443)
+10-09 04:26:14.170  6221  6221 D SecPowerUI.Notification: showChargingNotice oldChargingType : 11 / currentChargingType : 11, oldChargingTime : 6219000 / mChargingTime : 6219000
+10-09 04:26:14.170  6221  6221 D SecPowerUI.Notification: There is no change about charging status, so return!
+10-09 04:26:14.392  5661  5661 W WindowManager: removeWindowToken: Attempted to remove non-existing token: android.os.Binder@35f53be
+10-09 04:26:14.546  5378  5378 I SurfaceFlinger: SFWD update time=40288130541838
+10-09 04:26:15.041  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:15.123  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:15.135  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:15.350  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:15.350  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:15.453  4589  4589 D io_stats: !@   8,0 r 4859989 100472584 w 2372186 76218652 d 0 0 f 0 0 iot 2168972 0 th 0 0 0 pt 0 inp 0 0 40289.037
+10-09 04:26:15.612  6221  6350 D MobileStatusTracker(1/2): onSignalStrengthsChanged level=2, vendorLevel=3
+10-09 04:26:15.622  6221  6350 D MobileSignalController(1/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=LTE (4G), emergencyOnly=false, roaming=false, isDefault=false, dataActivity=, level=3, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+10-09 04:26:15.622  6221  6350 D NetworkController: SignalStrength from intent slotId=1
+10-09 04:26:15.733  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:15.734  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:15.757  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:15.758  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:16.069  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:16.146  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:16.157  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:16.322  5661  6134 D WifiConnectivityMonitor.NetworkStatsAnalyzer: Backhaul result - RSSI:-61, CE:25, PE:21, TI:36, PTI:31, TW:13, PTW:14, Tx:101, Rx:93, TxS:102, RxS:92, RESULT:true, IC:0, ICT:5, WC:0, WCT:5, R:0, RC:0, IE:0, EC:0
+10-09 04:26:16.351  5661  5682 I system_server: Background concurrent copying GC freed 22MB AllocSpace bytes, 83(1660KB) LOS objects, 18% free, 104MB/128MB, paused 1.150ms,302us total 593.260ms
+10-09 04:26:16.380  5661  5684 W System  : A resource failed to call close. 
+10-09 04:26:16.383  5661  5684 W System  : A resource failed to call close. 
+10-09 04:26:16.797  5661  5754 I ActivityManager: Changes in 10098 5 to 15, 8 to 0
+10-09 04:26:16.803  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:17.095  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:17.171  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:17.184  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:17.194  5661  9267 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 6511, isSameBssidAndFreq true
+10-09 04:26:17.196  5661  6112 I SemWifiLinkQualityMonitor: Link Qos Query: 0.026 ms / 310.408 Mbps (390 / 0.000 / 1.256)
+10-09 04:26:17.315  8250  9417 I SDHMS:D : SIOP:: AP:411 BAT:352 USB:0 CHG:398 WIFI:398 SKIN:383 SKINF:375 SKINB:383 LRP:383 LRF:375 LRB:383 
+10-09 04:26:17.455  4589  4589 D io_stats: !@ 179,0 r 1116 11848 w 66 224 d 0 0 f 0 0 iot 4652 0 th 0 0 0 pt 0 inp 0 0 40291.039
+10-09 04:26:17.455  4589  4589 D io_stats: !@   8,0 r 4859992 100472596 w 2372205 76218844 d 0 0 f 0 0 iot 2168980 0 th 0 0 0 pt 0 inp 0 0 40291.039
+10-09 04:26:17.580 14137 14137 I wpa_supplicant: Heartbeat 1953
+10-09 04:26:17.803  5661  5765 D BatteryExternalStatsWorker: update stats : battery-level (63)
+10-09 04:26:17.810  5661  5765 D BatteryExternalStatsWorker: Fetch WiFi data
+10-09 04:26:17.811  5661  5765 D BatteryExternalStatsWorker: Update Rail Energy data
+10-09 04:26:17.817  5661  5765 D BatteryExternalStatsWorker: Fetch Bluetooth data
+10-09 04:26:17.819  5661  5765 D BatteryExternalStatsWorker: Fetch modem data
+10-09 04:26:17.836  5661  8017 D TelephonyManager: requestModemActivityInfo: Sending result to app: ModemActivityInfo{ mTimestamp=41261674 mSleepTimeMs=18077945 mIdleTimeMs=963343 mActivityStatsTechSpecificInfo=[{mRat=UNKNOWN,mFrequencyRange=UNKNOWN,mTxTimeMs[]=[614, 329, 457, 243, 133],mRxTimeMs=18938557}]}
+10-09 04:26:18.033  5661  5765 D BatteryExternalStatsWorker: Update CPU state
+10-09 04:26:18.033  5661  5765 I KernelWakelockReader: readKernelWakelockStats(false)
+10-09 04:26:18.036  4628  5693 W android.system.suspend@1.0-service: getWakeLockStats +
+10-09 04:26:18.037  4628  5693 I android.system.suspend@1.0-service: name: PowerManagerService.Display, isActive: 1, LC: 40291620, AC: 909, AT: 19579753, TT: 35150865
+10-09 04:26:18.037  4628  5693 I android.system.suspend@1.0-service: name: PowerManager.SuspendLockout, isActive: 1, LC: 40291620, AC: 909, AT: 19579755, TT: 35153202
+10-09 04:26:18.037  4628  5693 W android.system.suspend@1.0-service: getWakeLockStats -
+10-09 04:26:18.038  5661  5765 D KernelWakelockReader: name=PowerManagerService.Broadcasts	 isActive=false	 lastChange=20713233	 activeCount=31	 activeTime=0	 totalTime=53914	 version=251	 time_delta=0
+10-09 04:26:18.038  5661  5765 D KernelWakelockReader: name=PowerManagerService.Display	 isActive=true	 lastChange=40291620	 activeCount=909	 activeTime=19579753	 totalTime=35150865	 version=251	 time_delta=333015000
+10-09 04:26:18.038  5661  5765 D KernelWakelockReader: name=PowerManager.SuspendLockout	 isActive=true	 lastChange=40291620	 activeCount=909	 activeTime=19579755	 totalTime=35153202	 version=251	 time_delta=333015000
+10-09 04:26:18.038  5661  5765 D KernelWakelockReader: name=PowerManagerService.WakeLocks	 isActive=true	 lastChange=40291620	 activeCount=1650	 activeTime=19736802	 totalTime=37875050	 version=251	 time_delta=333015000
+10-09 04:26:18.038  5661  5765 D KernelWakelockReader: name=PowerManagerService.Booting	 isActive=false	 lastChange=153517	 activeCount=1	 activeTime=0	 totalTime=52260	 version=251	 time_delta=0
+10-09 04:26:18.039  5661  5765 I BatteryStatsImpl: updateKernelWakelocksLocked:: name=PowerManager.SuspendLockout / totalTime=35153202000 / mCount=909 / version=251
+10-09 04:26:18.039  5661  5765 I BatteryStatsImpl: updateKernelWakelocksLocked:: name=PowerManagerService.Display / totalTime=35150865000 / mCount=909 / version=251
+10-09 04:26:18.039  5661  5765 I BatteryStatsImpl: updateKernelWakelocksLocked:: name=PowerManagerService.WakeLocks / totalTime=37875050000 / mCount=1650 / version=251
+10-09 04:26:18.039  5661  5765 I BatteryStatsImpl: updateKernelWakelocksLocked:: name=PowerManagerService.Broadcasts / totalTime=53914000 / mCount=31 / version=251
+10-09 04:26:18.039  5661  5765 I BatteryStatsImpl: updateKernelWakelocksLocked:: name=PowerManagerService.Booting / totalTime=52260000 / mCount=1 / version=251
+10-09 04:26:18.040  5661  5765 D BatteryExternalStatsWorker: Update Kernel wakelock & memory state
+10-09 04:26:18.040  5661  5765 D BatteryExternalStatsWorker: Update RPM state
+10-09 04:26:18.040  5661  5765 D BatteryExternalStatsWorker: Update bluetooth state
+10-09 04:26:18.040  5661  5765 D BatteryExternalStatsWorker: mStats lock released
+10-09 04:26:18.056  5661  5765 D BatteryExternalStatsWorker: Update wifi state
+10-09 04:26:18.061  5661  5765 D BatteryExternalStatsWorker: Update modem state
+10-09 04:26:18.061  5661  5765 D BatteryExternalStatsWorker: done updateExternalStatsLocked
+10-09 04:26:18.122  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:18.206  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:18.211  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:18.241  1688  1688 E SlowAppComponent: 0ms: KeepWarmReceiver instantiating…
+10-09 04:26:18.242  1688  1688 E SlowAppComponent: Main thread was blocked for 26ms in the background starting with KeepWarmReceiver
+10-09 04:26:18.926  7305   410 I NearbyMediums: No BLE Fast/GATT advertisements found in the latest cycle.
+10-09 04:26:18.926  7305   410 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+10-09 04:26:19.164  5661  8221 D BatteryService: Sending ACTION_BATTERY_CHANGED: level:75, status:2, health:2, ac:false, usb:true, wireless:false, pogo:false, misc:0xf0000, charge_type:1, charger_type:0, voltage:3970, temperature:352, online:4, current_avg:88, ps:false, hvc:false, capacity:280000, current_event:0x0, current_now:107, mcc:0, mcv:0, cc:2881158, present:true, scale:100, technology:Li-ion
+10-09 04:26:19.164  5329  5329 E sehhealth-service: Could not open /sys/class/power_supply/battery/lrp
+10-09 04:26:19.169  5661  5897 D MotionRecognitionService: [SAR]  onReceive : ACTION_BATTERY_CHANGED, Plugged: 2
+10-09 04:26:19.169  5661  5661 D PhoneWindowManagerExt: ACTION_BATTERY_CHANGED - Level=75, status=2
+10-09 04:26:19.173  5661  5661 D AdaptiveBrightnessLongtermModelBuilder: Received android.intent.action.BATTERY_CHANGED
+10-09 04:26:19.173  5661  6147 I DeviceBatteryInfoService: action: android.intent.action.BATTERY_CHANGED
+10-09 04:26:19.173  5661  6147 I DeviceBatteryInfoService: phone battery level: 75
+10-09 04:26:19.173  5661  6147 I DeviceBatteryInfoService: phone battery status: 2
+10-09 04:26:19.174  5661  5661 D SemWifiApBroadcastReceiver: Received : android.intent.action.BATTERY_CHANGED
+10-09 04:26:19.176  6206  6206 D SemBigDataInfoController: Intent: android.intent.action.BATTERY_CHANGED
+10-09 04:26:19.177  6221  6221 I PowerUI : mBootCompleted = true |  mFullyConnected = true
+10-09 04:26:19.177  6221  6221 I PowerUI : BATTERY_HEALTH_CHECK extraHealth=2 mBatteryMiscEvent=983040
+10-09 04:26:19.177  6221  6221 W PowerUI : Plug reason
+10-09 04:26:19.177  6221  6221 W PowerUI : Skip charging animation - by plug status
+10-09 04:26:19.177  6221  6221 D PowerUI : priorPlugType = 2 mPlugType = 2 priorBatteryStatus = 2 mBatteryStatus = 2
+10-09 04:26:19.177  6221  6221 W PowerUI : Plug reason
+10-09 04:26:19.177  6221  6221 W PowerUI : Skip charging sound - by plug status
+10-09 04:26:19.177  6221  6221 I PowerUI : oldMisalign : false, curMisalign : false
+10-09 04:26:19.178  6206  6206 D SemBigDataInfoController: Intent: android.intent.action.BATTERY_CHANGED
+10-09 04:26:19.179  6221 16378 D SecPowerUI.Notification: dismissing low battery warning: level=75
+10-09 04:26:19.179  6221 16378 D SecPowerUI.Notification: updateNotification mWarning=false mPlaySound=false
+10-09 04:26:19.179  6221 16378 D SecPowerUI.Notification: SecBatteryStatsSnapshot{batteryLevel=75, currentBatteryMode=0, chargingTime=6219000, chargingType=11, batteryHealth=2, automaticTestMode=false, isHiccupState=false}
+10-09 04:26:19.181  6221 16378 D SecPowerUI.Notification: 1. restoreScreenTimeOut - saved_value : :
+10-09 04:26:19.181  6221 16378 E SecPowerUI.Notification: no saved value, so we do nothing !!
+10-09 04:26:19.183  5661  5755 D BaseRestrictionMgr: Package: com.google.android.youtube, userid: 0, hostingType: broadcast is Restricted by policy: 4 caller is: null
+10-09 04:26:19.184  5661  5755 W BroadcastQueue: intent:Intent { act=android.intent.action.BATTERY_CHANGED flg=0x60000010 (has extras) } is skipped in RestrictedPackage to ProcessRecord{ba864c7 15371:com.google.android.youtube/u0a240}
+10-09 04:26:19.184  6221  6221 D SecPowerUI.Notification: showChargingNotice oldChargingType : 11 / currentChargingType : 11, oldChargingTime : 6219000 / mChargingTime : 6219000
+10-09 04:26:19.184  6221  6221 D SecPowerUI.Notification: There is no change about charging status, so return!
+10-09 04:26:19.184  6221  6221 D PowerUI : Battery swelling mode - priorBatterySwellingMode = 0 mBatterySwellingMode = 0 mBatteryStatus = 2
+10-09 04:26:19.184  6221  6221 I PowerUI : mBatteryMiscEvent = 983040
+10-09 04:26:19.185  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:19.185  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:19.185  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:19.186  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:19.186  6221  6221 D KeyguardUpdateMonitor: received broadcast android.intent.action.BATTERY_CHANGED
+10-09 04:26:19.186  6221  6221 I AODBatteryManager: updateBatteryData: ACTION_BATTERY_CHANGED
+10-09 04:26:19.188  6221  6221 I AODBatteryManager: saveBatteryData : AOD BatteryData [mBatteryLevel=75, mBatteryStatus=CHARGING, mBatteryPlugType=USB, mBatteryPlugged=true, mRemainingChargeTime=6219000, mBatteryChargingType=1, mBatteryChargerType=NORMAL, mBatteryOnline=USB, mBatterySwellingMode=NONE, mBatteryProtectMode=false]
+10-09 04:26:19.188  6221  6221 D KeyguardUpdateMonitor: handleBatteryUpdate
+10-09 04:26:19.190 31933 31933 I [SCPMV2][SystemMonitorReceiver]: onReceive: android.intent.action.BATTERY_CHANGED
+10-09 04:26:19.191  5661  5755 D BaseRestrictionMgr: Package: com.facebook.katana, userid: 0, hostingType: broadcast is Restricted by policy: 4 caller is: null
+10-09 04:26:19.191  5661  5755 W BroadcastQueue: intent:Intent { act=android.intent.action.BATTERY_CHANGED flg=0x60000010 (has extras) } is skipped in RestrictedPackage to ProcessRecord{dd3e353 1581:com.facebook.katana/u0a156}
+10-09 04:26:19.193  5661  5755 D BaseRestrictionMgr: Package: com.facebook.katana, userid: 0, hostingType: broadcast is Restricted by policy: 4 caller is: null
+10-09 04:26:19.193  5661  5755 W BroadcastQueue: intent:Intent { act=android.intent.action.BATTERY_CHANGED flg=0x60000010 (has extras) } is skipped in RestrictedPackage to ProcessRecord{dd3e353 1581:com.facebook.katana/u0a156}
+10-09 04:26:19.253  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:19.260  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:19.458  4589  4589 D io_stats: !@   8,0 r 4859995 100472608 w 2372205 76218844 d 0 0 f 0 0 iot 2168988 0 th 0 0 0 pt 0 inp 0 0 40293.042
+10-09 04:26:19.944  5661  6986 D FreecessController: com.sec.android.app.sbrowser(10281) is important[!isUidIdle]
+10-09 04:26:20.210  5661  9267 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 6512, isSameBssidAndFreq true
+10-09 04:26:20.211  5661  6112 I SemWifiLinkQualityMonitor: Link Qos Query: 0.029 ms / 273.000 Mbps (390 / 0.000 / 1.429)
+10-09 04:26:20.274  5661  8017 W ProcessStats: Tracking association SourceState{766ba74 system/1000 BTopFgs #133339} whose proc state 2 is better than process ProcessState{730c324 com.jarvis/10450 pkg=com.jarvis} proc state 3 (65 skipped)
+10-09 04:26:20.277  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:20.282  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:20.858  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:20.860  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:20.863  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:20.864  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:21.154  5661  8017 D CustomizedBinderCallsStatsInternal: reportCpuUsage() : 5%
+10-09 04:26:21.155  5661  5754 I BinderCallsStats: Collected cpu time : 0us, collected call count : 0 for 60286 ms
+10-09 04:26:21.294  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:21.302  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:21.461  4589  4589 D io_stats: !@   8,0 r 4859997 100472616 w 2372213 76218876 d 0 0 f 0 0 iot 2168996 0 th 0 0 0 pt 0 inp 0 0 40295.045
+10-09 04:26:21.514  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:21.519  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:21.936  5661  8017 I ActivityManager: Changes in 10098 15 to 5, 0 to 8
+10-09 04:26:21.944  5661  5760 W libprocessgroup: Failed to open /dev/blkio//cgroup.procs: No such file or directory
+10-09 04:26:21.940  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:22.081  5270  5270 E audit   : type=1400 audit(1791500182.078:22556): avc:  denied  { write } for  pid=7305 comm="PerfettoTrace" name="traced_producer" dev="tmpfs" ino=26994 scontext=u:r:gmscore_app:s0:c512,c768 tcontext=u:object_r:traced_producer_socket:s0 tclass=sock_file permissive=0 SEPF_SM-A515F_13_0001 audit_filtered
+10-09 04:26:22.082  5270  5270 E audit   : type=1300 audit(1791500182.078:22556): arch=c00000b7 syscall=203 success=no exit=-13 a0=8f a1=7601409310 a2=1e a3=6c items=0 ppid=5292 pid=7305 auid=4294967295 uid=10225 gid=10225 euid=10225 suid=10225 fsuid=10225 egid=10225 sgid=10225 fsgid=10225 tty=(none) ses=4294967295 comm="PerfettoTrace" exe="/system/bin/app_process64" subj=u:r:gmscore_app:s0:c512,c768 key=(null)
+10-09 04:26:22.082  5270  5270 E audit   : type=1327 audit(1791500182.078:22556): proctitle="com.google.android.gms"
+10-09 04:26:22.318  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:22.321  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:22.758  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:22.761  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:22.863  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:22.865  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:23.226  5661  9267 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 6513, isSameBssidAndFreq true
+10-09 04:26:23.227  5661  6112 I SemWifiLinkQualityMonitor: Link Qos Query: 0.028 ms / 288.667 Mbps (433 / 0.000 / 1.500)
+10-09 04:26:23.290  6221  6350 D MobileStatusTracker(1/2): onSignalStrengthsChanged level=3, vendorLevel=3
+10-09 04:26:23.296  6221  6350 D MobileSignalController(1/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=LTE (4G), emergencyOnly=false, roaming=false, isDefault=false, dataActivity=, level=3, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+10-09 04:26:23.302  6221  6350 D NetworkController: SignalStrength from intent slotId=1
+10-09 04:26:23.336  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:23.341  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:23.447  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10292
+10-09 04:26:23.463  4589  4589 D io_stats: !@   8,0 r 4860039 100473364 w 2372213 76218876 d 0 0 f 0 0 iot 2169020 0 th 0 0 0 pt 0 inp 0 0 40297.047
+10-09 04:26:24.188  6221  6221 D SecPowerUI.Notification: showChargingNotice oldChargingType : 11 / currentChargingType : 11, oldChargingTime : 6219000 / mChargingTime : 6219000
+10-09 04:26:24.188  6221  6221 D SecPowerUI.Notification: There is no change about charging status, so return!
+10-09 04:26:24.255  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:24.384  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:24.393  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:24.438  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10292
+10-09 04:26:25.279  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:25.404  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:25.413  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:25.466  4589  4589 D io_stats: !@   8,0 r 4860050 100473468 w 2372213 76218876 d 0 0 f 0 0 iot 2169024 0 th 0 0 0 pt 0 inp 0 0 40299.050
+10-09 04:26:25.849  6221  6350 D MobileStatusTracker(1/2): onSignalStrengthsChanged level=3, vendorLevel=3
+10-09 04:26:25.857  6221  6350 D MobileSignalController(1/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=LTE (4G), emergencyOnly=false, roaming=false, isDefault=false, dataActivity=, level=3, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+10-09 04:26:25.858  6221  6350 D NetworkController: SignalStrength from intent slotId=1
+10-09 04:26:25.880  6206  6364 I TelephonyProvider: D/TelephonyProvider: subIdString = 2 subId = 2
+10-09 04:26:25.887  5661  6058 D ConnectivityService: notifyType CALLBACK_CAP_CHANGED for [106 CELLULAR]
+10-09 04:26:25.891  6625  6786 I PdnController<0>: onCapabilitiesChanged: network 106 networkCapabilities [ Transports: CELLULAR Capabilities: IMS&NOT_METERED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=13993Kbps LinkDnBandwidth>=11316Kbps Specifier: <TelephonyNetworkSpecifier [mSubId = 1]> SubscriptionIds: {1} UnderlyingNetworks: Null]
+10-09 04:26:25.902  5661  6058 D ConnectivityService: notifyType CALLBACK_CAP_CHANGED for [121 CELLULAR]
+10-09 04:26:25.905  6206  6364 I TelephonyProvider: D/TelephonyProvider: subIdString = 2 subId = 2
+10-09 04:26:25.925  5661  6058 D ConnectivityService: notifyType CALLBACK_CAP_CHANGED for [108 CELLULAR]
+10-09 04:26:25.927  6625  6786 I PdnController<1>: onCapabilitiesChanged: network 108 networkCapabilities [ Transports: CELLULAR Capabilities: IMS&NOT_METERED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=4515Kbps LinkDnBandwidth>=4515Kbps Specifier: <TelephonyNetworkSpecifier [mSubId = 2]> SubscriptionIds: {2} UnderlyingNetworks: Null]
+10-09 04:26:26.249  5661  9267 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 6514, isSameBssidAndFreq true
+10-09 04:26:26.252  5661  6112 I SemWifiLinkQualityMonitor: Link Qos Query: 0.038 ms / 210.600 Mbps (351 / 0.000 / 1.667)
+10-09 04:26:26.305  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:26.335  5661  6134 D WifiConnectivityMonitor.NetworkStatsAnalyzer: Backhaul result - RSSI:-63, CE:25, PE:25, TI:36, PTI:36, TW:9, PTW:13, Tx:74, Rx:66, TxS:77, RxS:66, RESULT:true, IC:0, ICT:5, WC:0, WCT:5, R:0, RC:0, IE:0, EC:0
+10-09 04:26:26.413  7305   410 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+10-09 04:26:26.418  7305  2892 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+10-09 04:26:26.436  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:26.450  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:26.937  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10292
+10-09 04:26:27.314  8250  9417 I SDHMS:D : SIOP:: AP:405 BAT:352 USB:0 CHG:396 WIFI:394 SKIN:380 SKINF:372 SKINB:380 LRP:380 LRF:372 LRB:380 
+10-09 04:26:27.329  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:27.458  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:27.468  4589  4589 D io_stats: !@ 179,0 r 1116 11848 w 66 224 d 0 0 f 0 0 iot 4652 0 th 0 0 0 pt 0 inp 0 0 40301.052
+10-09 04:26:27.469  4589  4589 D io_stats: !@   8,0 r 4860094 100473992 w 2372221 76219000 d 0 0 f 0 0 iot 2169032 0 th 0 0 0 pt 0 inp 0 0 40301.052
+10-09 04:26:27.471  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:27.588 14137 14137 I wpa_supplicant: Heartbeat 1954
+10-09 04:26:27.976  5661  5754 I ActivityManager: Changes in 10098 5 to 15, 8 to 0
+10-09 04:26:27.986  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:28.076  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:28.081  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:28.084  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:28.085  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:28.352  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:28.404  6221  6350 D MobileStatusTracker(1/2): onSignalStrengthsChanged level=3, vendorLevel=3
+10-09 04:26:28.406  6221  6350 D MobileSignalController(1/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=LTE (4G), emergencyOnly=false, roaming=false, isDefault=false, dataActivity=, level=3, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+10-09 04:26:28.409  6221  6350 D NetworkController: SignalStrength from intent slotId=1
+10-09 04:26:28.491  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:28.500  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:28.804  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:28.805  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:28.928  7305  2892 I NearbyMediums: No BLE Fast/GATT advertisements found in the latest cycle.
+10-09 04:26:28.928  7305  2892 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+10-09 04:26:28.954  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:28.955  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:29.188  5661  8221 D BatteryService: Sending ACTION_BATTERY_CHANGED: level:75, status:2, health:2, ac:false, usb:true, wireless:false, pogo:false, misc:0xf0000, charge_type:1, charger_type:0, voltage:3969, temperature:352, online:4, current_avg:31, ps:false, hvc:false, capacity:280000, current_event:0x0, current_now:18, mcc:0, mcv:0, cc:2881158, present:true, scale:100, technology:Li-ion
+10-09 04:26:29.189  5329  5329 E sehhealth-service: Could not open /sys/class/power_supply/battery/lrp
+10-09 04:26:29.192  5661  5897 D MotionRecognitionService: [SAR]  onReceive : ACTION_BATTERY_CHANGED, Plugged: 2
+10-09 04:26:29.192  5661  5661 D PhoneWindowManagerExt: ACTION_BATTERY_CHANGED - Level=75, status=2
+10-09 04:26:29.196  5661  5661 D AdaptiveBrightnessLongtermModelBuilder: Received android.intent.action.BATTERY_CHANGED
+10-09 04:26:29.197  5661  6147 I DeviceBatteryInfoService: action: android.intent.action.BATTERY_CHANGED
+10-09 04:26:29.197  5661  6147 I DeviceBatteryInfoService: phone battery level: 75
+10-09 04:26:29.197  5661  6147 I DeviceBatteryInfoService: phone battery status: 2
+10-09 04:26:29.198  5661  5661 D SemWifiApBroadcastReceiver: Received : android.intent.action.BATTERY_CHANGED
+10-09 04:26:29.202  6206  6206 D SemBigDataInfoController: Intent: android.intent.action.BATTERY_CHANGED
+10-09 04:26:29.204  6221  6221 I PowerUI : mBootCompleted = true |  mFullyConnected = true
+10-09 04:26:29.204  6221  6221 I PowerUI : BATTERY_HEALTH_CHECK extraHealth=2 mBatteryMiscEvent=983040
+10-09 04:26:29.204  6221  6221 W PowerUI : Plug reason
+10-09 04:26:29.204  6221  6221 W PowerUI : Skip charging animation - by plug status
+10-09 04:26:29.204  6221  6221 D PowerUI : priorPlugType = 2 mPlugType = 2 priorBatteryStatus = 2 mBatteryStatus = 2
+10-09 04:26:29.204  6221  6221 W PowerUI : Plug reason
+10-09 04:26:29.204  6221  6221 W PowerUI : Skip charging sound - by plug status
+10-09 04:26:29.204  6221  6221 I PowerUI : oldMisalign : false, curMisalign : false
+10-09 04:26:29.205  6221  7311 D SecPowerUI.Notification: dismissing low battery warning: level=75
+10-09 04:26:29.205  6221  7311 D SecPowerUI.Notification: updateNotification mWarning=false mPlaySound=false
+10-09 04:26:29.206  6221  7311 D SecPowerUI.Notification: SecBatteryStatsSnapshot{batteryLevel=75, currentBatteryMode=0, chargingTime=6219000, chargingType=11, batteryHealth=2, automaticTestMode=false, isHiccupState=false}
+10-09 04:26:29.206  6206  6206 D SemBigDataInfoController: Intent: android.intent.action.BATTERY_CHANGED
+10-09 04:26:29.208  6221  6221 D SecPowerUI.Notification: showChargingNotice oldChargingType : 11 / currentChargingType : 11, oldChargingTime : 6219000 / mChargingTime : 6219000
+10-09 04:26:29.208  6221  6221 D SecPowerUI.Notification: There is no change about charging status, so return!
+10-09 04:26:29.208  6221  6221 D PowerUI : Battery swelling mode - priorBatterySwellingMode = 0 mBatterySwellingMode = 0 mBatteryStatus = 2
+10-09 04:26:29.208  6221  6221 I PowerUI : mBatteryMiscEvent = 983040
+10-09 04:26:29.209  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:29.210  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:29.211  5661  5755 D BaseRestrictionMgr: Package: com.google.android.youtube, userid: 0, hostingType: broadcast is Restricted by policy: 4 caller is: null
+10-09 04:26:29.211  5661  5755 W BroadcastQueue: intent:Intent { act=android.intent.action.BATTERY_CHANGED flg=0x60000010 (has extras) } is skipped in RestrictedPackage to ProcessRecord{ba864c7 15371:com.google.android.youtube/u0a240}
+10-09 04:26:29.211  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:29.212  6221  6221 D SamsungBatteryMeterDrawable: onBatteryLevelChanged isSomethingChanged: false
+10-09 04:26:29.213  6221  6221 D KeyguardUpdateMonitor: received broadcast android.intent.action.BATTERY_CHANGED
+10-09 04:26:29.213  6221  6221 I AODBatteryManager: updateBatteryData: ACTION_BATTERY_CHANGED
+10-09 04:26:29.219  6221  6221 I AODBatteryManager: saveBatteryData : AOD BatteryData [mBatteryLevel=75, mBatteryStatus=CHARGING, mBatteryPlugType=USB, mBatteryPlugged=true, mRemainingChargeTime=6219000, mBatteryChargingType=1, mBatteryChargerType=NORMAL, mBatteryOnline=USB, mBatterySwellingMode=NONE, mBatteryProtectMode=false]
+10-09 04:26:29.219  5661  5755 D BaseRestrictionMgr: Package: com.facebook.katana, userid: 0, hostingType: broadcast is Restricted by policy: 4 caller is: null
+10-09 04:26:29.219  6221  6221 D KeyguardUpdateMonitor: handleBatteryUpdate
+10-09 04:26:29.219  5661  5755 W BroadcastQueue: intent:Intent { act=android.intent.action.BATTERY_CHANGED flg=0x60000010 (has extras) } is skipped in RestrictedPackage to ProcessRecord{dd3e353 1581:com.facebook.katana/u0a156}
+10-09 04:26:29.221  5661  5755 D BaseRestrictionMgr: Package: com.facebook.katana, userid: 0, hostingType: broadcast is Restricted by policy: 4 caller is: null
+10-09 04:26:29.221 31933 31933 I [SCPMV2][SystemMonitorReceiver]: onReceive: android.intent.action.BATTERY_CHANGED
+10-09 04:26:29.221  5661  5755 W BroadcastQueue: intent:Intent { act=android.intent.action.BATTERY_CHANGED flg=0x60000010 (has extras) } is skipped in RestrictedPackage to ProcessRecord{dd3e353 1581:com.facebook.katana/u0a156}
+10-09 04:26:29.225  6221  7311 D SecPowerUI.Notification: 1. restoreScreenTimeOut - saved_value : :
+10-09 04:26:29.225  6221  7311 E SecPowerUI.Notification: no saved value, so we do nothing !!
+10-09 04:26:29.262  5661  5751 E Watchdog: !@Sync: 1340 heap: 110 / 128 FD: 1028 objects: 2157227 WaitTime: 7.423 GCcnt: 0 FullGC: 0 [2026-10-09 04:26:29.259]
+10-09 04:26:29.269  5661  9267 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 6515, isSameBssidAndFreq true
+10-09 04:26:29.270  5661  6112 I SemWifiLinkQualityMonitor: Link Qos Query: 0.037 ms / 216.982 Mbps (351 / 0.000 / 1.618)
+10-09 04:26:29.314  5270  5270 E audit   : type=1400 audit(1791500189.310:22557): avc:  denied  { write } for  pid=7305 comm="ThreadPoolForeg" name="traced_producer" dev="tmpfs" ino=26994 scontext=u:r:gmscore_app:s0:c512,c768 tcontext=u:object_r:traced_producer_socket:s0 tclass=sock_file permissive=0 SEPF_SM-A515F_13_0001 audit_filtered
+10-09 04:26:29.315  5270  5270 E audit   : type=1300 audit(1791500189.310:22557): arch=c00000b7 syscall=203 success=no exit=-13 a0=8f a1=7b55577d60 a2=1e a3=6c items=0 ppid=5292 pid=7305 auid=4294967295 uid=10225 gid=10225 euid=10225 suid=10225 fsuid=10225 egid=10225 sgid=10225 fsgid=10225 tty=(none) ses=4294967295 comm="ThreadPoolForeg" exe="/system/bin/app_process64" subj=u:r:gmscore_app:s0:c512,c768 key=(null)
+10-09 04:26:29.315  5270  5270 E audit   : type=1327 audit(1791500189.310:22557): proctitle="com.google.android.gms"
+10-09 04:26:29.379  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:29.471  4589  4589 D io_stats: !@   8,0 r 4860097 100474004 w 2372221 76219000 d 0 0 f 0 0 iot 2169036 0 th 0 0 0 pt 0 inp 0 0 40303.055
+10-09 04:26:29.521  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:29.533  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:29.557  5661  6545 V MdnieScenarioControlService: burn_in_prevention_mode(), enabled : true, mBurnInDisableAppEnabled : false , mAutoBrightnessMode : true, mHighBrightnessModeEnabled : false , mBurnInPreventionACL : false , platform_brightness_value : 60 , BURN_IN_PREVENTION_SUPPORT_VALUE : 143 , mBurnInPreventionEnabled : false , mGameAppLauncher : false
+10-09 04:26:29.559  5661  6986 D FreecessController: com.whatsapp.w4b(state: Initial -> Freezeable, Reason: uidIdle)
+10-09 04:26:29.575  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:29.575  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:29.715  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:29.717  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:29.945  5661  6986 D FreecessController: com.sec.android.app.sbrowser(10281) is important[!isUidIdle]
+10-09 04:26:30.402  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:30.548  5661  8221 W ProcessStats: Tracking association SourceState{766ba74 system/1000 BTopFgs #133361} whose proc state 2 is better than process ProcessState{730c324 com.jarvis/10450 pkg=com.jarvis} proc state 3 (65 skipped)
+10-09 04:26:30.553  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:30.560  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:30.723  5661  8221 I ActivityManager: Changes in 10225 5 to 5, 8 to 15
+10-09 04:26:30.723  5661  8221 I AppOps  : updateUidProcState uid: 10225 procState: 5 capability:15
+10-09 04:26:30.724  5661  8221 I AppOps  : commitUidPendingStateLocked() :: UID - 10225, 500 > 500, 8 > 15
+10-09 04:26:30.780  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10292
+10-09 04:26:31.424  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:31.473  4589  4589 D io_stats: !@   8,0 r 4860100 100474016 w 2372226 76219060 d 0 0 f 0 0 iot 2169048 0 th 0 0 0 pt 0 inp 0 0 40305.057
+10-09 04:26:31.578  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:31.584  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:31.986  5661  5844 I ActivityManager: Changes in 10098 15 to 5, 0 to 8
+10-09 04:26:31.991  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:31.994  5661  5760 W libprocessgroup: Failed to open /dev/blkio//cgroup.procs: No such file or directory
+10-09 04:26:32.287  5661  9267 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 6516, isSameBssidAndFreq true
+10-09 04:26:32.291  5661  6112 I SemWifiLinkQualityMonitor: Link Qos Query: 0.026 ms / 306.429 Mbps (390 / 0.000 / 1.273)
+10-09 04:26:32.447  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:32.601  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:32.612  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:33.247 30027   886 I VoiceEngine: VoicePipelineLifecycleManager idle timeout — unloaded active ASR session
+10-09 04:26:33.464  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:33.474  4589  4589 D io_stats: !@   8,0 r 4860120 100474300 w 2372239 76219116 d 0 0 f 0 0 iot 2169060 0 th 0 0 0 pt 0 inp 0 0 40307.058
+10-09 04:26:33.628  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:33.641  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:34.210  6221  6221 D SecPowerUI.Notification: showChargingNotice oldChargingType : 11 / currentChargingType : 11, oldChargingTime : 6219000 / mChargingTime : 6219000
+10-09 04:26:34.210  6221  6221 D SecPowerUI.Notification: There is no change about charging status, so return!
+10-09 04:26:34.487  5661  6127 D SemWifiSwitchForIndividualAppsService: isSkipNetworkCondition - result:2
+10-09 04:26:34.660  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:34.674  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:34.820  6221  6350 D MobileStatusTracker(1/2): onSignalStrengthsChanged level=2, vendorLevel=3
+10-09 04:26:34.825  6221  6350 D MobileSignalController(1/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=LTE (4G), emergencyOnly=false, roaming=false, isDefault=false, dataActivity=, level=3, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+10-09 04:26:34.829  6221  6350 D NetworkController: SignalStrength from intent slotId=1
+10-09 04:26:35.297  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:35.298  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:35.306  5661  9267 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 6517, isSameBssidAndFreq true
+10-09 04:26:35.307  5661  6112 I SemWifiLinkQualityMonitor: Link Qos Query: 0.022 ms / 368.852 Mbps (433 / 0.000 / 1.174)
+10-09 04:26:35.312  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:35.312  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:35.382  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:35.383  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:35.476  4589  4589 D io_stats: !@   8,0 r 4860122 100474308 w 2372239 76219116 d 0 0 f 0 0 iot 2169064 0 th 0 0 0 pt 0 inp 0 0 40309.060
+10-09 04:26:35.689  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:35.699  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:36.038  5661  5878 D ActivityTaskManager: SafeActivityOptions created, mOriginalCallingPid=5661, mOriginalCallingUid=1000, options=ActivityOptions(249953523), mPackageName=null, mAnimationType=-1, mStartX=0, mStartY=0, mWidth=0, mHeight=0, caller=com.android.server.am.PendingIntentRecord.sendInner:486 com.android.server.am.ActivityManagerService.sendIntentSender:6608 com.android.server.am.ActivityManagerService.sendIntentSender:6597 android.app.PendingIntent.sendAndReturnResult:1029 android.app.PendingIntent.send:1000 com.android.server.alarm.AlarmManagerService$DeliveryTracker.deliverLocked:6377 com.android.server.alarm.AlarmManagerService.deliverAlarmsLocked:5218 
+10-09 04:26:36.040  5661  5878 D ActivityManager: Received BROADCAST intent 0xd60a250 Key{broadcastIntent pkg=com.samsung.android.rubin.app intent=act=com.samsung.android.rubin.controller.keepaliveservice.ACTION_SERVICE_ALARM pkg=com.samsung.android.rubin.app cmp=com.samsung.android.rubin.app/com.samsung.android.rubin.controller.KeepAliveService$AlarmBroadcastReceiver flags=0x4000000 u=0} requestCode=1 sent=0 from uid 1000
+10-09 04:26:36.099  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:36.100  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:36.348  5661  6134 D WifiConnectivityMonitor.NetworkStatsAnalyzer: Backhaul result - RSSI:-60, CE:21, PE:25, TI:31, PTI:36, TW:12, PTW:9, Tx:225, Rx:199, TxS:226, RxS:193, RESULT:true, IC:0, ICT:5, WC:0, WCT:5, R:0, RC:0, IE:0, EC:0
+10-09 04:26:36.557  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:36.559  1688  2058 E msys    : E[N mns:TigonMNS]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:36.561  1688  2058 E msys    : E[N mns:TigonMNS]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:36.562  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:36.586  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:36.587  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:36.725  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:36.755  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:36.758  5661  5869 I UMR     : B|Compact com.samsung.android.samsungpositioning(1852)
+10-09 04:26:36.799  5661  5869 I UMR     : E|Compact d_rss=-5248KB
+10-09 04:26:37.259  1688  2453 E msys    : E[N mns:DGWClient]_LogError(394)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+10-09 04:26:37.260  5661  6151 D NetdEventListenerService: DNS Requested by : 114, 10357, 4, true
+10-09 04:26:37.315  8250  9417 I SDHMS:D : SIOP:: AP:402 BAT:352 USB:0 CHG:394 WIFI:395 SKIN:379 SKINF:372 SKINB:379 LRP:379 LRF:372 LRB:379 
+10-09 04:26:37.324  5661  5661 D SemWifiP2pGoPowerSave: GopsReceiver : received : com.samsung.intent.action.CHECK_SIOP_LEVEL
+10-09 04:26:37.324  5661  5661 I SemWifiP2pGoPowerSave: siop_level = 0
+10-09 04:26:37.327 19740 19771 I SystemBroadcastReceiver: [#CMH#] onReceive completed :  0
+10-09 04:26:37.328 19740 19740 I PolicyManager: [#CMH#] onReceive action = EVENT_SIOP
+10-09 04:26:37.328 19740 19740 I PolicyManager: [#CMH#] Prev SIOP Level is high status 
+10-09 04:26:37.336 29669  1568 I [SC]CtbDeviceRepository: updateSiopLevel. siopLevel: 0
+10-09 04:26:37.341 29669  3534 I [SC][ConfigurationPolicyRepositoryImpl]: getConcurrency. concurrency: 4, siop level: 0
+10-09 04:26:37.342 29669  3534 I [SC][SyncStarter]: Device thermal status updated to overheated: false
+10-09 04:26:37.370  5661  5760 W libprocessgroup: Failed to open /dev/blkio//cgroup.procs: No such file or directory
+10-09 04:26:37.374  6221  6350 D MobileStatusTracker(1/2): onSignalStrengthsChanged level=2, vendorLevel=3
+10-09 04:26:37.375  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:37.379  6221  6350 D MobileSignalController(1/2): notifyListener: enabled=true, connected=true, dataConnected=true, networkType=LTE (4G), emergencyOnly=false, roaming=false, isDefault=false, dataActivity=, level=3, ca=false, mmWave=false, disabledDataIcon=false, simCard=ETC
+10-09 04:26:37.381  6221  6350 D NetworkController: SignalStrength from intent slotId=1
+10-09 04:26:37.406  5661  6164 D SyncManager: userId - 0 auto - true
+10-09 04:26:37.411  5661  5760 W libprocessgroup: Failed to open /dev/blkio//cgroup.procs: No such file or directory
+10-09 04:26:37.419  5661  6164 D SyncManager: userId - 0 auto - true
+10-09 04:26:37.422  5661  6164 D CompatibilityChangeReporter: Compat change id reported: 135634846; UID 10232; state: DISABLED
+10-09 04:26:37.423  5661  6164 D CompatibilityChangeReporter: Compat change id reported: 177438394; UID 10232; state: DISABLED
+10-09 04:26:37.423  5661  6164 D CompatibilityChangeReporter: Compat change id reported: 135772972; UID 10232; state: DISABLED
+10-09 04:26:37.423  5661  6164 D CompatibilityChangeReporter: Compat change id reported: 135754954; UID 10232; state: ENABLED
+10-09 04:26:37.425  5661  5756 D CompatibilityChangeReporter: Compat change id reported: 143937733; UID 10232; state: ENABLED
+10-09 04:26:37.430  5661  5661 W JobScheduler: Job didn't exist in JobStore: 4ded946 #1000/100164 com.android.contacts/com.whatsapp.w4b/WhatsApp Business:android
+10-09 04:26:37.434  5661  5661 D CompatibilityChangeReporter: Compat change id reported: 135634846; UID 10245; state: DISABLED
+10-09 04:26:37.434  5661  5661 D CompatibilityChangeReporter: Compat change id reported: 177438394; UID 10245; state: DISABLED
+10-09 04:26:37.434  5661  5661 D CompatibilityChangeReporter: Compat change id reported: 135772972; UID 10245; state: DISABLED
+10-09 04:26:37.435  5661  5661 D CompatibilityChangeReporter: Compat change id reported: 135754954; UID 10245; state: ENABLED
+10-09 04:26:37.456  5292  5292 D Zygote  : Forked child process 3538
+10-09 04:26:37.460  5661  5756 I ActivityManager: Start proc 3538:com.google.android.syncadapters.calendar/u0a232 for service {com.google.android.syncadapters.calendar/com.google.android.syncadapters.calendar.CalendarSyncAdapterService}
+10-09 04:26:37.461  5661  5756 D CompatibilityChangeReporter: Compat change id reported: 143937733; UID 10245; state: ENABLED
+10-09 04:26:37.475  5292  5292 D Zygote  : Forked child process 3540
+10-09 04:26:37.479  4589  4589 D io_stats: !@ 179,0 r 1116 11848 w 66 224 d 0 0 f 0 0 iot 4652 0 th 0 0 0 pt 0 inp 0 0 40311.061
+10-09 04:26:37.479  4589  4589 D io_stats: !@   8,0 r 4860165 100474664 w 2372258 76219300 d 0 0 f 0 0 iot 2169080 0 th 0 0 0 pt 0 inp 0 0 40311.062
+10-09 04:26:37.479  5661  5756 I ActivityManager: Start proc 3540:com.aura.oobe.samsung/u0a245 for service {com.aura.oobe.samsung/com.ironsource.aura.sdk.feature.delivery.apk.ApkDeliveryJobService}
+10-09 04:26:37.512  5661  6164 D SyncManager: userId - 0 auto - true
+10-09 04:26:37.513  3538  3538 I apters.calendar: Using non-generational CollectorTypeCC GC.
+10-09 04:26:37.516  5661  6164 D CompatibilityChangeReporter: Compat change id reported: 177438394; UID 10242; state: DISABLED
+10-09 04:26:37.517  5661  6164 D CompatibilityChangeReporter: Compat change id reported: 135772972; UID 10242; state: DISABLED
+10-09 04:26:37.517  5661  6164 D CompatibilityChangeReporter: Compat change id reported: 135754954; UID 10242; state: ENABLED
+10-09 04:26:37.519  5661  5756 D CompatibilityChangeReporter: Compat change id reported: 143937733; UID 10242; state: ENABLED
+10-09 04:26:37.535  5292  5292 D Zygote  : Forked child process 3548
+10-09 04:26:37.537  5661  5756 I ActivityManager: Start proc 3548:com.google.android.gm/u0a242 for service {com.google.android.gm/com.google.android.gm.provider.MailSyncAdapterService}
+10-09 04:26:37.550  3540  3540 I ra.oobe.samsung: Using non-generational CollectorTypeCC GC.
+10-09 04:26:37.554  3538  3538 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+10-09 04:26:37.562  1688  2466 D ConnectivityManager: StackLog: [android.net.ConnectivityManager.unregisterNetworkCallback(ConnectivityManager.java:5535)] [X.08nB.A01(:19)] [X.08wF.invoke(:46)] [X.08tP.invoke(:1328)] [X.00XY.A00(:132)] [X.06Gy.invokeSuspend(:570)] [X.04Yj.resumeWith(:15)] [X.04bZ.run(:98)] [X.07sk.run(:2)] [java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1100)] [java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)] [java.lang.Thread.run(Thread.java:1571)]
+10-09 04:26:37.563  3538  3538 D ActivityThread: setConscryptValidator
+10-09 04:26:37.563  3538  3538 D ActivityThread: setConscryptValidator - put
+10-09 04:26:37.564  5661  6058 D ConnectivityService:  Removing from current network [114 WIFI], leaving 189 requests.
+10-09 04:26:37.570  5661  8221 D CompatibilityChangeReporter: Compat change id reported: 168419799; UID 10232; state: DISABLED
+10-09 04:26:37.571  5661  8221 I ActivityManager: DSS OFF for com.google.android.syncadapters.calendar
+10-09 04:26:37.578  3540  3540 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+10-09 04:26:37.582  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:37.584  3540  3540 D ActivityThread: setConscryptValidator
+10-09 04:26:37.584  3540  3540 D ActivityThread: setConscryptValidator - put
+10-09 04:26:37.591  3538  3538 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10232; state: ENABLED
+10-09 04:26:37.594  5661  8221 I ActivityManager: DSS OFF for com.aura.oobe.samsung
+10-09 04:26:37.595  3548  3548 I ogle.android.gm: Using non-generational CollectorTypeCC GC.
+10-09 04:26:37.597 14137 14137 I wpa_supplicant: Heartbeat 1955
+10-09 04:26:37.602  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:37.608  1688  2466 D ConnectivityManager: StackLog: [android.net.ConnectivityManager.sendRequestForNetwork(ConnectivityManager.java:4698)] [android.net.ConnectivityManager.sendRequestForNetwork(ConnectivityManager.java:4867)] [android.net.ConnectivityManager.registerDefaultNetworkCallbackForUid(ConnectivityManager.java:5427)] [android.net.ConnectivityManager.registerDefaultNetworkCallback(ConnectivityManager.java:5395)] [android.net.ConnectivityManager.registerDefaultNetworkCallback(ConnectivityManager.java:5369)] [X.08nB.A02(:17)] [X.08tV.invokeSuspend(:90)] [X.08tV.invoke(:10)] [X.08Zf.A05(:2)] [X.06ok.A05(:58)] [X.06Hj.A01(:42)] [X.06Hj.A00(:9)] [X.06Hj.invokeSuspend(:5)] [X.04Yj.resumeWith(:15)] [X.04bZ.run(:89)] [X.07sk.run(:2)] [java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1100)] [java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)] [java.lang.Thread.run(Thread.java:1571)]
+10-09 04:26:37.611  5661  8221 D ConnectivityService: requestNetwork for uid/pid:10357/1688 activeRequest: null callbackRequest: 4248 [NetworkRequest [ REQUEST id=4249, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10357 RequestorUid: 10357 RequestorPkg: com.instagram.android UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false declaredMethods: AVAIL|LOST|NC|BLK
+10-09 04:26:37.614  3540  3540 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10245; state: ENABLED
+10-09 04:26:37.615  5661  6058 D ConnectivityService:    accepting network in place of null for NetworkRequest [ REQUEST id=4249, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10357 RequestorUid: 10357 RequestorPkg: com.instagram.android UnderlyingNetworks: Null] ]
+10-09 04:26:37.624  5661  6048 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=4249, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10357 RequestorUid: 10357 RequestorPkg: com.instagram.android UnderlyingNetworks: Null] ]
+10-09 04:26:37.626  5661  6048 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=4249, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10357 RequestorUid: 10357 RequestorPkg: com.instagram.android UnderlyingNetworks: Null] ]
+10-09 04:26:37.626  5661  6048 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=4249, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10357 RequestorUid: 10357 RequestorPkg: com.instagram.android UnderlyingNetworks: Null] ]
+10-09 04:26:37.627  5661  6048 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=4249, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10357 RequestorUid: 10357 RequestorPkg: com.instagram.android UnderlyingNetworks: Null] ]
+10-09 04:26:37.627  3538  3538 D nativeloader: Configuring clns-shared-4 for other apk /product/app/GoogleCalendarSyncAdapter/GoogleCalendarSyncAdapter.apk. target_sdk_version=33, uses_libraries=, library_path=/product/app/GoogleCalendarSyncAdapter/lib/arm64:/system/lib64:/system/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.syncadapters.calendar:/product/app/GoogleCalendarSyncAdapter:/system/lib64:/system/system_ext/lib64
+10-09 04:26:37.631  5661  6058 D ConnectivityService: Rematched networks [computed 2ms] [applied 6ms] [issued 10]
+10-09 04:26:37.631  5661  6058 D ConnectivityService: NetworkReassignment :
+10-09 04:26:37.631  5661  6058 D ConnectivityService:   4249 : null → 114
+10-09 04:26:37.632  3548  3548 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+10-09 04:26:37.638 28960 28986 I adbd    : jdwp connection from 3548
+10-09 04:26:37.638  3538  3538 D nativeloader: Load libframework-connectivity-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+10-09 04:26:37.641  3548  3548 D ActivityThread: setConscryptValidator
+10-09 04:26:37.642  3548  3548 D ActivityThread: setConscryptValidator - put
+10-09 04:26:37.649  5661  8221 D CompatibilityChangeReporter: Compat change id reported: 168419799; UID 10242; state: DISABLED
+10-09 04:26:37.650  5661  8221 I ActivityManager: DSS OFF for com.google.android.gm
+10-09 04:26:37.651  3540  3540 D nativeloader: Configuring clns-4 for other apk /data/app/~~tcP6lUxFGStOmMX7J-ctiQ==/com.aura.oobe.samsung-NDAY_123EXsGwd7cH53HeA==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~tcP6lUxFGStOmMX7J-ctiQ==/com.aura.oobe.samsung-NDAY_123EXsGwd7cH53HeA==/lib/arm64:/data/app/~~tcP6lUxFGStOmMX7J-ctiQ==/com.aura.oobe.samsung-NDAY_123EXsGwd7cH53HeA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.aura.oobe.samsung
+10-09 04:26:37.656  3538  3538 V GraphicsEnvironment: ANGLE Developer option for 'com.google.android.syncadapters.calendar' set to: 'default'
+10-09 04:26:37.657  3538  3538 V GraphicsEnvironment: ANGLE GameManagerService for com.google.android.syncadapters.calendar: false
+10-09 04:26:37.657  3538  3538 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+10-09 04:26:37.657  1688  3574 E EmergencyPushPeriodicFetchWorker: Skipping fetch since app is backgrounded
+10-09 04:26:37.661  5370  2534 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:37.665  3548  3548 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10242; state: ENABLED
+10-09 04:26:37.667  3538  3538 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+10-09 04:26:37.671  3538  3538 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+10-09 04:26:37.677  3538  3538 D PhenotypeContext: Application doesn't implement PhenotypeApplication interface, falling back to globally set context. See go/phenotype-flag#process-stable-init for more info.
+10-09 04:26:37.679  3548  3548 D nativeloader: Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/lib/arm64:/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/base.apk!/lib/arm64-v8a:/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/split_config.en.apk!/lib/arm64-v8a:/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/split_config.xxhdpi.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gm
+10-09 04:26:37.679  3548  3548 D nativeloader: Extending system_exposed_libraries: libhumantracking.arcsoft.so:libPortraitDistortionCorrection.arcsoft.so:libPortraitDistortionCorrectionCali.arcsoft.so:libface_landmark.arcsoft.so:libFacialStickerEngine.arcsoft.so:libveengine.arcsoft.so:liblow_light_hdr.arcsoft.so:libhigh_dynamic_range.arcsoft.so:libFacialAttributeDetection.arcsoft.so:libBeauty_v4.camera.samsung.so:libexifa.camera.samsung.so:libjpega.camera.samsung.so:libOpenCv.camera.samsung.so:libImageScreener.camera.samsung.so:libMyFilter.camera.samsung.so:libtensorflowLite.myfilter.camera.samsung.so:libtensorflowlite_inference_api.myfilter.camera.samsung.so:libEventFinder.camera.samsung.so:libHIDTSnapJNI.camera.samsung.so:libSmartScan.camera.samsung.so:libRectify.camera.samsung.so:libDocRectifyWrapper.camera.samsung.so:libUltraWideDistortionCorrection.camera.samsung.so:libWideDistortionCorrection.camera.samsung.so:libHpr_RecGAE_cvFeature_v1.0.camera.samsung.so:libHprFace_GAE_api.camera.samsung.so:libFace_Landmark_API.camera.samsung.so:libHprFace_GAE_jn
+10-09 04:26:37.681  5661  8221 D CompatibilityChangeReporter: Compat change id reported: 161145287; UID 10232; state: DISABLED
+10-09 04:26:37.686  3538  3538 D CompatibilityChangeReporter: Compat change id reported: 183155436; UID 10232; state: ENABLED
+10-09 04:26:37.686  3540  3540 D nativeloader: Load libframework-connectivity-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+10-09 04:26:37.698  3540  3540 V GraphicsEnvironment: ANGLE Developer option for 'com.aura.oobe.samsung' set to: 'default'
+10-09 04:26:37.699  3540  3540 V GraphicsEnvironment: ANGLE GameManagerService for com.aura.oobe.samsung: false
+10-09 04:26:37.700  3540  3540 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+10-09 04:26:37.702  3538  3579 E apters.calendar: hiddenapi: Accessing hidden field Ljava/util/Collections$SynchronizedCollection;->mutex:Ljava/lang/Object; (runtime_flags=0, domain=core-platform, api=max-target-o) from Lj$/util/DesugarCollections; (domain=app, TargetSdkVersion=33) using reflection: denied
+10-09 04:26:37.702  3538  3579 E apters.calendar: hiddenapi: Accessing hidden method Ljava/util/Collections$SynchronizedSet;-><init>(Ljava/util/Set;Ljava/lang/Object;)V (runtime_flags=0, domain=core-platform, api=max-target-o) from Lj$/util/DesugarCollections; (domain=app, TargetSdkVersion=33) using reflection: denied
+10-09 04:26:37.702  3538  3579 E apters.calendar: hiddenapi: Accessing hidden method Ljava/util/Collections$SynchronizedCollection;-><init>(Ljava/util/Collection;Ljava/lang/Object;)V (runtime_flags=0, domain=core-platform, api=max-target-o) from Lj$/util/DesugarCollections; (domain=app, TargetSdkVersion=33) using reflection: denied
+10-09 04:26:37.707  3538  3580 I FirebaseApp: Device unlocked: initializing all Firebase APIs for app CHIME_ANDROID_SDK
+10-09 04:26:37.713  3540  3540 D NetworkSecurityConfig: Using Network Security Config from resource network_security_config debugBuild: false
+10-09 04:26:37.719  3540  3540 D NetworkSecurityConfig: Using Network Security Config from resource network_security_config debugBuild: false
+10-09 04:26:37.746  3548  3548 W ogle.android.gm: Failed to find entry 'classes.dex': Entry not found
+10-09 04:26:37.747  3548  3548 W ogle.android.gm: Failed to find entry 'classes.dex': Entry not found
+10-09 04:26:37.749  3548  3548 W ogle.android.gm: Failed to find entry 'classes.dex': Entry not found
+10-09 04:26:37.750  3548  3548 D nativeloader: Configuring clns-5 for other apk /data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/base.apk:/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/split_config.arm64_v8a.apk:/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/split_config.en.apk:/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/split_config.xxhdpi.apk. target_sdk_version=37, uses_libraries=libOpenCL.so, library_path=/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/lib/arm64:/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/base.apk!/lib/arm64-v8a:/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/split_config.en.apk!/lib/arm64-v8a:/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou
+10-09 04:26:37.759  1688  2405 D ConnectivityManager: StackLog: [android.net.ConnectivityManager.unregisterNetworkCallback(ConnectivityManager.java:5535)] [X.08nB.A01(:19)] [X.08wF.invoke(:46)] [X.08tP.invoke(:1328)] [X.00XY.A00(:132)] [X.06Gy.invokeSuspend(:570)] [X.04Yj.resumeWith(:15)] [X.04bZ.run(:98)] [X.07sk.run(:2)] [java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1100)] [java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)] [java.lang.Thread.run(Thread.java:1571)]
+10-09 04:26:37.760  5661  6058 D ConnectivityService:  Removing from current network [114 WIFI], leaving 189 requests.
+10-09 04:26:37.767  5661  6849 W BackupManagerService: [UserID:0] dataChanged but no participant pkg='com.google.android.syncadapters.calendar' uid=10232
+10-09 04:26:37.773  3548  3548 D nativeloader: Load libframework-connectivity-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+10-09 04:26:37.782  5661  6849 D CompatibilityChangeReporter: Compat change id reported: 74210811; UID 10232; state: DISABLED
+10-09 04:26:37.783  5661  8268 I GenerationRegistry: mBackingStore.isClosed() : false
+10-09 04:26:37.784  3548  3548 V GraphicsEnvironment: ANGLE Developer option for 'com.google.android.gm' set to: 'default'
+10-09 04:26:37.785  3548  3548 V GraphicsEnvironment: ANGLE GameManagerService for com.google.android.gm: false
+10-09 04:26:37.785  3548  3548 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+10-09 04:26:37.792  3548  3548 D NetworkSecurityConfig: Using Network Security Config from resource network_security_config debugBuild: false
+10-09 04:26:37.795  5661  6849 D CompatibilityChangeReporter: Compat change id reported: 201794303; UID 10232; state: ENABLED
+10-09 04:26:37.797  3548  3601 W ResourcesOffloading: An exception occurred : 
+10-09 04:26:37.797  3548  3601 W ResourcesOffloading: android.content.res.Resources$NotFoundException: Resource ID #0x7f080faf
+10-09 04:26:37.797  3548  3601 W ResourcesOffloading: 	at android.content.res.ResourcesImpl.getValueForDensity(ResourcesImpl.java:251)
+10-09 04:26:37.797  3548  3601 W ResourcesOffloading: 	at android.content.res.Resources.offloadDrawable(Resources.java:2916)
+10-09 04:26:37.797  3548  3601 W ResourcesOffloading: 	at android.app.ResourcesOffloading$ResourcesOffloadingRunnable.run(ResourcesOffloading.java:94)
+10-09 04:26:37.797  3548  3601 W ResourcesOffloading: 	at java.lang.Thread.run(Thread.java:1571)
+10-09 04:26:37.798  3548  3548 D NetworkSecurityConfig: Using Network Security Config from resource network_security_config debugBuild: false
+10-09 04:26:37.811  5661  6849 D CompatibilityChangeReporter: Compat change id reported: 143231523; UID 10232; state: DISABLED
+10-09 04:26:37.820  3538  3599 W DynamiteModule: Local module descriptor class for com.google.android.gms.providerinstaller.dynamite not found.
+10-09 04:26:37.831  7305  9681 W ProviderHelper: Unknown dynamite feature providerinstaller.dynamite
+10-09 04:26:37.835  3538  3599 I DynamiteModule: Considering local module com.google.android.gms.providerinstaller.dynamite:0 and remote module com.google.android.gms.providerinstaller.dynamite:0
+10-09 04:26:37.836  3538  3599 W ProviderInstaller: Failed to load providerinstaller module: No acceptable module com.google.android.gms.providerinstaller.dynamite found. Local version is 0 and remote version is 0.
+10-09 04:26:37.850  3538  3599 D nativeloader: Configuring clns-5 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~Sa1oMUiUYHANLh2I60ah8w==/com.google.android.gms-IlhfLcM0MPtV58NNW4se7g==/lib/arm64:/data/app/~~Sa1oMUiUYHANLh2I60ah8w==/com.google.android.gms-IlhfLcM0MPtV58NNW4se7g==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+10-09 04:26:37.850  3538  3599 D nativeloader: Extending system_exposed_libraries: libhumantracking.arcsoft.so:libPortraitDistortionCorrection.arcsoft.so:libPortraitDistortionCorrectionCali.arcsoft.so:libface_landmark.arcsoft.so:libFacialStickerEngine.arcsoft.so:libveengine.arcsoft.so:liblow_light_hdr.arcsoft.so:libhigh_dynamic_range.arcsoft.so:libFacialAttributeDetection.arcsoft.so:libBeauty_v4.camera.samsung.so:libexifa.camera.samsung.so:libjpega.camera.samsung.so:libOpenCv.camera.samsung.so:libImageScreener.camera.samsung.so:libMyFilter.camera.samsung.so:libtensorflowLite.myfilter.camera.samsung.so:libtensorflowlite_inference_api.myfilter.camera.samsung.so:libEventFinder.camera.samsung.so:libHIDTSnapJNI.camera.samsung.so:libSmartScan.camera.samsung.so:libRectify.camera.samsung.so:libDocRectifyWrapper.camera.samsung.so:libUltraWideDistortionCorrection.camera.samsung.so:libWideDistortionCorrection.camera.samsung.so:libHpr_RecGAE_cvFeature_v1.0.camera.samsung.so:libHprFace_GAE_api.camera.samsung.so:libFace_Landmark_API.camera.samsung.so:libHprFace_GAE_jn
+10-09 04:26:37.862  3538  3599 D nativeloader: Configuring clns-6 for other apk /system_ext/framework/org.carconnectivity.android.digitalkey.timesync.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~Sa1oMUiUYHANLh2I60ah8w==/com.google.android.gms-IlhfLcM0MPtV58NNW4se7g==/lib/arm64:/data/app/~~Sa1oMUiUYHANLh2I60ah8w==/com.google.android.gms-IlhfLcM0MPtV58NNW4se7g==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+10-09 04:26:37.862  3538  3599 D nativeloader: Extending system_exposed_libraries: libhumantracking.arcsoft.so:libPortraitDistortionCorrection.arcsoft.so:libPortraitDistortionCorrectionCali.arcsoft.so:libface_landmark.arcsoft.so:libFacialStickerEngine.arcsoft.so:libveengine.arcsoft.so:liblow_light_hdr.arcsoft.so:libhigh_dynamic_range.arcsoft.so:libFacialAttributeDetection.arcsoft.so:libBeauty_v4.camera.samsung.so:libexifa.camera.samsung.so:libjpega.camera.samsung.so:libOpenCv.camera.samsung.so:libImageScreener.camera.samsung.so:libMyFilter.camera.samsung.so:libtensorflowLite.myfilter.camera.samsung.so:libtensorflowlite_inference_api.myfilter.camera.samsung.so:libEventFinder.camera.samsung.so:libHIDTSnapJNI.camera.samsung.so:libSmartScan.camera.samsung.so:libRectify.camera.samsung.so:libDocRectifyWrapper.camera.samsung.so:libUltraWideDistortionCorrection.camera.samsung.so:libWideDistortionCorrection.camera.samsung.so:libHpr_RecGAE_cvFeature_v1.0.camera.samsung.so:libHprFace_GAE_api.camera.samsung.so:libFace_Landmark_API.camera.samsung.so:libHprFace_GAE_jn
+10-09 04:26:37.878  3538  3599 D nativeloader: Configuring clns-7 for other apk /system/framework/com.android.location.provider.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~Sa1oMUiUYHANLh2I60ah8w==/com.google.android.gms-IlhfLcM0MPtV58NNW4se7g==/lib/arm64:/data/app/~~Sa1oMUiUYHANLh2I60ah8w==/com.google.android.gms-IlhfLcM0MPtV58NNW4se7g==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+10-09 04:26:37.878  3538  3599 D nativeloader: Extending system_exposed_libraries: libhumantracking.arcsoft.so:libPortraitDistortionCorrection.arcsoft.so:libPortraitDistortionCorrectionCali.arcsoft.so:libface_landmark.arcsoft.so:libFacialStickerEngine.arcsoft.so:libveengine.arcsoft.so:liblow_light_hdr.arcsoft.so:libhigh_dynamic_range.arcsoft.so:libFacialAttributeDetection.arcsoft.so:libBeauty_v4.camera.samsung.so:libexifa.camera.samsung.so:libjpega.camera.samsung.so:libOpenCv.camera.samsung.so:libImageScreener.camera.samsung.so:libMyFilter.camera.samsung.so:libtensorflowLite.myfilter.camera.samsung.so:libtensorflowlite_inference_api.myfilter.camera.samsung.so:libEventFinder.camera.samsung.so:libHIDTSnapJNI.camera.samsung.so:libSmartScan.camera.samsung.so:libRectify.camera.samsung.so:libDocRectifyWrapper.camera.samsung.so:libUltraWideDistortionCorrection.camera.samsung.so:libWideDistortionCorrection.camera.samsung.so:libHpr_RecGAE_cvFeature_v1.0.camera.samsung.so:libHprFace_GAE_api.camera.samsung.so:libFace_Landmark_API.camera.samsung.so:libHprFace_GAE_jn
+10-09 04:26:37.887  5661  8017 I GenerationRegistry: mBackingStore.isClosed() : false
+10-09 04:26:37.888  3548  3548 W AndroidLoggerBackend: AndroidLoggerBackend configured with enableAndroidLogger:false; no logs will be emitted.
+10-09 04:26:37.893  3538  3599 D nativeloader: Configuring clns-8 for other apk /system/framework/com.android.media.remotedisplay.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~Sa1oMUiUYHANLh2I60ah8w==/com.google.android.gms-IlhfLcM0MPtV58NNW4se7g==/lib/arm64:/data/app/~~Sa1oMUiUYHANLh2I60ah8w==/com.google.android.gms-IlhfLcM0MPtV58NNW4se7g==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+10-09 04:26:37.893  3538  3599 D nativeloader: Extending system_exposed_libraries: libhumantracking.arcsoft.so:libPortraitDistortionCorrection.arcsoft.so:libPortraitDistortionCorrectionCali.arcsoft.so:libface_landmark.arcsoft.so:libFacialStickerEngine.arcsoft.so:libveengine.arcsoft.so:liblow_light_hdr.arcsoft.so:libhigh_dynamic_range.arcsoft.so:libFacialAttributeDetection.arcsoft.so:libBeauty_v4.camera.samsung.so:libexifa.camera.samsung.so:libjpega.camera.samsung.so:libOpenCv.camera.samsung.so:libImageScreener.camera.samsung.so:libMyFilter.camera.samsung.so:libtensorflowLite.myfilter.camera.samsung.so:libtensorflowlite_inference_api.myfilter.camera.samsung.so:libEventFinder.camera.samsung.so:libHIDTSnapJNI.camera.samsung.so:libSmartScan.camera.samsung.so:libRectify.camera.samsung.so:libDocRectifyWrapper.camera.samsung.so:libUltraWideDistortionCorrection.camera.samsung.so:libWideDistortionCorrection.camera.samsung.so:libHpr_RecGAE_cvFeature_v1.0.camera.samsung.so:libHprFace_GAE_api.camera.samsung.so:libFace_Landmark_API.camera.samsung.so:libHprFace_GAE_jn
+10-09 04:26:37.914  3540  3540 D CompatibilityChangeReporter: Compat change id reported: 183155436; UID 10245; state: ENABLED
+10-09 04:26:37.922  3540  3606 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 10245; state: ENABLED
+10-09 04:26:37.954  3538  3599 D nativeloader: Configuring clns-9 for other apk /data/app/~~Sa1oMUiUYHANLh2I60ah8w==/com.google.android.gms-IlhfLcM0MPtV58NNW4se7g==/base.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~Sa1oMUiUYHANLh2I60ah8w==/com.google.android.gms-IlhfLcM0MPtV58NNW4se7g==/lib/arm64:/data/app/~~Sa1oMUiUYHANLh2I60ah8w==/com.google.android.gms-IlhfLcM0MPtV58NNW4se7g==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+10-09 04:26:37.994  3538  3599 W ProviderInstaller: Failed to report request stats: com.google.android.gms.common.security.ProviderInstallerImpl.reportRequestStats [class android.content.Context, long, long]
+10-09 04:26:38.029  5661  5754 I ActivityManager: Changes in 10098 5 to 8, 8 to 0
+10-09 04:26:38.034  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:38.107  4630  4630 W keymaster_tee: [WRN]begin req PARAMS: A32 B32 P1 
+10-09 04:26:38.111  4629 10276 I keystore2: keystore2::security_level: In create_operation. Success to create IKeystoreOperation. 10245, None
+10-09 04:26:38.112  3548  3548 D CompatibilityChangeReporter: Compat change id reported: 183155436; UID 10242; state: ENABLED
+10-09 04:26:38.121  5661  8017 D CompatibilityChangeReporter: Compat change id reported: 161145287; UID 10242; state: DISABLED
+10-09 04:26:38.197  7305  7305 D BoundBrokerSvc: onBind: Intent { act=com.google.android.mobstore.service.START pkg=com.google.android.gms }
+10-09 04:26:38.198  7305  7305 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.mobstore.service.START pkg=com.google.android.gms }
+10-09 04:26:38.204  3538  3599 I ProviderInstaller: Installed default security provider AndroidOpenSSL (via CompatProvider)
+10-09 04:26:38.206  3538  3599 W AbstractGoogleClient: Application name is not set. Call Builder#setApplicationName.
+10-09 04:26:38.240  4630  4630 W keymaster_tee: [WRN]begin req PARAMS: A32 B32 P1 
+10-09 04:26:38.244  4629 10276 I keystore2: keystore2::security_level: In create_operation. Success to create IKeystoreOperation. 10245, None
+10-09 04:26:38.275  4630  4630 W keymaster_tee: [WRN]begin req PARAMS: A32 B32 P1 
+10-09 04:26:38.280  4629 10276 I keystore2: keystore2::security_level: In create_operation. Success to create IKeystoreOperation. 10245, None
+10-09 04:26:38.294  4630  4630 W keymaster_tee: [WRN]begin req PARAMS: A32 B32 P1 
+10-09 04:26:38.304  4629 10276 I keystore2: keystore2::security_level: In create_operation. Success to create IKeystoreOperation. 10245, None
+10-09 04:26:38.309  3548  3658 D nativeloader: Load /data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/split_config.arm64_v8a.apk!/lib/arm64-v8a/libnative_crash_handler_jni.so using class loader ns clns-5 (caller=/data/app/~~fclm3eH5Q60e0Tz505bF7A==/com.google.android.gm-ou0BsMfK3wOETDn8ht3CNw==/base.apk!classes2.dex): ok
+10-09 04:26:38.331  5661  9267 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 6518, isSameBssidAndFreq true
+10-09 04:26:38.332  4630  4630 W keymaster_tee: [WRN]begin req PARAMS: A32 B32 P1 
+10-09 04:26:38.333  5661  6112 I SemWifiLinkQualityMonitor: Link Qos Query: 0.031 ms / 259.800 Mbps (433 / 0.000 / 1.667)
+10-09 04:26:38.337  4629  6385 I keystore2: keystore2::security_level: In create_operation. Success to create IKeystoreOperation. 10245, None
+10-09 04:26:38.382  5661  6849 D CompatibilityChangeReporter: Compat change id reported: 161145287; UID 10245; state: DISABLED
+10-09 04:26:38.387  5661  8017 I GenerationRegistry: mBackingStore.isClosed() : false
+10-09 04:26:38.404  5661  6849 D PackageManager: setEnabledSetting : userId = 0 packageName = com.google.android.gm cmp = com.google.android.libraries.communications.conference.ui.intents.ChitChatGatewayActivity newState = 1 callingPackage = 10242/com.google.android.gm
+10-09 04:26:38.405  5661  6849 D ApplicationPolicy: getApplicationStateEnabled : pkg = com.google.android.gm userId : 0
+10-09 04:26:38.407  5661  6849 D ApplicationPolicy: getApplicationComponentState : pkg = com.google.android.gm userId : 0
+10-09 04:26:38.413  5661  6849 I GenerationRegistry: mBackingStore.isClosed() : false
+10-09 04:26:38.418  5661  5760 W libprocessgroup: Failed to open /dev/blkio//cgroup.procs: No such file or directory
+10-09 04:26:38.422  5661  5844 D CompatibilityChangeReporter: Compat change id reported: 74210811; UID 10242; state: ENABLED
+10-09 04:26:38.493  4630  4630 W keymaster_tee: [WRN]begin req PARAMS: A32 B32 P1 
+10-09 04:26:38.496  4629  6385 I keystore2: keystore2::security_level: In create_operation. Success to create IKeystoreOperation. 10245, None
+10-09 04:26:38.542  7305  7319 I gle.android.gms: Background concurrent copying GC freed 24MB AllocSpace bytes, 4(64KB) LOS objects, 34% free, 45MB/69MB, paused 502us,162us total 382.651ms
+10-09 04:26:38.536  4630  4630 W keymaster_tee: [WRN]begin req PARAMS: A32 B32 P1 
+10-09 04:26:38.547  4629 10276 I keystore2: keystore2::security_level: In create_operation. Success to create IKeystoreOperation. 10245, None
+10-09 04:26:38.553  7305  7321 W System  : A resource failed to call AbstractCursor.close. 
+10-09 04:26:38.559  7305  7321 W System  : A resource failed to call CursorWrapperInner.close. 
+10-09 04:26:38.559  7305  7321 W System  : A resource failed to call AbstractCursor.close. 
+10-09 04:26:38.561  7305  7321 W System  : A resource failed to call CursorWrapperInner.close. 
+10-09 04:26:38.562  7305  7321 W System  : A resource failed to call AbstractCursor.close. 
+10-09 04:26:38.574  4630  4630 W keymaster_tee: [WRN]begin req PARAMS: A32 B32 P1 
+10-09 04:26:38.575  4629 10276 I keystore2: keystore2::security_level: In create_operation. Success to create IKeystoreOperation. 10245, None
+10-09 04:26:38.579  7305  7321 W System  : A resource failed to call CursorWrapperInner.close. 
+10-09 04:26:38.580  7305  7321 W System  : A resource failed to call AbstractCursor.close. 
+10-09 04:26:38.587  7305  7321 W System  : A resource failed to call CursorWrapperInner.close. 
+10-09 04:26:38.587  7305  7321 W System  : A resource failed to call AbstractCursor.close. 
+10-09 04:26:38.591  7305  7321 W System  : A resource failed to call CursorWrapperInner.close. 
+10-09 04:26:38.591  7305  7321 W System  : A resource failed to call AbstractCursor.close. 
+10-09 04:26:38.592  4630  4630 W keymaster_tee: [WRN]begin req PARAMS: A32 B32 P1 
+10-09 04:26:38.594  7305  7321 W System  : A resource failed to call CursorWrapperInner.close. 
+10-09 04:26:38.594  7305  7321 W System  : A resource failed to call AbstractCursor.close. 
+10-09 04:26:38.597  4629  6385 I keystore2: keystore2::security_level: In create_operation. Success to create IKeystoreOperation. 10245, None
+10-09 04:26:38.597  7305  7321 W System  : A resource failed to call CursorWrapperInner.close. 
+10-09 04:26:38.597  7305  7321 W System  : A resource failed to call AbstractCursor.close. 
+10-09 04:26:38.600  7305  7321 W System  : A resource failed to call CursorWrapperInner.close. 
+10-09 04:26:38.600  7305  7321 W System  : A resource failed to call AbstractCursor.close. 
+10-09 04:26:38.604  7305  7321 W System  : A resource failed to call CursorWrapperInner.close. 
+10-09 04:26:38.617  3548  3673 W ogle.android.gm: Long monitor contention with owner Blocking Thread #4 (3665) at java.lang.Object ccly.pX()(PG:23) waiters=0 in java.lang.Object ccly.pX() for 140ms
+10-09 04:26:38.639  3540  3540 D CompatibilityChangeReporter: Compat change id reported: 194532703; UID 10245; state: ENABLED
+10-09 04:26:38.640  5661  8221 D CompatibilityChangeReporter: Compat change id reported: 194532703; UID 10245; state: ENABLED
+10-09 04:26:38.760  7305  7305 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.common.telemetry.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+10-09 04:26:38.783  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:38.794  5270  5270 E audit   : type=1400 audit(1791500198.790:22558): avc:  denied  { getattr } for  pid=3700 comm="mount" path="/metadata" dev="sda24" ino=2 scontext=u:r:priv_app:s0:c512,c768 tcontext=u:object_r:metadata_file:s0 tclass=dir permissive=0 SEPF_SM-A515F_13_0001 audit_filtered
+10-09 04:26:38.794  5270  5270 E audit   : type=1300 audit(1791500198.790:22558): arch=c00000b7 syscall=79 success=no exit=-13 a0=ffffff9c a1=7bfa0b38ac a2=7bf401fa10 a3=0 items=0 ppid=3540 pid=3700 auid=4294967295 uid=10245 gid=10245 euid=10245 suid=10245 fsuid=10245 egid=10245 sgid=10245 fsgid=10245 tty=(none) ses=4294967295 comm="mount" exe="/system/bin/toybox" subj=u:r:priv_app:s0:c512,c768 key=(null)
+10-09 04:26:38.794  5270  5270 E audit   : type=1327 audit(1791500198.790:22558): proctitle="mount"
+10-09 04:26:38.797  5270  5270 E audit   : type=1400 audit(1791500198.794:22559): avc:  denied  { getattr } for  pid=3700 comm="mount" path="/apex/apex-info-list.xml" dev="tmpfs" ino=23831 scontext=u:r:priv_app:s0:c512,c768 tcontext=u:object_r:apex_info_file:s0 tclass=file permissive=0 SEPF_SM-A515F_13_0001 audit_filtered
+10-09 04:26:38.797  5270  5270 E audit   : type=1300 audit(1791500198.794:22559): arch=c00000b7 syscall=79 success=no exit=-13 a0=ffffff9c a1=7bfa0b3896 a2=7bf4026290 a3=0 items=0 ppid=3540 pid=3700 auid=4294967295 uid=10245 gid=10245 euid=10245 suid=10245 fsuid=10245 egid=10245 sgid=10245 fsgid=10245 tty=(none) ses=4294967295 comm="mount" exe="/system/bin/toybox" subj=u:r:priv_app:s0:c512,c768 key=(null)
+10-09 04:26:38.797  5270  5270 E audit   : type=1327 audit(1791500198.794:22559): proctitle="mount"
+10-09 04:26:38.800  5370  9106 V APM_AudioPolicyManager: setAppState(portId:1065, state:1)
+10-09 04:26:38.848  3540  3685 D nativeloader: Load /data/app/~~tcP6lUxFGStOmMX7J-ctiQ==/com.aura.oobe.samsung-NDAY_123EXsGwd7cH53HeA==/base.apk!/lib/arm64-v8a/libtoolChecker.so using class loader ns clns-4 (caller=/data/app/~~tcP6lUxFGStOmMX7J-ctiQ==/com.aura.oobe.samsung-NDAY_123EXsGwd7cH53HeA==/base.apk!classes2.dex): ok
+10-09 04:26:38.930  7305   410 I NearbyMediums: No BLE Fast/GATT advertisements found in the latest cycle.
+10-09 04:26:38.930  7305   410 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+10-09 04:26:38.969  7305  7305 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.mdisync.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.GmsApiService }
+10-09 04:26:38.969  7305  7305 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.mdisync.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.GmsApiService }
+10-09 04:26:38.999  7305  7305 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.auth.aang.events.services.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+10-09 04:26:39.048 28960 28960 I adbd    : adbd service requested 'shell,v2,TERM=dumb:export ANDROID_LOG_TAGS="''"; exec logcat '-d''
+10-09 04:26:39.085  5661  5844 I GenerationRegistry: mBackingStore.isClosed() : false
+10-09 04:26:39.108  3548  3657 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 10242; state: ENABLED
+10-09 04:26:39.114  7305 12376 I MdiSyncModule: (REDACTED) Receiving API connection from package '%s'...

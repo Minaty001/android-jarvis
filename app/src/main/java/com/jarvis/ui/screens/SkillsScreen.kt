@@ -16,12 +16,10 @@ import com.jarvis.routine.CustomMacroRepository
 import com.jarvis.service.JarvisForegroundService
 import com.jarvis.ui.components.Ui
 import com.jarvis.ui.dialogs.CreateRoutineDialog
-import com.jarvis.ui.reliability.BackgroundTaskRunner
 
 class SkillsScreen(
     context: Context,
     private val owner: LifecycleOwner,
-    private val runner: BackgroundTaskRunner,
     private val onExecuteCommand: (String) -> Unit
 ) : ScrollView(context) {
 

@@ -47,6 +47,12 @@ class JarvisAccessibilityService : AccessibilityService() {
                 _currentActivityName = cls
             }
         }
+        
+        // Notify of potential significant changes (window state or scrolling)
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || 
+            event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
+            onWindowContentChanged?.invoke()
+        }
     }
 
     override fun onInterrupt() {
@@ -619,6 +625,8 @@ class JarvisAccessibilityService : AccessibilityService() {
         private var _currentForegroundPackage: String? = null
         @Volatile
         private var _currentActivityName: String? = null
+        
+        var onWindowContentChanged: (() -> Unit)? = null
 
         val instance: JarvisAccessibilityService?
             get() = instanceRef.get()

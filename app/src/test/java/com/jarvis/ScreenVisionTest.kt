@@ -11,6 +11,7 @@ import com.jarvis.ai.Message
 import com.jarvis.tools.ScreenVisionTool
 import com.jarvis.tools.ToolRegistry
 import com.jarvis.tools.ToolResult
+import com.jarvis.accessibility.ScreenCaptureResult
 import com.jarvis.foundation.worldstate.ForegroundAppSession
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -135,7 +136,11 @@ class ScreenVisionTest {
             override fun cancel() {}
         }
 
-        val tool = ScreenVisionTool(context = null, llmClient = fakeClient)
+        val tool = ScreenVisionTool(
+            context = null,
+            llmClient = fakeClient,
+            captureScreen = { ScreenCaptureResult("data:image/jpeg;base64,AA==", "Visible UI Elements (1 items):\n1. [YouTube]", "com.google.android.youtube", null, true) }
+        )
         val result = tool.execute(mapOf("query" to "What video is playing?"))
 
         assertTrue(result is ToolResult.Success)
@@ -146,10 +151,27 @@ class ScreenVisionTest {
 
     @Test
     fun testScreenVisionToolFallbackWithoutLlm() = runBlocking {
-        val tool = ScreenVisionTool(context = null, llmClient = null)
+        val tool = ScreenVisionTool(
+            context = null,
+            llmClient = null,
+            captureScreen = {
+                ScreenCaptureResult(null, "Visible UI Elements (1 items):\n1. [Hello]", "com.example.app", null, false,
+                    elements = listOf(com.jarvis.accessibility.ScreenElement(1, "Hello", null, null, false, false, android.graphics.Rect(), emptyList())))
+            }
+        )
         val result = tool.execute(mapOf("query" to "Explain this screen"))
 
         assertTrue(result is ToolResult.Success)
         assertTrue(result.message.isNotEmpty())
+    }
+
+    @Test
+    fun testScreenVisionReportsMissingScreenAccess() = runBlocking {
+        val tool = ScreenVisionTool(context = null, llmClient = null, captureScreen = {
+            ScreenCaptureResult(null, "No interactive UI text detected in active window.", null, null, false)
+        })
+        val result = tool.execute(mapOf("query" to "Read this screen"))
+        assertTrue(result is ToolResult.Failed)
+        assertTrue(result.message.contains("Accessibility", ignoreCase = true))
     }
 }

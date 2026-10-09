@@ -17,7 +17,7 @@ class UiPreferencesStore(context: Context) {
     }
 
     fun saveSettings(settings: AppSettings) {
-        prefs.edit().putString(KEY_SETTINGS, settings.copy(wakeWord = WakeWordModelMetadata.SUPPORTED_PHRASE).toJson().toString()).apply()
+        prefs.edit().putString(KEY_SETTINGS, settings.copy(wakeWord = WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE).toJson().toString()).apply()
     }
 
     fun loadApis(): List<ApiConfig> {
@@ -145,15 +145,6 @@ class UiPreferencesStore(context: Context) {
         put("mediaDuckingEnabled", mediaDuckingEnabled)
         put("mediaDuckingPercent", mediaDuckingPercent)
         put("mediaDuckingMusic", mediaDuckingMusic)
-        put("mediaDuckingPodcasts", mediaDuckingPodcasts)
-        put("mediaDuckingVideos", mediaDuckingVideos)
-        put("mediaDuckingCalls", mediaDuckingCalls)
-        put("waveformMode", waveformMode)
-        put("waveformFrequencyBands", waveformFrequencyBands)
-        put("animationIntensity", animationIntensity.toDouble())
-        put("requireConfirmationForMediumRisk", requireConfirmationForMediumRisk)
-        put("requireConfirmationForHighRisk", requireConfirmationForHighRisk)
-        put("activeProfileId", activeProfileId)
         put("wakeAcknowledgment", wakeAcknowledgment)
         put("dailyBriefingEnabled", dailyBriefingEnabled)
         put("dailyBriefingTime", dailyBriefingTime)
@@ -181,7 +172,7 @@ class UiPreferencesStore(context: Context) {
             defaultTimeoutMs = json.optLong("defaultTimeoutMs", d.defaultTimeoutMs),
             maxRetryAttempts = json.optInt("maxRetryAttempts", d.maxRetryAttempts),
             logVerbosity = json.optString("logVerbosity", d.logVerbosity),
-            wakeWord = WakeWordModelMetadata.SUPPORTED_PHRASE,
+            wakeWord = WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE,
             preferredLlmModel = json.optString("preferredLlmModel", d.preferredLlmModel),
             developerMode = json.optBoolean("developerMode", d.developerMode),
             continuousConversation = json.optBoolean("continuousConversation", d.continuousConversation),
@@ -197,15 +188,6 @@ class UiPreferencesStore(context: Context) {
             mediaDuckingEnabled = json.optBoolean("mediaDuckingEnabled", d.mediaDuckingEnabled),
             mediaDuckingPercent = json.optInt("mediaDuckingPercent", d.mediaDuckingPercent),
             mediaDuckingMusic = json.optBoolean("mediaDuckingMusic", d.mediaDuckingMusic),
-            mediaDuckingPodcasts = json.optBoolean("mediaDuckingPodcasts", d.mediaDuckingPodcasts),
-            mediaDuckingVideos = json.optBoolean("mediaDuckingVideos", d.mediaDuckingVideos),
-            mediaDuckingCalls = json.optBoolean("mediaDuckingCalls", d.mediaDuckingCalls),
-            waveformMode = json.optString("waveformMode", d.waveformMode),
-            waveformFrequencyBands = json.optInt("waveformFrequencyBands", d.waveformFrequencyBands),
-            animationIntensity = json.optDouble("animationIntensity", d.animationIntensity.toDouble()).toFloat(),
-            requireConfirmationForMediumRisk = json.optBoolean("requireConfirmationForMediumRisk", d.requireConfirmationForMediumRisk),
-            requireConfirmationForHighRisk = json.optBoolean("requireConfirmationForHighRisk", d.requireConfirmationForHighRisk),
-            activeProfileId = json.optString("activeProfileId", d.activeProfileId),
             wakeAcknowledgment = json.optString("wakeAcknowledgment", d.wakeAcknowledgment),
             dailyBriefingEnabled = json.optBoolean("dailyBriefingEnabled", d.dailyBriefingEnabled),
             dailyBriefingTime = json.optString("dailyBriefingTime", d.dailyBriefingTime),

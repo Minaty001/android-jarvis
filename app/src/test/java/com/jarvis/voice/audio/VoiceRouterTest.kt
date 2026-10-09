@@ -71,6 +71,12 @@ class VoiceRouterTest {
 
         router.mute()
         assertEquals(AudioRoutingTarget.MUTED, router.getTarget())
+
+        router.routeToWakeWord()
+        router.onAudioFrame(frame, frame.size)
+        assertEquals(2, mockWakeDetector.pushedFrames)
+        assertEquals(0, asrEngine.pushedPcm)
+        router.close()
     }
 
     @Test

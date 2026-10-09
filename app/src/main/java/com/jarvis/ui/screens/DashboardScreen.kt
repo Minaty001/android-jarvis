@@ -18,7 +18,6 @@ import com.jarvis.ui.JarvisOrbView
 import com.jarvis.ui.JarvisWaveformView
 import com.jarvis.ui.components.Ui
 import com.jarvis.ui.model.*
-import com.jarvis.ui.reliability.BackgroundTaskRunner
 import com.jarvis.voice.VoiceState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -36,7 +35,6 @@ import kotlinx.coroutines.launch
 class DashboardScreen(
     context: Context,
     private val owner: LifecycleOwner,
-    private val runner: BackgroundTaskRunner,
     private val settings: () -> AppSettings,
     private val onOpenSettings: () -> Unit,
     private val onOpenSkills: (() -> Unit)? = null,
@@ -560,7 +558,7 @@ class DashboardScreen(
     }
 
     private fun stopEngine() {
-        runner.ioTask { JarvisForegroundService.stopService(context) }
+        owner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { JarvisForegroundService.stopService(context) }
         status.text = "ENGINE HALTED"
         serviceBadge.apply {
             text = "● HALTED"

@@ -16,10 +16,20 @@ class ModelRouter(
     private val strongThresholdChars: Int = 180
 ) {
 
-    fun route(utterance: String): Route {
+    fun route(utterance: String, resolvedIntent: AssistantIntent? = null): Route {
         if (privacySensitive(utterance)) {
             return Route(ModelTier.LOCAL, "", privacySensitive = true)
         }
+        
+        // Explicit API Routing based on Plan
+        if (resolvedIntent == AssistantIntent.SCREEN_VISION || resolvedIntent == AssistantIntent.CAMERA_VISION) {
+            return Route(ModelTier.STRONG, LlmConfig.GEMINI_DEFAULT_MODEL, privacySensitive = false) // Force Gemini for Vision
+        }
+        
+        if (resolvedIntent == AssistantIntent.DEEP_RESEARCH) {
+            return Route(ModelTier.STRONG, LlmConfig.OPENROUTER_STRONG_MODEL, privacySensitive = false) // Force Claude 3.5 via OpenRouter
+        }
+
         val tier = classifyComplexity(utterance)
         val model = if (tier == ModelTier.STRONG) strongModel else defaultModel
         return Route(tier, model, privacySensitive = false)

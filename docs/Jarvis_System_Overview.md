@@ -88,3 +88,13 @@ Users can customize Jarvis heavily via the `UiPreferencesStore` and Settings Scr
 *   **Developer & Debug:**
     *   `developerMode`: Enables deep logging and raw LLM prompt visibility.
     *   `logVerbosity`: Controls the amount of debug output.
+
+---
+
+## 4. Newly Integrated Autonomous Subsystems (Recent Updates)
+
+*   **FinancialTrackerEngine & Room Database**: Processes SMS events locally via Regex to track banking income and expenditure without external API calls.
+*   **ProactiveMessagingEngine & ConversationManager**: Enables continuous, multi-turn background SMS interaction where Jarvis waits for human replies before sending follow-ups.
+*   **JarvisSecurityManager**: An overarching security auditor that masks PII locally before sending prompts to the cloud and enforces strict consent for destructive commands.
+*   **PassiveMemoryEngine & ScreenContextAnalyzer**: Autonomously parses foreground app text and user habits to log a passive context trail in the secure SQLite backend.
+*   **Comprehensive Permissions Manager**: Integrated directly into `SettingsScreen.kt`, offering a 1-tap Hub to manage all 11+ standard and special OS permissions.

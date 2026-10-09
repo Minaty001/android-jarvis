@@ -25,6 +25,7 @@ val groqApiKey = propertyOrEnv("GROQ_API_KEY")
 val groqModel = propertyOrEnv("GROQ_MODEL", "openai/gpt-oss-20b")
 val geminiApiKey = propertyOrEnv("GEMINI_API_KEY")
 val openRouterApiKey = propertyOrEnv("OPENROUTER_API_KEY")
+val serpApiKey = propertyOrEnv("SERP_API_KEY")
 val ollamaBaseUrl = propertyOrEnv("OLLAMA_BASE_URL", "http://10.0.2.2:11434")
 
 android {
@@ -49,6 +50,7 @@ android {
         buildConfigField("String", "GROQ_MODEL", "\"${groqModel.escapeForBuildConfig()}\"")
         buildConfigField("String", "GEMINI_API_KEY", "\"${geminiApiKey.escapeForBuildConfig()}\"")
         buildConfigField("String", "OPENROUTER_API_KEY", "\"${openRouterApiKey.escapeForBuildConfig()}\"")
+        buildConfigField("String", "SERP_API_KEY", "\"${serpApiKey.escapeForBuildConfig()}\"")
         buildConfigField("String", "OLLAMA_BASE_URL", "\"${ollamaBaseUrl.escapeForBuildConfig()}\"")
     }
 
@@ -104,6 +106,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    implementation("androidx.biometric:biometric:1.1.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20231013")

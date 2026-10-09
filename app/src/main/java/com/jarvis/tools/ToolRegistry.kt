@@ -102,6 +102,11 @@ class ToolRegistry {
         "GENERATE_REPORT" to "RESEARCH_DEEP",
         "RESEARCH_REPORT" to "RESEARCH_DEEP",
         "RESEARCH" to "RESEARCH_DEEP",
+        // Autonomous Agent
+        "UI_AGENT" to "AUTONOMOUS_UI_AGENT",
+        "AUTOPILOT" to "AUTONOMOUS_UI_AGENT",
+        "UI_AUTOPILOT" to "AUTONOMOUS_UI_AGENT",
+        "AUTO_UI" to "AUTONOMOUS_UI_AGENT",
         // Calculator & Math
         "CALCULATOR" to "CALCULATE",
         // Weather & Forecast

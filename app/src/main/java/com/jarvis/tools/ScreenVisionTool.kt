@@ -10,7 +10,8 @@ import com.jarvis.foundation.ToolMetadata
 
 class ScreenVisionTool(
     private val context: Context? = null,
-    private val llmClient: LlmClient? = null
+    private val llmClient: LlmClient? = null,
+    private val captureScreen: suspend () -> ScreenCaptureResult = { ScreenVisionManager.captureScreen() }
 ) : Tool {
 
     override val name: String = "SCREEN_VISION"
@@ -31,6 +32,7 @@ class ScreenVisionTool(
         val rawMode = params["mode"]?.trim()?.lowercase()
         val mode = when {
             !rawMode.isNullOrBlank() -> rawMode
+            query.contains("read", ignoreCase = true) || query.contains("aloud", ignoreCase = true) -> "read_aloud"
             query.contains("summariz", ignoreCase = true) || query.contains("short", ignoreCase = true) -> "summarize"
             query.contains("error", ignoreCase = true) || query.contains("crash", ignoreCase = true) || query.contains("fail", ignoreCase = true) -> "error_check"
             query.contains("extract", ignoreCase = true) || query.contains("otp", ignoreCase = true) || query.contains("code", ignoreCase = true) -> "extract"
@@ -38,13 +40,33 @@ class ScreenVisionTool(
         }
 
         // 1. Capture screen (Hardware screenshot bitmap on API 30+ & UI Text Tree)
-        val captureResult = ScreenVisionManager.captureScreen()
+        val captureResult = captureScreen()
+
+        if (captureResult.base64Image.isNullOrBlank() && captureResult.elements.none {
+                !it.text.isNullOrBlank() || !it.contentDescription.isNullOrBlank()
+            }) {
+            return ToolResult.Failed(
+                "I can't read the current screen. Open Accessibility settings and enable Jarvis, or bring the screen back and try again."
+            )
+        }
 
         Log.i(TAG, "Screen captured: mode=$mode, isVisual=${captureResult.isVisualAvailable}, activeApp=${captureResult.activePackage}")
 
         // 2. Multimodal LLM Reasoning
         val analysis = if (llmClient != null) {
             val systemPrompt = when (mode) {
+                "read_aloud" -> """
+                    You are JARVIS on-device Visual Copilot specializing in screen reading.
+                    Your task is to comprehensively explain the screen context and read its contents.
+                    
+                    Rules:
+                    1. Start by explicitly announcing the name of the foreground application (The package name is provided in the context, convert it to a natural app name).
+                    2. Briefly describe what is currently happening on the screen in one sentence (e.g., 'You are looking at a YouTube video', 'You are composing an email').
+                    3. Then, proceed to read the main textual content naturally.
+                    4. Skip irrelevant UI elements like battery percentage, timestamps, or raw navigation buttons.
+                    
+                    User Query: "$query"
+                """.trimIndent()
                 "summarize" -> """
                     You are JARVIS on-device Visual Copilot specializing in content summarization.
                     Analyze the screen content and condense the visible article, conversation, or post into 2 concise, clear sentences suitable for speech synthesis.
@@ -136,6 +158,9 @@ class ScreenVisionTool(
                 } else {
                     "No explicit errors detected on $app. Visible elements: ${textLines.take(3).joinToString(", ")}."
                 }
+            }
+            "read_aloud" -> {
+                "You currently have $app open. Here is what is on the screen: ${textLines.take(15).joinToString(". ")}."
             }
             "summarize" -> {
                 "Summary on $app: ${textLines.take(3).joinToString(". ")}."

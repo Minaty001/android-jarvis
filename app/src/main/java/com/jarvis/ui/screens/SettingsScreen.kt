@@ -554,8 +554,8 @@ class SettingsScreen(
             orientation = LinearLayout.VERTICAL
             setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
         }
-        addField(wakeInner, "Supported KWS Phrase", wakeWord, "Jarvis")
-        wakeWord.setText("Jarvis")
+        addField(wakeInner, "Active Wake Phrase", wakeWord, com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE)
+        wakeWord.setText(com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE)
         wakeWord.isEnabled = false
 
         val ackOptions = listOf("CHIME", "VOICE", "BOTH", "SILENT")
@@ -980,7 +980,7 @@ class SettingsScreen(
         settings = settings.copy(
             theme = themeSpinner.selectedItem.toString(),
             notificationsEnabled = notifications.isChecked,
-            wakeWord = wakeWord.text.toString().trim().ifBlank { "Jarvis" },
+            wakeWord = wakeWord.text.toString().trim().ifBlank { com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE },
             wakeAcknowledgment = wakeAckSpinner.selectedItem.toString(),
             dailyBriefingEnabled = dailyBriefingSwitch.isChecked,
             dailyBriefingTime = currentBriefingTime,
@@ -1048,10 +1048,158 @@ class SettingsScreen(
 
     fun saveSettings() = save()
 
-    private fun simpleSpinnerListener(action: () -> Unit) = object : AdapterView.OnItemSelectedListener {
+    private fun openPermissionsDialog() {
+        val sv = android.widget.ScrollView(context)
+        val inner = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Ui.dp(context, 16), Ui.dp(context, 16), Ui.dp(context, 16), Ui.dp(context, 16))
+        }
+        
+        // 1. Standard Permissions
+        val perms = mutableListOf(
+            "Microphone" to android.Manifest.permission.RECORD_AUDIO,
+            "Camera" to android.Manifest.permission.CAMERA,
+            "Location" to android.Manifest.permission.ACCESS_FINE_LOCATION,
+            "Contacts" to android.Manifest.permission.READ_CONTACTS,
+            "Phone Calls" to android.Manifest.permission.CALL_PHONE,
+            "Answer Calls" to android.Manifest.permission.ANSWER_PHONE_CALLS,
+            "SMS Access" to android.Manifest.permission.READ_SMS,
+            "Calendar" to android.Manifest.permission.READ_CALENDAR
+        )
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            perms.add("Notifications" to android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            perms.add("Bluetooth" to android.Manifest.permission.BLUETOOTH_CONNECT)
+        }
+
+        for ((label, p) in perms) {
+            val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(context, p) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            val row = Ui.row(context)
+            row.addView(TextView(context).apply { text = label; textSize = 14f; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(Ui.hudBadge(context, if (isGranted) "GRANTED" else "MISSING", if (isGranted) Ui.SUCCESS else Ui.ERROR))
+            inner.addView(row)
+            if (!isGranted) {
+                inner.addView(Ui.button(context, "Request") {
+                    androidx.core.app.ActivityCompat.requestPermissions(context as android.app.Activity, arrayOf(p), 102)
+                }.apply { setPadding(0,0,0,Ui.dp(context,8)) })
+            } else {
+                inner.addView(View(context), LinearLayout.LayoutParams(-1, Ui.dp(context, 8)))
+            }
+        }
+        
+        // 2. Accessibility
+        val accEnabled = android.provider.Settings.Secure.getString(context.contentResolver, android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)?.contains(context.packageName) == true
+        val accRow = Ui.row(context)
+        accRow.addView(TextView(context).apply { text = "Accessibility Service"; textSize = 14f; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(0, -2, 1f))
+        accRow.addView(Ui.hudBadge(context, if (accEnabled) "GRANTED" else "MISSING", if (accEnabled) Ui.SUCCESS else Ui.ERROR))
+        inner.addView(accRow)
+        if (!accEnabled) {
+            inner.addView(Ui.button(context, "Open Settings") {
+                context.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }.apply { setPadding(0,0,0,Ui.dp(context,8)) })
+        } else {
+            inner.addView(View(context), LinearLayout.LayoutParams(-1, Ui.dp(context, 8)))
+        }
+
+        // 3. Notification Listener
+        val notifEnabled = android.provider.Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")?.contains(context.packageName) == true
+        val notifRow = Ui.row(context)
+        notifRow.addView(TextView(context).apply { text = "Notification Access"; textSize = 14f; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(0, -2, 1f))
+        notifRow.addView(Ui.hudBadge(context, if (notifEnabled) "GRANTED" else "MISSING", if (notifEnabled) Ui.SUCCESS else Ui.ERROR))
+        inner.addView(notifRow)
+        if (!notifEnabled) {
+            inner.addView(Ui.button(context, "Open Settings") {
+                context.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            }.apply { setPadding(0,0,0,Ui.dp(context,8)) })
+        } else {
+            inner.addView(View(context), LinearLayout.LayoutParams(-1, Ui.dp(context, 8)))
+        }
+
+        // 4. Draw Over Other Apps
+        val canDraw = android.provider.Settings.canDrawOverlays(context)
+        val overlayRow = Ui.row(context)
+        overlayRow.addView(TextView(context).apply { text = "Draw Over Apps"; textSize = 14f; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(0, -2, 1f))
+        overlayRow.addView(Ui.hudBadge(context, if (canDraw) "GRANTED" else "MISSING", if (canDraw) Ui.SUCCESS else Ui.ERROR))
+        inner.addView(overlayRow)
+        if (!canDraw) {
+            inner.addView(Ui.button(context, "Open Settings") {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}"))
+                context.startActivity(intent)
+            }.apply { setPadding(0,0,0,Ui.dp(context,8)) })
+        } else {
+            inner.addView(View(context), LinearLayout.LayoutParams(-1, Ui.dp(context, 8)))
+        }
+
+        sv.addView(inner)
+        android.app.AlertDialog.Builder(context)
+            .setTitle("Jarvis Permissions Hub")
+            .setView(sv)
+            .setPositiveButton("Close", null)
+            .show()
+    }
+
+    private fun openHabitsDialog() {
+        val sv = android.widget.ScrollView(context)
+        val inner = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Ui.dp(context, 16), Ui.dp(context, 16), Ui.dp(context, 16), Ui.dp(context, 16))
+        }
+        val habitManager = com.jarvis.habit.HabitManager(com.jarvis.memory.MemoryStore(context))
+        val habits = habitManager.getAllHabits()
+        if (habits.isEmpty()) {
+            inner.addView(TextView(context).apply { text = "No habits learned yet."; setTextColor(Color.LTGRAY) })
+        } else {
+            for (h in habits) {
+                inner.addView(TextView(context).apply { 
+                    text = "${h.category}: ${h.target}\nTime: ${h.timeOfDay} | Confidence: ${h.confidenceScore}"
+                    setTextColor(Color.WHITE)
+                    setPadding(0, 0, 0, Ui.dp(context, 8))
+                })
+            }
+        }
+        sv.addView(inner)
+        android.app.AlertDialog.Builder(context)
+            .setTitle("Learned Habits")
+            .setView(sv)
+            .setNeutralButton("Clear Habits") { _, _ -> habitManager.clearHabits() }
+            .setPositiveButton("Close", null)
+            .show()
+    }
+
+    private fun openFinanceDialog() {
+        val sv = android.widget.ScrollView(context)
+        val inner = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Ui.dp(context, 16), Ui.dp(context, 16), Ui.dp(context, 16), Ui.dp(context, 16))
+        }
+        val financeEngine = com.jarvis.finance.FinancialTrackerEngine(context)
+        val txs = financeEngine.getTransactions()
+        if (txs.isEmpty()) {
+            inner.addView(TextView(context).apply { text = "No financial logs found."; setTextColor(Color.LTGRAY) })
+        } else {
+            for (tx in txs) {
+                inner.addView(TextView(context).apply { 
+                    val dateStr = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(tx.timestamp))
+                    text = "[${tx.type}] Rs. ${tx.amount} to ${tx.vendor}\nAccount: ${tx.accountTail} | $dateStr"
+                    setTextColor(if (tx.type == "CREDIT") Ui.SUCCESS else Ui.ERROR)
+                    setPadding(0, 0, 0, Ui.dp(context, 12))
+                })
+            }
+        }
+        sv.addView(inner)
+        android.app.AlertDialog.Builder(context)
+            .setTitle("Financial Logs")
+            .setView(sv)
+            .setNeutralButton("Clear Ledger") { _, _ -> financeEngine.clearTransactions() }
+            .setPositiveButton("Close", null)
+            .show()
+    }
+
+    private fun simpleSpinnerListener(action: () -> Unit) = object : android.widget.AdapterView.OnItemSelectedListener {
         private var isFirst = true
-        override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
             if (isFirst) { isFirst = false; return }
             action()
         }

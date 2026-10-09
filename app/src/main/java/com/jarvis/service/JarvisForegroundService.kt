@@ -269,6 +269,8 @@ class JarvisForegroundService : Service() {
                 )
             }
             ambientContextEngine?.start()
+            voiceEngine?.assistantRuntime?.proactiveMessagingEngine?.start()
+            voiceEngine?.assistantRuntime?.financialTrackerEngine?.start()
 
             startBluetoothScoObserver()
             
@@ -399,6 +401,8 @@ class JarvisForegroundService : Service() {
             
             ambientContextEngine?.stop()
             ambientContextEngine = null
+            voiceEngine?.assistantRuntime?.proactiveMessagingEngine?.stop()
+            voiceEngine?.assistantRuntime?.financialTrackerEngine?.stop()
             com.jarvis.wear.WearableNotificationDispatcher.dismiss(applicationContext)
         } catch (_: Exception) {}
         ensureActiveScope().launch {
@@ -465,6 +469,8 @@ class JarvisForegroundService : Service() {
             clipboardIntelligenceEngine = null
             ambientContextEngine?.stop()
             ambientContextEngine = null
+            voiceEngine?.assistantRuntime?.proactiveMessagingEngine?.stop()
+            voiceEngine?.assistantRuntime?.financialTrackerEngine?.stop()
             com.jarvis.wear.WearableNotificationDispatcher.dismiss(applicationContext)
         } catch (_: Exception) {}
         try {

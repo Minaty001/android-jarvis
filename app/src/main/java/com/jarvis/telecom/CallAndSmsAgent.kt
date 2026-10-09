@@ -257,7 +257,7 @@ class CallAndSmsAgent(
     }
 
     fun readRecentSms(limit: Int = 5, senderFilter: String? = null, otpOnly: Boolean = false): List<SmsItem> {
-        var items = recentSmsList.toList()
+        var items = readInboxSms() ?: recentSmsList.toList()
         if (!senderFilter.isNullOrBlank()) {
             val lowerFilter = senderFilter.lowercase(Locale.ROOT).trim()
             items = items.filter {
@@ -269,6 +269,39 @@ class CallAndSmsAgent(
             items = items.filter { !it.otpCode.isNullOrBlank() }
         }
         return items.take(limit)
+    }
+
+    fun hasReadSmsPermission(): Boolean = context?.checkSelfPermission(android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+
+    private fun readInboxSms(): List<SmsItem>? {
+        val ctx = context ?: return null
+        if (!hasReadSmsPermission()) return null
+        return runCatching {
+            val projection = arrayOf("_id", "address", "body", "date")
+            ctx.contentResolver.query(
+                android.net.Uri.parse("content://sms/inbox"), projection, null, null, "date DESC"
+            )?.use { cursor ->
+                val idCol = cursor.getColumnIndex("_id")
+                val addressCol = cursor.getColumnIndex("address")
+                val bodyCol = cursor.getColumnIndex("body")
+                val dateCol = cursor.getColumnIndex("date")
+                buildList {
+                    while (cursor.moveToNext() && size < 100) {
+                        val sender = if (addressCol >= 0) cursor.getString(addressCol).orEmpty() else ""
+                        val body = if (bodyCol >= 0) cursor.getString(bodyCol).orEmpty() else ""
+                        val contact = sender.takeIf { it.isNotBlank() }?.let(contactResolver::resolveContact)?.name ?: sender
+                        add(SmsItem(
+                            id = if (idCol >= 0) "sms_${cursor.getString(idCol)}" else "sms_${size}",
+                            sender = sender,
+                            contactName = contact,
+                            body = body,
+                            otpCode = extractOtp(body),
+                            timestamp = if (dateCol >= 0) cursor.getLong(dateCol) else 0L
+                        ))
+                    }
+                }
+            } ?: emptyList()
+        }.getOrNull()
     }
 
     fun formatSmsSummary(limit: Int = 5, senderFilter: String? = null, otpOnly: Boolean = false): String {

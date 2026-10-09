@@ -7,14 +7,15 @@ import com.jarvis.wakeword.RaphaelPhoneticMatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
-class ConversationManager {
+class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore) {
     private val TAG = "ConversationManager"
     private val _stateFlow = MutableStateFlow(VoiceState.IDLE)
     val stateFlow: StateFlow<VoiceState> = _stateFlow.asStateFlow()
 
-    private val conversationHistory = mutableListOf<Message>()
-    private val maxHistoryMessages = 10
+    private var activeSessionId = "session_${System.currentTimeMillis()}"
+    private var lastMessageTime = System.currentTimeMillis()
 
     val currentStateValue: VoiceState
         get() = _stateFlow.value
@@ -75,21 +76,35 @@ class ConversationManager {
 
     @Synchronized
     fun addMessage(role: String, content: String) {
-        conversationHistory.add(Message(role, content))
-        // BUG-023 fix: Use while loop instead of if to prevent history overflow
-        while (conversationHistory.size > maxHistoryMessages) {
-            conversationHistory.removeAt(0)
+        val now = System.currentTimeMillis()
+        if (now - lastMessageTime > 2 * 60 * 60 * 1000L) {
+            activeSessionId = "session_$now"
+        }
+        lastMessageTime = now
+
+        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                memoryStore.saveConversation(activeSessionId, role, content)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save conversation message", e)
+            }
         }
     }
 
     @Synchronized
     fun getHistory(): List<Message> {
-        return conversationHistory.toList()
+        return try {
+            val records = memoryStore.getRecentConversation(activeSessionId, limit = 10)
+            records.reversed().map { Message(it.role, it.content) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load history", e)
+            emptyList()
+        }
     }
 
     @Synchronized
     fun clearHistory() {
-        conversationHistory.clear()
+        activeSessionId = "session_${System.currentTimeMillis()}"
     }
 
     /**
@@ -99,6 +114,8 @@ class ConversationManager {
         val stripped = RaphaelPhoneticMatcher.stripWakeWordPrefix(rawTranscript, customWakeWord)
         val lower = stripped.lowercase().trim()
             .replace(Regex("^(?:hey|hi|hello|ok|okay)?\\s*[,:]?\\s*", RegexOption.IGNORE_CASE), "")
+            .trim()
+            .replace(Regex("[,\\s]+(?:hey\\s+)?${Regex.escape((customWakeWord ?: "Jarvis").substringAfterLast(' ').lowercase())}[.!?]*$"), "")
             .trim()
         val exitPhrases = setOf(
             "exit", "bye", "goodbye", "good bye", "bye bye", "good night", "tata", "alvida",

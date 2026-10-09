@@ -17,7 +17,7 @@ import com.jarvis.memory.AugmentedMemoryPipeline
 import com.jarvis.memory.MemoryStore
 import com.jarvis.conversation.ConversationManager
 import com.jarvis.foundation.TaskStateManager
-import com.jarvis.messaging.WhatsAppMessagingEngine
+import com.jarvis.messaging.UniversalMessagingEngine
 import com.jarvis.rag.DocumentChunker
 import com.jarvis.rag.RagContextInjector
 import com.jarvis.rag.RagIndexStore
@@ -83,21 +83,24 @@ class SubsystemManager(private val context: Context? = null) {
     val verificationEngine by lazy { VerificationEngine(requireNotNull(context) { "Context required for VerificationEngine" }) }
     val checkpointManager by lazy { CheckpointManager(requireNotNull(context) { "Context required for CheckpointManager" }) }
 
+    val ownerVerifier: com.jarvis.voice.OwnerVoiceVerifier by lazy {
+        com.jarvis.voice.OwnerVoiceVerifier(requireNotNull(context))
+    }
+
     val wakeEngine: WakeWordEngine by lazy {
         val ctx = requireNotNull(context) { "Context required for WakeWordEngine" }
         val engine = WakeWordEngine(ctx)
-        val verifier = com.jarvis.voice.OwnerVoiceVerifier(ctx)
         engine.wakeGate = com.jarvis.voice.JarvisWakeGate(
-            ownerVerificationAvailable = verifier::isAvailableAndEnrolled,
-            verifyOwner = verifier::verifyOwner,
-            updateOwnerProfile = verifier::setOwnerProfile
+            ownerVerificationAvailable = ownerVerifier::isAvailableAndEnrolled,
+            verifyOwner = ownerVerifier::verifyOwner,
+            updateOwnerProfile = ownerVerifier::setOwnerProfile
         )
         engine
     }
     val vadEngine: VadEngine by lazy { VadEngine() }
-    val conversationManager: ConversationManager = ConversationManager()
-
+    
     val memoryStore: MemoryStore by lazy { MemoryStore(requireNotNull(context) { "Context required for MemoryStore" }) }
+    val conversationManager: ConversationManager by lazy { ConversationManager(memoryStore) }
     val augmentedMemoryPipeline: AugmentedMemoryPipeline by lazy { AugmentedMemoryPipeline(memoryStore) }
 
     // =========================================================================
@@ -188,12 +191,12 @@ class SubsystemManager(private val context: Context? = null) {
         }
 
     @Volatile
-    private var _whatsappMessagingEngine: WhatsAppMessagingEngine? = null
-    val whatsappMessagingEngine: WhatsAppMessagingEngine
+    private var _whatsappMessagingEngine: UniversalMessagingEngine? = null
+    val whatsappMessagingEngine: UniversalMessagingEngine
         get() = _whatsappMessagingEngine ?: synchronized(this) {
-            _whatsappMessagingEngine ?: WhatsAppMessagingEngine(requireNotNull(context) { "Context required for WhatsAppMessagingEngine" }, contactResolver).also {
+            _whatsappMessagingEngine ?: UniversalMessagingEngine(context = requireNotNull(context) { "Context required for UniversalMessagingEngine" }, contactResolver = contactResolver).also {
                 _whatsappMessagingEngine = it
-                Log.d(TAG, "Initialized WhatsAppMessagingEngine on-demand")
+                Log.d(TAG, "Initialized UniversalMessagingEngine on-demand")
             }
         }
 
@@ -205,6 +208,19 @@ class SubsystemManager(private val context: Context? = null) {
     val mediaSessionManager by lazy { MediaSessionManager() }
     val calendarManager by lazy { com.jarvis.calendar.CalendarManager(requireNotNull(context) { "Context required for CalendarManager" }) }
     val ambientContextEngine by lazy { com.jarvis.autonomous.AmbientContextEngine(requireNotNull(context) { "Context required for AmbientContextEngine" }, calendarManager) }
+    
+    val proactiveMessagingEngine by lazy { 
+        com.jarvis.messaging.ProactiveMessagingEngine(
+            requireNotNull(context) { "Context required for ProactiveMessagingEngine" },
+            ambientContextEngine,
+            calendarManager,
+            whatsappMessagingEngine
+        )
+    }
+    
+    val financialTrackerEngine by lazy {
+        com.jarvis.finance.FinancialTrackerEngine(requireNotNull(context) { "Context required for FinancialTrackerEngine" })
+    }
     val macroWorkflowEngine by lazy { MacroWorkflowEngine(requireNotNull(context) { "Context required for MacroWorkflowEngine" }) }
     val fileManager by lazy { FileManager(requireNotNull(context) { "Context required for FileManager" }) }
 

@@ -40,14 +40,15 @@ data class AutoReplyRecord(
     val timestamp: Long = System.currentTimeMillis()
 )
 
-class WhatsAppMessagingEngine(
+class UniversalMessagingEngine(
     context: Context? = null,
+    private val llmClient: com.jarvis.ai.LlmClient? = null,
     private val contactResolver: ContactResolver = ContactResolver(context?.applicationContext ?: context)
 ) {
     private val context: Context? = context?.applicationContext ?: context
 
     companion object {
-        private const val TAG = "WhatsAppMessagingEngine"
+        private const val TAG = "UniversalMessagingEngine"
         private const val AUTO_REPLY_COOLDOWN_MS = 10 * 60 * 1000L // 10 minutes
         private const val PKG_WHATSAPP = "com.whatsapp"
         private const val PKG_WHATSAPP_BIZ = "com.whatsapp.w4b"
@@ -55,12 +56,29 @@ class WhatsAppMessagingEngine(
         fun resolveTargetPackage(platform: String?): String {
             return when (platform?.lowercase()?.trim()) {
                 "business", "whatsapp business", "wa business", "w4b" -> PKG_WHATSAPP_BIZ
+                "telegram", "tg" -> "org.telegram.messenger"
+                "signal" -> "org.thoughtcrime.securesms"
+                "instagram", "ig" -> "com.instagram.android"
                 else -> PKG_WHATSAPP
             }
         }
 
+        fun buildPlatformUri(pkg: String, contact: String?, message: String?): Uri {
+            return when (pkg) {
+                "org.telegram.messenger" -> Uri.parse("tg://resolve?domain=${contact ?: ""}")
+                "com.instagram.android" -> Uri.parse("instagram://user?username=${contact ?: ""}")
+                else -> {
+                    if (message.isNullOrEmpty()) {
+                        Uri.parse("https://wa.me/${contact ?: ""}")
+                    } else {
+                        Uri.parse("https://wa.me/${contact ?: ""}?text=${Uri.encode(message)}")
+                    }
+                }
+            }
+        }
+
         @Volatile
-        var instance: WhatsAppMessagingEngine? = null
+        var instance: UniversalMessagingEngine? = null
             internal set
 
         fun destroy() {
@@ -200,7 +218,7 @@ class WhatsAppMessagingEngine(
         )
 
         ensureScreenAwake()
-        val directUri = Uri.parse("https://api.whatsapp.com/send?phone=$cleanDigits&text=${Uri.encode(trimmedMessage)}")
+        val directUri = buildPlatformUri(targetPkg, cleanDigits, trimmedMessage)
         val intent = Intent(Intent.ACTION_VIEW, directUri).apply {
             setPackage(targetPkg)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -226,16 +244,16 @@ class WhatsAppMessagingEngine(
 
             ToolResult(false, "Direct $platformLabel chat opened with the message pre-filled, but Send could not be verified.")
         }.getOrElse { _ ->
-            // Fall back to standard wa.me Intent if package filter fails
-            val fallbackUri = Uri.parse("https://wa.me/$cleanDigits?text=${Uri.encode(trimmedMessage)}")
+            // Fall back to standard Intent if package filter fails
+            val fallbackUri = buildPlatformUri(targetPkg, cleanDigits, trimmedMessage)
             val fallbackIntent = Intent(Intent.ACTION_VIEW, fallbackUri).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             runCatching {
                 ctx.startActivity(fallbackIntent)
-                ToolResult(false, "Fallback WhatsApp chat opened for $trimmedRecipient, but Send could not be verified.")
+                ToolResult(false, "Fallback chat opened for $trimmedRecipient, but Send could not be verified.")
             }.getOrElse { fallbackErr ->
-                ToolResult(false, "Failed to launch direct WhatsApp chat: ${fallbackErr.message}")
+                ToolResult(false, "Failed to launch direct chat: ${fallbackErr.message}")
             }
         }
     }
@@ -290,7 +308,7 @@ class WhatsAppMessagingEngine(
 
         if (resolvedNumber != null) {
             val cleanDigits = formatWhatsAppNumber(resolvedNumber)
-            val waUri = Uri.parse("https://wa.me/$cleanDigits?text=${Uri.encode(trimmedMessage)}")
+            val waUri = buildPlatformUri(targetPkg, cleanDigits, trimmedMessage)
             val intent = Intent(Intent.ACTION_VIEW, waUri).apply {
                 setPackage(targetPkg)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -323,7 +341,7 @@ class WhatsAppMessagingEngine(
 
         // Tier 3: In-app search macro
         return runCatching {
-            val shareUri = Uri.parse("https://wa.me/?text=${Uri.encode(trimmedMessage)}")
+            val shareUri = buildPlatformUri(targetPkg, null, trimmedMessage)
             val intent = Intent(Intent.ACTION_VIEW, shareUri).apply {
                 setPackage(targetPkg)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -363,26 +381,119 @@ class WhatsAppMessagingEngine(
         }
     }
 
+    suspend fun readChatVisually(contactName: String, platform: String? = null): ToolResult {
+        val trimmedRecipient = contactName.trim()
+        val targetPkg = resolveTargetPackage(platform)
+        val platformLabel = if (targetPkg == PKG_WHATSAPP_BIZ) "WhatsApp Business" else "WhatsApp"
+
+        val ctx = context ?: return ToolResult(false, "Context required for UI automation.")
+        ensureScreenAwake()
+
+        val isPhoneNumber = trimmedRecipient.all { it.isDigit() || it == '+' || it == ' ' || it == '-' }
+        var resolvedNumber: String? = if (isPhoneNumber) {
+            trimmedRecipient.filter { it.isDigit() || it == '+' }
+        } else null
+
+        if (resolvedNumber == null) {
+            val contact = contactResolver.resolveContact(trimmedRecipient)
+            if (contact != null && contact.phoneNumber.isNotBlank()) {
+                resolvedNumber = contact.phoneNumber.filter { it.isDigit() || it == '+' }
+            }
+        }
+
+        return runCatching {
+            if (resolvedNumber != null) {
+                val cleanDigits = formatWhatsAppNumber(resolvedNumber)
+                val waUri = buildPlatformUri(targetPkg, cleanDigits, null)
+                val intent = Intent(Intent.ACTION_VIEW, waUri).apply {
+                    setPackage(targetPkg)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                ctx.startActivity(intent)
+            } else {
+                // If it's WhatsApp we can try whatsapp://send, but let's just use buildPlatformUri
+                val shareUri = if (targetPkg == PKG_WHATSAPP || targetPkg == PKG_WHATSAPP_BIZ) {
+                    Uri.parse("whatsapp://send")
+                } else {
+                    buildPlatformUri(targetPkg, null, null)
+                }
+                val intent = Intent(Intent.ACTION_VIEW, shareUri).apply {
+                    setPackage(targetPkg)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                ctx.startActivity(intent)
+                
+                if (UiAutomationManager.isEnabled()) {
+                    val arrived = UiAutomationManager.waitForPackage(targetPkg, timeoutMs = 3000)
+                    if (arrived) {
+                        kotlinx.coroutines.delay(700)
+                        val service = JarvisAccessibilityService.instance
+                        val contactNode = service?.findNodeByText(trimmedRecipient, exact = false)
+                        if (contactNode != null) {
+                            service.clickNode(contactNode)
+                        } else {
+                            return ToolResult(false, "Could not find chat with '$trimmedRecipient' on screen.")
+                        }
+                    }
+                }
+            }
+            
+            if (UiAutomationManager.isEnabled()) {
+                val arrived = UiAutomationManager.waitForPackage(targetPkg, timeoutMs = 3000)
+                if (arrived) {
+                    kotlinx.coroutines.delay(1200) // Wait for chat to load
+                    val nodes = UiAutomationManager.inspectScreen()
+                    val noiseWords = setOf("type a message", "message", "send", "online", "typing...", "last seen", "call", "video call")
+                    val chatNodes = nodes.filter {
+                        it.className == "android.widget.TextView" && 
+                        !it.text.isNullOrBlank() && 
+                        !noiseWords.contains(it.text!!.lowercase(Locale.ROOT).trim())
+                    }
+                    var chatText = chatNodes.joinToString("\n") { it.text!! }
+                    
+                    // Check for images
+                    val imageNodes = nodes.filter { it.className == "android.widget.ImageView" || it.className == "android.widget.Image" }
+                    if (imageNodes.isNotEmpty() && llmClient != null) {
+                        try {
+                            val screenshot = com.jarvis.accessibility.ScreenVisionManager.captureScreen().base64Image
+                            if (screenshot != null) {
+                                val visionResult = llmClient.chatVision("Describe the images in this chat briefly.", screenshot)
+                                if (visionResult.isSuccess) {
+                                    chatText += "\n[Image Content: ${visionResult.getOrNull()}]"
+                                }
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e(TAG, "Vision extraction failed", e)
+                        }
+                    }
+                    
+                    autoReturnToHome()
+                    if (chatText.isBlank()) return ToolResult(false, "Opened chat, but could not extract any text.")
+                    return ToolResult(true, "Visually read chat with '$trimmedRecipient':\n$chatText")
+                }
+            }
+            ToolResult(false, "Accessibility automation must be enabled to read chat visually.")
+        }.getOrElse { e ->
+            ToolResult(false, "Failed to launch $platformLabel chat for reading: ${e.message}")
+        }
+    }
+
+
     /**
      * Reads recent intercepted WhatsApp notifications, grouping them by sender.
      * Supports platform filtering (standard/business) and media type classification.
      */
-    fun readRecentWhatsApp(
+    fun readRecentMessages(
         limit: Int = 5,
         senderFilter: String? = null,
         platformFilter: String? = null
     ): ToolResult {
-        val allNotifs = NotificationStore.getRecentNotifications(limit = 25, appFilter = "whatsapp")
+        val targetPkg = resolveTargetPackage(platformFilter)
+        val allNotifs = NotificationStore.getRecentNotifications(limit = 25, appFilter = targetPkg)
         if (allNotifs.isEmpty()) {
-            return ToolResult(true, "You have no unread WhatsApp messages right now.")
+            return ToolResult(true, "You have no unread messages right now.")
         }
-
-        // Filter by platform if specified
-        val platformFiltered = when (platformFilter?.lowercase()?.trim()) {
-            "standard", "whatsapp" -> allNotifs.filter { it.packageName == PKG_WHATSAPP }
-            "business", "w4b", "whatsapp business" -> allNotifs.filter { it.packageName == PKG_WHATSAPP_BIZ }
-            else -> allNotifs
-        }
+        val platformFiltered = allNotifs
 
         val filtered = if (!senderFilter.isNullOrBlank()) {
             val filterLower = senderFilter.lowercase(Locale.ROOT).trim()

@@ -42,6 +42,8 @@ class VoiceRouter(
     private val audioChannel = Channel<ShortArray>(256)
     private var audioWorkerJob: Job? = null
 
+    var onSpeechFrame: ((ShortArray) -> Unit)? = null
+
     init {
         startAudioWorker()
     }
@@ -87,6 +89,7 @@ class VoiceRouter(
                 when (vadEvent) {
                     is VadEvent.SpeechStarted, is VadEvent.SpeechContinues -> {
                         onSpeechActivity?.invoke()
+                        onSpeechFrame?.invoke(samples)
                     }
                     is VadEvent.SpeechEnded -> {
                         onSpeechEnd?.invoke()

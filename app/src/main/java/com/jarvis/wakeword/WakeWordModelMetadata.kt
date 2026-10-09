@@ -49,6 +49,7 @@ data class WakeWordModelMetadata(
         const val ASSET_NAME = "jarvis_model.json"
         const val MODEL_NAME = "jarvis_dscnn_int8.tflite"
         const val SUPPORTED_PHRASE = "Jarvis"
+        const val ACTIVE_OPEN_WAKE_PHRASE = "Hey Jarvis"
 
         fun fromJson(json: String): WakeWordModelMetadata {
             val root = JSONObject(json)

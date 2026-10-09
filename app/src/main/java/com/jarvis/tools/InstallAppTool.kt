@@ -8,6 +8,7 @@ import com.jarvis.accessibility.AutonomousUiNavigator
 import com.jarvis.accessibility.JarvisAccessibilityService
 import com.jarvis.foundation.RiskLevel
 import com.jarvis.foundation.ToolMetadata
+import com.jarvis.media.AppSessionRegistry
 import kotlinx.coroutines.delay
 
 /**
@@ -63,6 +64,7 @@ class InstallAppTool(private val context: Context? = null) : Tool {
         if (!launched) {
             return ToolResult.Failed("Could not open Google Play Store on this device")
         }
+        AppSessionRegistry.recordAppLaunch("com.android.vending", "Opened Play Store search for $appName")
 
         // 2. Automated UI interaction via Accessibility Service if active
         val service = JarvisAccessibilityService.instance

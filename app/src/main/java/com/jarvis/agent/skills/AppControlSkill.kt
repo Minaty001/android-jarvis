@@ -2,6 +2,7 @@ package com.jarvis.agent.skills
 
 import com.jarvis.agent.AgentAction
 import com.jarvis.foundation.worldstate.ForegroundAppSession
+import com.jarvis.tools.AppRegistry
 
 class AppControlSkill : Skill {
     override val id: String = "app_control"
@@ -37,8 +38,10 @@ class AppControlSkill : Skill {
         // Allow play store / install / download commands even if they contain " play " or other keywords
         val isPlayStoreOrInstall = lower.contains("play store") || lower.contains("playstore") ||
                 lower.contains("google play") || lower.contains("install") || lower.contains("download")
+        val explicitRegisteredAppLaunch = Regex("^(?:open|launch|kholo|chalu karo|start)\\s+(.+)$")
+            .matchEntire(lower)?.groupValues?.get(1)?.let(AppRegistry.ALLOWED_PACKAGES::containsKey) == true
 
-        if (!isPlayStoreOrInstall && compoundKeywords.any { lower.contains(it) }) {
+        if (!isPlayStoreOrInstall && !explicitRegisteredAppLaunch && compoundKeywords.any { lower.contains(it) }) {
             return false
         }
 

@@ -67,6 +67,18 @@ class AssistantRuntime(
         policyEngine,
         verificationEngine
     )
+    
+    // Control Layer (Smart Home & Flight)
+    val permissionGate = com.jarvis.control.PermissionGate(
+        context = context,
+        getOwnerVerifier = { subsystems.ownerVerifier },
+        getCandidateAudio = { com.jarvis.service.JarvisForegroundService.instance?.voiceEngine?.continuousAudioStream?.rollingBuffer?.getRecentAudio(48000) ?: ShortArray(0) }
+    )
+    val haClient = com.jarvis.smart_home.HomeAssistantClient()
+    val smartHomeRouter = com.jarvis.smart_home.SmartHomeRouter(haClient)
+    val flightAssistant = com.jarvis.flight.FlightAssistant(context)
+    val simulatorBridge = com.jarvis.flight.SimulatorBridge()
+    val flightRouter = com.jarvis.flight.FlightRouter(flightAssistant, simulatorBridge)
 
     // Autonomous Control Plane Architecture (Layers 0 - 10)
 
@@ -95,6 +107,8 @@ class AssistantRuntime(
     val mediaSessionManager get() = subsystems.mediaSessionManager
     val calendarManager get() = subsystems.calendarManager
     val ambientContextEngine get() = subsystems.ambientContextEngine
+    val proactiveMessagingEngine get() = subsystems.proactiveMessagingEngine
+    val financialTrackerEngine get() = subsystems.financialTrackerEngine
     val worldStateProvider by lazy { com.jarvis.autonomous.AndroidStateProvider(context, ambientContextEngine, mediaSessionManager, taskStateManager) }
     val worldStateService by lazy { com.jarvis.foundation.worldstate.WorldStateService(worldStateProvider) }
     val contextRouter by lazy {
@@ -243,6 +257,8 @@ class AssistantRuntime(
         Log.i(TAG, "Silently recorded WhatsApp notification: $announcement")
     }
 
+    var recallService: com.jarvis.memory.JarvisRecallService? = null
+
     init {
         registerDefaultTools()
         reapInterruptedTasks()
@@ -252,6 +268,14 @@ class AssistantRuntime(
         loadVoiceProfile()
         scope.launch(Dispatchers.IO) {
             com.jarvis.tools.AppScanner.scanInstalledApps(context)
+        }
+        // Start passive memory indexing
+        recallService = com.jarvis.memory.JarvisRecallService(subsystems.ragIndexStore)
+        recallService?.start()
+        
+        // Hook up accessibility window changes to trigger memory captures
+        com.jarvis.accessibility.JarvisAccessibilityService.onWindowContentChanged = {
+            recallService?.requestCapture()
         }
     }
 
@@ -426,6 +450,16 @@ class AssistantRuntime(
     }
 
     private fun registerDefaultTools() {
+        toolRegistry.register(com.jarvis.finance.ExpenseReportTool(context))
+
+        // Control Layer Tools
+        val smartHomeTool = com.jarvis.tools.SmartHomeTool(smartHomeRouter, permissionGate)
+        toolRegistry.register(smartHomeTool)
+        val flightTool = com.jarvis.tools.FlightTool(flightRouter, permissionGate)
+        toolRegistry.register(flightTool)
+        val flightSimTool = com.jarvis.tools.FlightSimTool(flightRouter, permissionGate)
+        toolRegistry.register(flightSimTool)
+
         // App controls & Discovery
         val appListTool = ListInstalledAppsTool(context)
         toolRegistry.register(appListTool, appListTool.metadata)
@@ -442,6 +476,14 @@ class AssistantRuntime(
         toolRegistry.registerLazy("SPOTIFY_PLAY", "Controls Spotify playback and playlists") {
             SpotifyControlTool(context, mediaSessionManager)
         }
+        
+        // UI Autopilot
+        toolRegistry.registerLazy(
+            name = "AUTONOMOUS_UI_AGENT",
+            description = "Agentic loop for multi-step UI reasoning and interaction using LLM vision"
+        ) {
+            com.jarvis.tools.AutonomousUiAgentTool(context, currentLlmClient)
+        }
 
         // Communication (Lazy)
         toolRegistry.registerLazy(
@@ -457,12 +499,13 @@ class AssistantRuntime(
                     com.jarvis.foundation.ParameterSchema("mode", "string", "Auto-reply mode: driving, meeting, busy, off", required = false),
                     com.jarvis.foundation.ParameterSchema("platform", "string", "Target platform: standard (default) or business", required = false),
                     com.jarvis.foundation.ParameterSchema("sender", "string", "Filter messages by sender name", required = false),
-                    com.jarvis.foundation.ParameterSchema("limit", "integer", "Maximum messages to read (1-10)", required = false)
+                    com.jarvis.foundation.ParameterSchema("limit", "integer", "Maximum messages to read (1-10)", required = false),
+                    com.jarvis.foundation.ParameterSchema("visual", "boolean", "If true, visually read chat from screen", required = false)
                 ),
                 riskLevel = com.jarvis.foundation.RiskLevel.HIGH
             )
         ) {
-            WhatsAppTool(context, whatsappMessagingEngine)
+            WhatsAppTool(context, whatsappMessagingEngine, currentLlmClient)
         }
         // System & Knowledge
         val flashlight = FlashlightTool(context)
@@ -571,7 +614,7 @@ class AssistantRuntime(
         toolRegistry.register(locationTool, locationTool.metadata)
         val switchboardTool = com.jarvis.tools.SystemSwitchboardTool(context)
         toolRegistry.register(switchboardTool, switchboardTool.metadata)
-        val messageReaderTool = com.jarvis.tools.MessageReaderTool()
+        val messageReaderTool = com.jarvis.tools.MessageReaderTool(context, permissionGate)
         toolRegistry.register(messageReaderTool, messageReaderTool.metadata)
 
     }
@@ -739,6 +782,7 @@ class AssistantRuntime(
                 goal = utterance,
                 userApprovalGranted = userApprovalGranted,
                 history = historySnapshot,
+                resolvedIntent = resolvedIntent?.intent,
                 onEvent = { event ->
                     when (event) {
                         is AgentEvent.TaskStarted -> {

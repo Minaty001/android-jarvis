@@ -195,6 +195,7 @@ class JarvisVoiceInteractionSession(context: Context) : VoiceInteractionSession(
         }
 
         val chips = listOf(
+            "🎤 Go Live" to "GOLIVE",
             "🔍 Search & Play Song" to "search and play song",
             "👁️ What's on screen?" to "what is on my screen",
             "⏱️ Set 5m Timer" to "set timer for 5 minutes",
@@ -205,7 +206,11 @@ class JarvisVoiceInteractionSession(context: Context) : VoiceInteractionSession(
 
         for ((label, command) in chips) {
             val chip = createActionChip(ctx, label, ::dp) {
-                executeDirectCommand(command)
+                if (command == "GOLIVE") {
+                    JarvisForegroundService.instance?.voiceEngine?.startLiveConversation()
+                } else {
+                    executeDirectCommand(command)
+                }
             }
             chipsLayout.addView(chip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 rightMargin = dp(8)
@@ -354,12 +359,13 @@ class JarvisVoiceInteractionSession(context: Context) : VoiceInteractionSession(
             val engine = JarvisForegroundService.instance?.voiceEngine ?: return@launch
             engine.status.collect { status ->
                 mainHandler.post {
+                    orbView?.emotion = status.userEmotion
                     orbView?.setState(status.voiceState)
                     orbView?.setAudioLevel(status.audioLevelRms)
 
                     when (status.voiceState) {
                         VoiceState.LISTENING -> {
-                            statusBadge?.text = "LISTENING"
+                            statusBadge?.text = if (status.isLiveConversationActive) "LIVE LISTENING 🎤" else "LISTENING"
                             if (status.partialTranscript.isNotBlank()) {
                                 transcriptText?.text = status.partialTranscript
                             }

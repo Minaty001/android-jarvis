@@ -18,20 +18,7 @@ data class RagCandidate(
     val source: String = ""
 )
 
-fun interface RagReranker {
-    fun score(query: String, candidate: DocumentChunk): Double
-}
 
-class LexicalCrossEncoderFallback : RagReranker {
-    override fun score(query: String, candidate: DocumentChunk): Double {
-        val q = RagIndexStore.tokenize(query).toSet()
-        val text = RagIndexStore.tokenize("${candidate.title} ${candidate.content}")
-        if (q.isEmpty() || text.isEmpty()) return 0.0
-        val overlap = q.count { it in text }.toDouble() / q.size
-        val phraseBonus = if (candidate.content.contains(query, ignoreCase = true)) 0.25 else 0.0
-        return (overlap + phraseBonus).coerceIn(0.0, 1.0)
-    }
-}
 
 data class RagQueryResult(
     val query: String,
@@ -43,8 +30,7 @@ class RagRetriever(
     private val indexStore: RagIndexStore,
     private val k1: Double = 1.2,
     private val b: Double = 0.75,
-    private val vectorizer: EmbeddingVectorizer? = null,
-    private val reranker: RagReranker = LexicalCrossEncoderFallback()
+    private val vectorizer: EmbeddingVectorizer? = null
 ) {
     // Chunk embeddings are deterministic per content: computed once per chunk
     // and reused across queries instead of re-embedding every chunk each call.
@@ -228,7 +214,7 @@ class RagRetriever(
         // the retrieval contract; the fallback is deterministic and offline-safe.
         val rerankPool = candidates.sortedByDescending { it.fusedScore }.take((limit * 4).coerceAtLeast(8))
         val reranked = rerankPool.map { c ->
-            c.copy(rerankScore = reranker.score(query, c.chunk))
+            c.copy(rerankScore = scoreCandidate(query, c.chunk))
         }.sortedByDescending { 0.65 * it.rerankScore + 0.35 * it.fusedScore }.take(limit)
 
         // Calibrate final score and expose source attribution/confidence.
@@ -272,5 +258,14 @@ class RagRetriever(
         }
 
         return bestSentence.trim()
+    }
+
+    private fun scoreCandidate(query: String, candidate: DocumentChunk): Double {
+        val q = RagIndexStore.tokenize(query).toSet()
+        val text = RagIndexStore.tokenize("${candidate.title} ${candidate.content}")
+        if (q.isEmpty() || text.isEmpty()) return 0.0
+        val overlap = q.count { it in text }.toDouble() / q.size
+        val phraseBonus = if (candidate.content.contains(query, ignoreCase = true)) 0.25 else 0.0
+        return (overlap + phraseBonus).coerceIn(0.0, 1.0)
     }
 }

@@ -303,6 +303,10 @@
         </receiver>
 
         <receiver
+            android:name=".messaging.ProactiveActionReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".service.CommandReceiver"
             android:exported="true">
             <intent-filter>

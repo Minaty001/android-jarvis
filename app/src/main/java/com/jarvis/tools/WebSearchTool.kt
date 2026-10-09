@@ -34,6 +34,36 @@ class WebSearchTool(private val context: Context) : Tool {
         }
 
         try {
+            // 0. Try SerpApi Google Search if API key is configured
+            val serpKey = com.jarvis.BuildConfig.SERP_API_KEY
+            if (serpKey.isNotBlank() && serpKey != "null") {
+                val serpUrl = "https://serpapi.com/search.json?q=${Uri.encode(query)}&api_key=$serpKey"
+                val serpReq = Request.Builder().url(serpUrl).build()
+                val serpResult = httpClient.newCall(serpReq).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body?.string().orEmpty()
+                        if (body.isNotBlank()) {
+                            val json = JSONObject(body)
+                            // Prioritize answer box, then top organic result snippet
+                            if (json.has("answer_box")) {
+                                val answerBox = json.getJSONObject("answer_box")
+                                answerBox.optString("snippet", answerBox.optString("answer", answerBox.optString("title")))
+                            } else if (json.has("organic_results") && json.getJSONArray("organic_results").length() > 0) {
+                                val topRes = json.getJSONArray("organic_results").getJSONObject(0)
+                                topRes.optString("snippet", topRes.optString("title", ""))
+                            } else null
+                        } else null
+                    } else null
+                }
+                
+                if (!serpResult.isNullOrBlank()) {
+                    return@withContext ToolResult.Success(
+                        message = "SerpApi result: $serpResult",
+                        data = mapOf("query" to query, "source" to "serpapi")
+                    )
+                }
+            }
+
             // 1. Try DuckDuckGo Instant Answer API for structured knowledge
             val apiUrl = "https://api.duckduckgo.com/?q=${Uri.encode(query)}&format=json&no_html=1&skip_disambig=1"
             val request = Request.Builder()

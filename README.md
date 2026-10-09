@@ -134,6 +134,22 @@ J.A.R.V.I.S. provides a streamlined **5-tab navigation bar** alongside a persist
 - **Expiry**: TTL-expired memories are removed before memory retrieval.
 </details>
 
+
+<details>
+<summary><b>6. 🤖 UI Autopilot & Deep Screen Vision</b></summary>
+
+- **ScreenContextAnalyzer**: Reads hierarchical Accessibility Node data to infer the current user activity (e.g., "Booking a flight").
+- **UI Autopilot Engine**: Maps high-level LLM intents into physical UI interactions (clicks, scrolling, typing) completely autonomously.
+</details>
+
+<details>
+<summary><b>7. 💰 Smart Financial Ledger & Security</b></summary>
+
+- **Financial Tracker Engine**: Automatically tracks SMS bank receipts to categorize spending without needing bank API access.
+- **JarvisSecurityManager**: On-device toxicity and PII masking to ensure sensitive data (passwords, SSNs) never leaves the device.
+- **Comprehensive Permissions Hub**: Centralized Settings UI for managing advanced access and permissions.
+</details>
+
 ---
 
 ## 🗣️ Bilingual Command Reference
@@ -149,6 +165,8 @@ J.A.R.V.I.S. provides a streamlined **5-tab navigation bar** alongside a persist
 | **Daily Briefing** | *"Good morning"*, *"Daily briefing"*, *"What is my schedule today"*, *"Add meeting"* | *"Aaj ka schedule kya hai"*, *"Daily briefing sunao"*, *"Calendar check karo"* |
 | **Memory Core** | *"Remember car is on level B2"*, *"Where did I park my car?"*, *"What's my passport number"* | *"Yaad rakhna car level B2 par hai"*, *"Car kahan park ki thi?"*, *"Mera passport number kya hai"* |
 | **Autopilot Modes**| *"Driving mode on"*, *"Meeting mode on"*, *"Autonomous status"*, *"Cancel all tasks"* | *"Driving mode chalu karo"*, *"Meeting mode lagao"*, *"Status batao"*, *"Ruk jao"* |
+| **UI Autopilot**| *"Click the send button"*, *"Scroll down"*, *"Type hello"* | *"Send button dabao"*, *"Niche scroll karo"*, *"Hello type karo"* |
+| **Financial Ledger**| *"How much did I spend today"*, *"Clear my finances"* | *"Aaj kitna kharcha hua"*, *"Finance logs clear karo"* |
 
 ---
 

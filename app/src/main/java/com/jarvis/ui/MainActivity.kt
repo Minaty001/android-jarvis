@@ -38,7 +38,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nav: ResponsiveNav
     private lateinit var store: UiPreferencesStore
     private lateinit var apiManager: ApiManager
-    private lateinit var runner: BackgroundTaskRunner
     private var currentRoute = "Dashboard"
     private var dirty = false
     private var service: JarvisForegroundService? = null
@@ -70,7 +69,6 @@ class MainActivity : AppCompatActivity() {
 
         store = UiPreferencesStore(this)
         apiManager = ApiManager(store, SecureCredentialStore(this))
-        runner = BackgroundTaskRunner()
         setContentView(buildRoot())
         applyTheme(store.loadSettings().theme)
         requestPermissionsIfNeeded()
@@ -118,7 +116,7 @@ class MainActivity : AppCompatActivity() {
         dirty = false
         if (::nav.isInitialized) nav.setRoute(route)
         val screen: View = when (route) {
-            "Skills" -> SkillsScreen(this, this, runner) { command ->
+            "Skills" -> SkillsScreen(this, this) { command ->
                 service?.voiceEngine?.let { engine ->
                     lifecycleScope.launch { engine.processTextCommand(command) }
                 }
@@ -133,7 +131,7 @@ class MainActivity : AppCompatActivity() {
             "Settings" -> SettingsScreen(this, store, store.loadSettings(), { dirty = it }, { service?.reloadConfig() }, service?.voiceEngine, onOpenWakeWordSetup = { showRoute("WakeWordSetup") })
             "Logs" -> LogsScreen(this, store)
             else -> DashboardScreen(
-                this, this, runner, store::loadSettings,
+                this, this, store::loadSettings,
                 { showRoute("Settings") },
                 
                 { showRoute("Skills") },
@@ -172,12 +170,16 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.CAMERA,
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.CALL_PHONE,
+            Manifest.permission.ANSWER_PHONE_CALLS,
             Manifest.permission.READ_CONTACTS,
+            Manifest.permission.WRITE_CONTACTS,
             Manifest.permission.SEND_SMS,
             Manifest.permission.READ_SMS,
             Manifest.permission.RECEIVE_SMS,
             Manifest.permission.READ_CALENDAR,
-            Manifest.permission.WRITE_CALENDAR
+            Manifest.permission.WRITE_CALENDAR,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
         )
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             perms.add(Manifest.permission.POST_NOTIFICATIONS)
@@ -231,7 +233,6 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         if (bound) runCatching { unbindService(connection) }
         apiManager.cancelAll()
-        runner.dispose()
         super.onDestroy()
     }
 }

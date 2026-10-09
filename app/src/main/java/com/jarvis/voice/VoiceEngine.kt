@@ -38,7 +38,8 @@ data class VoiceEngineStatus(
     val wakeModelAvailable: Boolean = true,
     val lastTaskGoal: String? = null,
     val audioLevelRms: Float = 0.0f,
-    val isLiveConversationActive: Boolean = false
+    val isLiveConversationActive: Boolean = false,
+    val userEmotion: com.jarvis.voice.emotion.EmotionState = com.jarvis.voice.emotion.EmotionState.NEUTRAL
 )
 
 enum class PipelineState {
@@ -125,6 +126,8 @@ class VoiceEngine(
     val mediaDuckingManager = com.jarvis.media.MediaDuckingManager(context, audioFocusManager)
     val acousticFeedbackEngine = com.jarvis.voice.audio.AcousticFeedbackEngine(context)
 
+    val emotionClassifier = com.jarvis.voice.emotion.AcousticEmotionClassifier()
+
     // Session tracking and race protection gates
     private val sessionSequence = AtomicInteger(0)
     private val wakeTransitionGate = AtomicBoolean(false)
@@ -141,7 +144,7 @@ class VoiceEngine(
     var isContinuousConversationEnabled: Boolean = true
     var isBargeInEnabled: Boolean = true
     var followUpTimeoutMs: Long = 6000L
-    @Volatile var configuredWakeWord: String = "Jarvis"
+    @Volatile var configuredWakeWord: String = com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE
 
     val liveConversationController = LiveConversationController(
         voiceRouter = voiceRouter,
@@ -178,6 +181,14 @@ class VoiceEngine(
                 }
             }
         }
+        
+        voiceRouter.onSpeechFrame = { samples ->
+            emotionClassifier.processFrame(samples)
+            val currentEmotion = emotionClassifier.classifyEmotion()
+            if (_status.value.userEmotion != currentEmotion) {
+                _status.value = _status.value.copy(userEmotion = currentEmotion)
+            }
+        }
     }
 
     fun startLiveConversation() {
@@ -199,7 +210,7 @@ class VoiceEngine(
         val appSettings = runCatching { store.loadSettings() }.getOrDefault(com.jarvis.ui.model.AppSettings())
         isContinuousConversationEnabled = appSettings.continuousConversation
         isBargeInEnabled = appSettings.bargeInEnabled
-        configuredWakeWord = com.jarvis.wakeword.WakeWordModelMetadata.SUPPORTED_PHRASE
+        configuredWakeWord = com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE
         followUpTimeoutMs = (appSettings.followUpTimeoutSeconds * 1000L).coerceIn(3000L, 15000L)
         voiceRouter.bargeInDetector.setEnabled(appSettings.bargeInEnabled)
         voiceRouter.bargeInDetector.setSensitivity(appSettings.wakeSensitivity)
@@ -208,12 +219,12 @@ class VoiceEngine(
         val voiceProfile = runCatching { store.loadVoiceProfile() }.getOrDefault(com.jarvis.wakeword.UserVoiceProfile.DEFAULT)
         wakeEngine.applyVoiceProfile(voiceProfile)
         wakeEngine.applyOwnerVoiceProfile(runCatching { store.loadOwnerVoiceProfile() }.getOrNull())
-        configuredWakeWord = com.jarvis.wakeword.WakeWordModelMetadata.SUPPORTED_PHRASE
+        configuredWakeWord = com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE
     }
 
     fun applyVoiceProfile(profile: com.jarvis.wakeword.UserVoiceProfile) {
         wakeEngine.applyVoiceProfile(profile)
-        configuredWakeWord = com.jarvis.wakeword.WakeWordModelMetadata.SUPPORTED_PHRASE
+        configuredWakeWord = com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE
     }
 
     fun scoreEnrollmentSample(pcm: ShortArray): com.jarvis.voice.WakeWordSampleScore? =
@@ -431,6 +442,8 @@ class VoiceEngine(
 
     private suspend fun startListeningForCommand(isFollowUp: Boolean = false, initialAudio: ShortArray? = null) {
         stopCommandSession()
+        emotionClassifier.reset()
+        _status.value = _status.value.copy(userEmotion = com.jarvis.voice.emotion.EmotionState.NEUTRAL)
         transitionTo(PipelineState.ACTIVE_ASR)
 
         val routeToAppropriateAsr: (Int) -> Unit = { preRoll ->
@@ -664,12 +677,13 @@ class VoiceEngine(
             voiceRouter.routeToWakeWord()
             _status.value = _status.value.copy(
                 partialTranscript = "",
-                statusMessage = "Listening for 'Jarvis'...",
+                statusMessage = "Listening for '${com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE}'...",
                 wakeModelAvailable = true
             )
             Log.i(TAG, "Passive wake session active (model loaded)")
         } else {
             val err = wakeEngine.getModelError() ?: "Model asset missing"
+            voiceRouter.routeToAndroidAsr()
             _status.value = _status.value.copy(
                 partialTranscript = "",
                 statusMessage = "Wake model unavailable. Tap to talk.",
@@ -680,6 +694,10 @@ class VoiceEngine(
     }
 
     private suspend fun returnToWakeListening() {
+        if (liveConversationController.isSessionActive()) {
+            Log.i(TAG, "Live Conversation timed out due to silence. Exiting live mode.")
+            liveConversationController.stopSession()
+        }
         returnToWakeJob?.cancel()
         returnToWakeJob = ensureActiveScope().launch {
             Log.i(TAG, "Returning cleanly to wake word listening mode")
@@ -749,7 +767,13 @@ class VoiceEngine(
             }
 
             val result = try {
-                assistantRuntime.executeCommand(cleanCommand) { event ->
+                val currentEmotion = emotionClassifier.classifyEmotion()
+                val commandWithEmotion = if (currentEmotion != com.jarvis.voice.emotion.EmotionState.NEUTRAL) {
+                    "[User Emotion: ${currentEmotion.name}] $cleanCommand"
+                } else {
+                    cleanCommand
+                }
+                assistantRuntime.executeCommand(commandWithEmotion) { event ->
                     when (event) {
                         is com.jarvis.agent.AgentEvent.BuildingContext -> {
                             if (showThinking) {
@@ -1005,14 +1029,18 @@ class VoiceEngine(
                 }
                 delay(120)
             } finally {
-                returnToWakeListening()
+                if (liveConversationController.isSessionActive()) {
+                    startListeningForCommand(isFollowUp = true)
+                } else {
+                    returnToWakeListening()
+                }
             }
         }
     }
 
     private fun getStatusLabel(state: VoiceState): String = when (state) {
         VoiceState.IDLE -> "Ready"
-        VoiceState.WAITING_FOR_WAKE -> if (wakeEngine.isAvailable()) "Listening for 'Jarvis'..." else "Wake model unavailable. Tap to talk."
+        VoiceState.WAITING_FOR_WAKE -> if (wakeEngine.isAvailable()) "Listening for '${com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE}'..." else "Wake model unavailable. Tap to talk."
         VoiceState.WAKE_DETECTED -> "Wake word detected!"
         VoiceState.LISTENING -> "Listening to command..."
         VoiceState.UNDERSTANDING -> "Understanding goal..."

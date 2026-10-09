@@ -60,6 +60,7 @@ import org.json.JSONObject
         goal: String,
         userApprovalGranted: Boolean = false,
         history: List<com.jarvis.ai.Message> = emptyList(),
+        resolvedIntent: com.jarvis.ai.AssistantIntent? = null,
         onEvent: (AgentEvent) -> Unit = {}
     ): AgentResult {
         val taskId = taskState.createTask(goal)
@@ -90,6 +91,7 @@ import org.json.JSONObject
             stepObservations = stepObservations,
             userApprovalGranted = userApprovalGranted,
             history = history,
+            resolvedIntent = resolvedIntent,
             onEvent = onEvent
         )
     }
@@ -173,6 +175,7 @@ import org.json.JSONObject
             stepObservations = stepObservations,
             userApprovalGranted = userApprovalGranted || consent,
             history = history,
+            resolvedIntent = null,
             onEvent = onEvent
         )
     }
@@ -186,6 +189,7 @@ import org.json.JSONObject
         stepObservations: MutableList<AgentObservation>,
         userApprovalGranted: Boolean,
         history: List<com.jarvis.ai.Message> = emptyList(),
+        resolvedIntent: com.jarvis.ai.AssistantIntent? = null,
         onEvent: (AgentEvent) -> Unit
     ): AgentResult {
         try {
@@ -251,7 +255,8 @@ import org.json.JSONObject
                             state = state,
                             workingMemory = workingMemory,
                             context = context,
-                            availableTools = toolsDescription
+                            availableTools = toolsDescription,
+                            resolvedIntent = resolvedIntent
                         ).getOrElse { plannerErr ->
                             Log.w(TAG, "Planner decision error: ${plannerErr.message}, trying direct LLM answer")
                             val answer = directAnswer(activeGoal)

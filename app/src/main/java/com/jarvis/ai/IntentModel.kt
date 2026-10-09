@@ -1,5 +1,6 @@
 package com.jarvis.ai
 
+import com.jarvis.tools.AppRegistry
 import java.util.Locale
 
 enum class AssistantIntent {
@@ -10,6 +11,7 @@ enum class AssistantIntent {
     REMEMBER_FACT,
     QUERY_MEMORY,
     SCREEN_VISION,
+    EXPENSE_REPORT,
     BATTERY_CHECK,
     READ_NOTIFICATIONS,
     DAILY_BRIEFING,
@@ -54,7 +56,10 @@ enum class AssistantIntent {
     MEDIA_VOLUME,
     DEVICE_SETTINGS,
     SCREEN_LOCK,
-    SCREEN_UNLOCK
+    SCREEN_UNLOCK,
+    SMART_HOME_CONTROL,
+    FLIGHT_ASSISTANT,
+    FLIGHT_SIMULATOR
 }
 
 data class ResolvedIntent(
@@ -68,12 +73,82 @@ object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {
         val text = utterance.trim().lowercase(Locale.ROOT)
         if (text.isBlank()) return null
+        val parts = text.split(Regex("\\s+(?:and|then|aur|fir)\\s+"))
+        if (parts.size > 1) {
+            // Keep explicit screen follow-ups together; leave other compound screen requests to the agent.
+            val screenPart = parts.indexOfFirst { it.contains("screen") }
+            if (screenPart >= 0 && parts.drop(screenPart + 1).none {
+                    listOf("explain ", "summarize ", "describe ", "read ", "extract ").any(it::startsWith)
+                }) return null
+            val intents = parts.map { resolveSingle(it) }
+            if (intents.all { it?.intent == AssistantIntent.SCREEN_VISION }) return resolveSingle(utterance)
+            val actions = intents.flatMap { it?.directPlan?.actions.orEmpty() }
+            if (actions.size >= 2 && intents.all { it?.directPlan != null }) {
+                return ResolvedIntent(
+                    intent = AssistantIntent.COMPOUND_TASK,
+                    confidence = intents.minOf { it!!.confidence },
+                    params = emptyMap(),
+                    directPlan = ExecutionPlan("Completing both requested actions.", actions)
+                )
+            }
+        }
         return resolveSingle(utterance)
     }
 
     fun resolveSingle(utterance: String): ResolvedIntent? {
         val text = utterance.trim().lowercase(Locale.ROOT)
         if (text.isBlank()) return null
+        
+        // Smart Home: Lock/Unlock Door
+        if (text.contains("door") && (text.contains("unlock") || text.contains("kholo") || text.contains("khol do"))) {
+            val params = mapOf("domain" to "smart_home", "device" to "lock", "target" to "door", "action" to "unlock", "requiresConfirmation" to "true")
+            return ResolvedIntent(intent = AssistantIntent.SMART_HOME_CONTROL, confidence = 0.95f, params = params, directPlan = ExecutionPlan("Unlocking door...", listOf(ActionPlan("SMART_HOME", params))))
+        }
+        if (text.contains("door") && (text.contains("lock") || text.contains("band karo") || text.contains("band kar do"))) {
+            val params = mapOf("domain" to "smart_home", "device" to "lock", "target" to "door", "action" to "lock")
+            return ResolvedIntent(intent = AssistantIntent.SMART_HOME_CONTROL, confidence = 0.95f, params = params, directPlan = ExecutionPlan("Locking door.", listOf(ActionPlan("SMART_HOME", params))))
+        }
+        
+        // Smart Home: Lights (Specific Rooms)
+        val roomMatch = Regex("(bedroom|living room|kitchen|hall|bathroom|main)\\s+light", RegexOption.IGNORE_CASE).find(text)
+        if (roomMatch != null || text.contains("lights off") || text.contains("movie mode") || text.contains("study light")) {
+            val off = text.contains("off") || text.contains("band")
+            val brightnessMatch = Regex("(\\d{1,3})\\s*percent").find(text)
+            val action = if (brightnessMatch != null) "set_brightness" else if (off) "turn_off" else "turn_on"
+            val target = roomMatch?.groupValues?.get(1) ?: "all"
+            val params = mutableMapOf("domain" to "smart_home", "device" to "light", "target" to target, "action" to action)
+            if (brightnessMatch != null) params["value"] = brightnessMatch.groupValues[1]
+            return ResolvedIntent(intent = AssistantIntent.SMART_HOME_CONTROL, confidence = 0.95f, params = params, directPlan = ExecutionPlan("Adjusting $target lights.", listOf(ActionPlan("SMART_HOME", params))))
+        }
+
+        // Flight Assistant
+        if (text.contains("flight status") || text.contains("nearest airport") || text.contains("altitude") || text.contains("flight ")) {
+            val action = when {
+                text.contains("nearest airport") -> "nearest_airport"
+                text.contains("altitude") -> "altitude"
+                else -> "flight_status"
+            }
+            val params = mutableMapOf("domain" to "flight_assistant", "action" to action)
+            
+            if (action == "flight_status") {
+                val flightNumberMatch = Regex("flight\\s+([a-z0-9]+)\\s+status|status\\s+of\\s+flight\\s+([a-z0-9]+)|flight\\s+([a-z0-9]+)", RegexOption.IGNORE_CASE).find(text)
+                val flightNo = flightNumberMatch?.groupValues?.drop(1)?.firstOrNull { it.isNotBlank() }
+                if (flightNo != null) {
+                    params["value"] = flightNo.uppercase()
+                }
+            }
+            
+            return ResolvedIntent(intent = AssistantIntent.FLIGHT_ASSISTANT, confidence = 0.95f, params = params, directPlan = ExecutionPlan("Checking flight assistant...", listOf(ActionPlan("FLIGHT", params))))
+        }
+
+        // Flight Simulator
+        if (text.contains("simulator") && text.contains("destination")) {
+            val destMatch = Regex("destination\\s+([a-z]+)", RegexOption.IGNORE_CASE).find(text)
+            val target = destMatch?.groupValues?.get(1) ?: "unknown"
+            val params = mapOf("domain" to "flight_simulator", "action" to "set_destination", "target" to target)
+            return ResolvedIntent(intent = AssistantIntent.FLIGHT_SIMULATOR, confidence = 0.95f, params = params, directPlan = ExecutionPlan("Setting simulator destination.", listOf(ActionPlan("FLIGHT_SIM", params))))
+        }
+
         // 0.1 Flashlight / Torch
         if (text in listOf("turn on flashlight", "torch on karo", "flashlight on", "torch on", "torch chalu karo", "light on karo", "turn on torch", "torch start karo", "light jalao", "light on") ||
             text in listOf("turn off flashlight", "torch band karo", "flashlight off", "torch off", "light band karo", "turn off torch", "torch stop karo", "light bujhao", "light off") ||
@@ -302,7 +377,8 @@ object IntentResolver {
                 if (match != null) {
                     val appRaw = match.groupValues[1].trim()
                     val words = appRaw.split(Regex("\\s+"))
-                    if (words.size > 3 || words.any { it in actionKeywords }) {
+                    val registeredApp = AppRegistry.ALLOWED_PACKAGES.containsKey(appRaw)
+                    if (words.size > 3 || (words.any { it in actionKeywords } && !registeredApp)) {
                         continue
                     }
                     val targetApp = normalizeAppName(appRaw)
@@ -509,8 +585,11 @@ object IntentResolver {
             "screen dekho", "ye dekh ke batao", "ye padh ke batao", "padh ke batao",
             "kya likha hai", "screen samjhao", "ye kya hai", "error samjhao", "page samjhao"
         )
-        val isScreenQuery = !text.contains("log") && (visionTriggers.any { text.contains(it) } ||
-            (text.contains("screen") && (text.contains("error") || text.contains("crash") || text.contains("bug") || text.contains("issue") || text.contains("problem") || text.contains("summar") || text.contains("page") || text.contains("explain"))))
+        val isScreenQuery = !text.contains("log") && (
+            visionTriggers.any { text.contains(it) } ||
+            text.contains("what am i looking at") ||
+            (text.contains("screen") && (text.contains("what") || text.contains("describe") || text.contains("see") || text.contains("look") || text.contains("error") || text.contains("crash") || text.contains("bug") || text.contains("issue") || text.contains("problem") || text.contains("summar") || text.contains("page") || text.contains("explain")))
+        )
         if (isScreenQuery) {
             val mode = when {
                 text.contains("summariz") || text.contains("short") || text.contains("summary") -> "summarize"
@@ -525,6 +604,19 @@ object IntentResolver {
                 directPlan = ExecutionPlan(
                     "Analyzing screen visual context.",
                     listOf(ActionPlan("SCREEN_VISION", mapOf("query" to utterance, "mode" to mode)))
+                )
+            )
+        }
+
+        // 7b. Financial Tracking / Expense Report
+        if (text.contains("spend") || text.contains("spent") || text.contains("expense") || text.contains("budget") || text.contains("how much money")) {
+            return ResolvedIntent(
+                intent = AssistantIntent.EXPENSE_REPORT,
+                confidence = 0.95f,
+                params = emptyMap(),
+                directPlan = ExecutionPlan(
+                    "Checking your financial expenses.",
+                    listOf(ActionPlan("EXPENSE_REPORT", emptyMap()))
                 )
             )
         }

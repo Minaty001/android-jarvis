@@ -54,7 +54,10 @@ object AppRegistry {
         "mx" to "com.mxtech.videoplayer.pro",
         "netflix" to "com.netflix.mediaclient",
         "music" to "com.sec.android.app.music",
+        "music app" to "com.sec.android.app.music",
         "samsung music" to "com.sec.android.app.music",
+        "play music" to "com.google.android.music",
+        "google play music" to "com.google.android.music",
 
         // Google & Chrome
         "google" to "com.google.android.googlequicksearchbox",

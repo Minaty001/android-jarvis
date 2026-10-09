@@ -1,6 +1,7 @@
 package com.jarvis.ui.model
 
 import java.util.UUID
+import com.jarvis.wakeword.WakeWordModelMetadata
 
 enum class AuthMethod { API_KEY, OAUTH2, BEARER, BASIC }
 
@@ -23,7 +24,7 @@ data class AppSettings(
     val defaultTimeoutMs: Long = 30_000L,
     val maxRetryAttempts: Int = 3,
     val logVerbosity: String = "INFO",
-    val wakeWord: String = "Jarvis",
+    val wakeWord: String = WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE,
     val preferredLlmModel: String = "openai/gpt-oss-20b",
     val developerMode: Boolean = false,
     val continuousConversation: Boolean = true,
@@ -39,15 +40,6 @@ data class AppSettings(
     val mediaDuckingEnabled: Boolean = true,
     val mediaDuckingPercent: Int = 45,
     val mediaDuckingMusic: Boolean = true,
-    val mediaDuckingPodcasts: Boolean = true,
-    val mediaDuckingVideos: Boolean = true,
-    val mediaDuckingCalls: Boolean = false,
-    val waveformMode: String = "LINEAR",
-    val waveformFrequencyBands: Int = 32,
-    val animationIntensity: Float = 1.0f,
-    val requireConfirmationForMediumRisk: Boolean = true,
-    val requireConfirmationForHighRisk: Boolean = true,
-    val activeProfileId: String = "default",
     val wakeAcknowledgment: String = "CHIME",
     val dailyBriefingEnabled: Boolean = true,
     val dailyBriefingTime: String = "08:00",

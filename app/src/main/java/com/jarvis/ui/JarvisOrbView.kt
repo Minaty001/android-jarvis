@@ -284,7 +284,12 @@ class JarvisOrbView @JvmOverloads constructor(
         shaderRadiusBucket = Int.MIN_VALUE
     }
 
-    private fun getPrimaryColor(): Int = when (currentState) {
+    var emotion: com.jarvis.voice.emotion.EmotionState = com.jarvis.voice.emotion.EmotionState.NEUTRAL
+
+    private fun getPrimaryColor(): Int {
+        if (emotion == com.jarvis.voice.emotion.EmotionState.FRUSTRATED) return 0xFFFF5C7A.toInt() // Red
+        if (emotion == com.jarvis.voice.emotion.EmotionState.EXCITED) return 0xFFFFCF5C.toInt() // Amber
+        return when (currentState) {
         VoiceState.IDLE -> 0xFF39E0A0.toInt() // jarvis-pc good / arc green
         VoiceState.WAITING_FOR_WAKE -> 0xFF39E0A0.toInt()
         VoiceState.WAKE_DETECTED -> 0xFF3FD0FF.toInt()
@@ -299,8 +304,12 @@ class JarvisOrbView @JvmOverloads constructor(
         VoiceState.OFFLINE -> 0xFF8FA3C4.toInt() // jarvis-pc text_dim
         VoiceState.ERROR -> 0xFFFF5C7A.toInt() // jarvis-pc bad red
     }
+    }
 
-    private fun getSecondaryColor(): Int = when (currentState) {
+    private fun getSecondaryColor(): Int {
+        if (emotion == com.jarvis.voice.emotion.EmotionState.FRUSTRATED) return 0xFFD32F2F.toInt()
+        if (emotion == com.jarvis.voice.emotion.EmotionState.EXCITED) return 0xFFF57F17.toInt()
+        return when (currentState) {
         VoiceState.IDLE -> 0xFF1FA670.toInt()
         VoiceState.WAITING_FOR_WAKE -> 0xFF1FA670.toInt()
         VoiceState.WAKE_DETECTED -> 0xFF0091EA.toInt()
@@ -314,6 +323,7 @@ class JarvisOrbView @JvmOverloads constructor(
         VoiceState.CANCELLED, VoiceState.INTERRUPTED -> 0xFFFF8F00.toInt()
         VoiceState.OFFLINE -> 0xFF546E7A.toInt()
         VoiceState.ERROR -> 0xFFD32F2F.toInt()
+    }
     }
 
     private fun getDarkColor(): Int = when (currentState) {

@@ -215,7 +215,7 @@ class WakeWordEngine(
         trailingAudioBuffer = candidateAudio
         state = WakeWordState.TRIGGERED
         lastDetectionAt = now
-        val phrase = det.getDetectedPhrase() ?: WakeWordModelMetadata.SUPPORTED_PHRASE
+        val phrase = det.getDetectedPhrase() ?: WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE
         Log.i(tag, "Wake event accepted for '$phrase' (score=$score)")
         onDetectedCallback?.invoke(phrase)
         return true

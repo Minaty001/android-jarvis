@@ -63,7 +63,7 @@ object AppSessionRegistry {
                 normalized.equals("WhatsApp", ignoreCase = true) -> {
                     sb.append(WhatsAppSessionManager.getHistorySummary())
                 }
-                normalized.equals("Spotify", ignoreCase = true) || normalized.contains("Music", ignoreCase = true) -> {
+                normalized.equals("Spotify", ignoreCase = true) -> {
                     sb.append(SpotifySessionManager.getHistorySummary())
                 }
                 normalized.equals("ChatGPT", ignoreCase = true) || normalized.equals("Claude", ignoreCase = true) ||

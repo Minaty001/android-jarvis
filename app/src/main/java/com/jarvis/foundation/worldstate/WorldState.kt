@@ -4,7 +4,7 @@ import java.util.Locale
 
 object ForegroundAppSession {
     val sharedUiApps = setOf(
-        "WhatsApp", "YouTube", "Camera", "Samsung Notes", "ChatGPT", "Gemini",
+        "WhatsApp", "YouTube", "YouTube Music", "Play Music", "Camera", "Samsung Notes", "ChatGPT", "Gemini",
         "Claude", "DeepSeek", "Perplexity", "MX Player", "Netflix", "Samsung Music",
         "Google Search", "Chrome", "Gaming Hub", "Telegram", "Snapchat", "Instagram",
         "Gmail", "PicsArt", "OneRoom", "PUBG", "Genshin", "PhonePe", "Kotak 811",
@@ -20,6 +20,8 @@ object ForegroundAppSession {
         val lower = pkg.lowercase(Locale.ROOT)
         return when {
             "whatsapp" in lower -> "WhatsApp"
+            "google.android.apps.youtube.music" in lower -> "YouTube Music"
+            "google.android.music" in lower -> "Play Music"
             "youtube" in lower || "ytube" in lower -> "YouTube"
             "camera" in lower -> "Camera"
             "samsung.android.app.notes" in lower -> "Samsung Notes"

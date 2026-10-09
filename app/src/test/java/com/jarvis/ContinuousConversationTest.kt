@@ -21,6 +21,8 @@ class ContinuousConversationTest {
         assertTrue(manager.isExitUtterance("bye"))
         assertTrue(manager.isExitUtterance("goodbye"))
         assertTrue(manager.isExitUtterance("Hey Jarvis, bye"))
+        assertTrue(manager.isExitUtterance("Bye Jarvis"))
+        assertTrue(manager.isExitUtterance("Goodbye Hey Jarvis"))
         assertTrue(manager.isExitUtterance("thank you"))
         assertTrue(manager.isExitUtterance("thanks"))
         assertTrue(manager.isExitUtterance("that's all"))
@@ -40,6 +42,7 @@ class ContinuousConversationTest {
         assertTrue(manager.isExitUtterance("Friday, thank you", "Friday"))
         assertTrue(manager.isExitUtterance("Ok Computer, that's all", "Computer"))
         assertTrue(manager.isExitUtterance("Computer stop listening", "Computer"))
+        assertTrue(manager.isExitUtterance("Bye Friday", "Friday"))
 
         // Non-exit commands
         assertFalse(manager.isExitUtterance("open chrome"))

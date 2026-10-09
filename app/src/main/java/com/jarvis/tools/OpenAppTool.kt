@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import com.jarvis.foundation.worldstate.ForegroundAppSession
+import com.jarvis.media.AppSessionRegistry
 
 class OpenAppTool(private val context: Context? = null) : Tool {
     override val name: String = "OPEN_APP"
@@ -64,6 +66,12 @@ class OpenAppTool(private val context: Context? = null) : Tool {
 
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context?.startActivity(intent)
+        if (context != null) {
+            AppSessionRegistry.recordAppLaunch(
+                pkgName,
+                "Opened ${ForegroundAppSession.fromPackage(pkgName) ?: appKey}"
+            )
+        }
         return ToolResult(true, "Opened $appKey successfully")
     }
 }
@@ -104,4 +112,3 @@ class CloseAppTool(private val context: Context? = null) : Tool {
         }
     }
 }
-
