@@ -26,86 +26,27 @@ class DailyBriefingTool(private val context: Context? = null) : Tool {
     )
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
-        val cal = Calendar.getInstance()
-        val hour = cal.get(Calendar.HOUR_OF_DAY)
-        val greeting = when (hour) {
-            in 4..11 -> "Good morning sir"
-            in 12..16 -> "Good afternoon sir"
-            in 17..21 -> "Good evening sir"
-            else -> "Hello sir"
+        val adaptiveEngine = com.jarvis.routine.AdaptiveDailyBriefingEngine(context)
+        val styleParam = params["style"]?.trim()?.uppercase()
+        val forcedStyle = when (styleParam) {
+            "MORNING" -> com.jarvis.routine.AdaptiveDailyBriefingEngine.BriefingStyle.MORNING
+            "MIDDAY" -> com.jarvis.routine.AdaptiveDailyBriefingEngine.BriefingStyle.MIDDAY
+            "EVENING" -> com.jarvis.routine.AdaptiveDailyBriefingEngine.BriefingStyle.EVENING
+            "BEDTIME" -> com.jarvis.routine.AdaptiveDailyBriefingEngine.BriefingStyle.BEDTIME
+            else -> null
         }
 
+        val briefing = adaptiveEngine.generateBriefing(forcedStyle)
+        val cal = Calendar.getInstance()
         val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
         val dateFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
-        val currentTime = timeFormat.format(cal.time)
-        val currentDate = dateFormat.format(cal.time)
-
-        // 1. Battery status
-        val battery = BatteryMonitor.getBatteryState(context)
-        val batteryText = if (battery.percentage >= 0) {
-            "Battery is at ${battery.percentage}%${if (battery.isCharging) " and charging" else ""}."
-        } else {
-            ""
-        }
-
-        // 2. Calendar Agenda
-        val calendarManager = CalendarManager(context)
-        val agenda = calendarManager.getTodayAgenda()
-        val agendaText = if (agenda.isEmpty()) {
-            "Your calendar is clear for today."
-        } else {
-            val count = agenda.size
-            val first = agenda.first()
-            val eventTimeFmt = SimpleDateFormat("h:mm a", Locale.getDefault())
-            val firstTime = eventTimeFmt.format(Date(first.startTimeMillis))
-            if (count == 1) {
-                "You have 1 event today: ${first.title} at $firstTime."
-            } else {
-                "You have $count events today, starting with ${first.title} at $firstTime."
-            }
-        }
-
-        // 3. Unread Notifications & Messages
-        val recentNotifs = NotificationStore.getRecentNotifications(limit = 6)
-        val msgNotifs = recentNotifs.filter {
-            it.packageName.contains("whatsapp", ignoreCase = true) ||
-            it.packageName.contains("mms", ignoreCase = true) ||
-            it.packageName.contains("sms", ignoreCase = true) ||
-            it.packageName.contains("telecom", ignoreCase = true) ||
-            it.packageName.contains("gm", ignoreCase = true)
-        }
-        val notifText = when {
-            msgNotifs.isNotEmpty() -> "You have ${msgNotifs.size} unread priority message${if (msgNotifs.size > 1) "s" else ""}."
-            recentNotifs.isNotEmpty() -> "You have ${recentNotifs.size} recent notification${if (recentNotifs.size > 1) "s" else ""}."
-            else -> "No unread notifications."
-        }
-
-        // 4. Foreground app (if any)
-        val activeApp = JarvisAccessibilityService.currentForegroundPackage?.substringAfterLast(".")
-        val activeAppText = if (!activeApp.isNullOrBlank() && !activeApp.contains("jarvis", ignoreCase = true)) {
-            "Active app is $activeApp."
-        } else {
-            ""
-        }
-
-        val parts = listOfNotNull(
-            "$greeting. Today is $currentDate, and the time is $currentTime.",
-            batteryText.ifBlank { null },
-            agendaText.ifBlank { null },
-            notifText.ifBlank { null },
-            activeAppText.ifBlank { null },
-            "All systems are operational."
-        )
-        val briefing = parts.joinToString(" ")
 
         return ToolResult.Success(
             message = briefing,
             data = mapOf(
-                "date" to currentDate,
-                "time" to currentTime,
-                "battery" to battery.percentage,
-                "calendar_events" to agenda.size,
-                "notification_count" to recentNotifs.size
+                "date" to dateFormat.format(cal.time),
+                "time" to timeFormat.format(cal.time),
+                "style" to (forcedStyle?.name ?: adaptiveEngine.detectCurrentStyle().name)
             )
         )
     }

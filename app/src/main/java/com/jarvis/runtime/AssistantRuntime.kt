@@ -128,6 +128,10 @@ class AssistantRuntime(
             com.jarvis.routine.SmartRoutineEngine.instance = it
         }
     }
+    val adaptiveDailyBriefingEngine by lazy { com.jarvis.routine.AdaptiveDailyBriefingEngine(context) }
+    val deepBatteryGovernor by lazy { com.jarvis.battery.DeepBatteryGovernor(context) }
+    val predictiveAppPrewarmer by lazy { com.jarvis.app.PredictiveAppPrewarmer(context) }
+    val smartNotificationSummarizer by lazy { com.jarvis.notification.SmartNotificationSummarizer() }
     val macroWorkflowEngine get() = subsystems.macroWorkflowEngine
     val fileManager get() = subsystems.fileManager
     val autonomousDaemon by lazy {

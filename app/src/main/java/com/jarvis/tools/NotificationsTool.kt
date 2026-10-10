@@ -36,14 +36,15 @@ class NotificationsTool(private val context: Context? = null) : Tool {
 
         when (action) {
             "digest", "summary", "triage", "brief" -> {
-                val digest = NotificationStore.getDigestSummary()
+                val summarizer = com.jarvis.notification.SmartNotificationSummarizer()
+                val summary = summarizer.generateExecutiveDigest()
+                val urgent = summarizer.getUrgentNotifications()
                 return ToolResult.Success(
-                    message = digest.conversationalSummary,
+                    message = summary,
                     data = mapOf(
                         "action" to "digest",
-                        "priority_count" to digest.priorityCount,
-                        "promotion_count" to digest.promotionCount,
-                        "total_count" to digest.totalCount
+                        "urgent_count" to urgent.size,
+                        "total_count" to NotificationStore.getAll().size
                     )
                 )
             }

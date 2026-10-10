@@ -87,13 +87,16 @@ class PowerOptimizerTool(private val context: Context? = null) : Tool {
                     )
                 }
                 else -> {
-                    // Default: status
+                    val governor = com.jarvis.battery.DeepBatteryGovernor(ctx)
+                    val report = governor.evaluateGovernorState()
                     ToolResult.Success(
-                        "Battery Status: Health is $healthStr, Temperature is ${tempCelsius}°C, Voltage: ${voltage}mV, Power Saver: ${if (isPowerSaveMode) "Active" else "Off"}.",
+                        "Battery Status: Health is $healthStr, Level: ${report.percentage}%, Temperature: ${report.temperatureCelsius}°C, Throttle: ${report.throttleState.name}. ${report.recommendation}",
                         mapOf(
-                            "temp" to tempCelsius,
+                            "temp" to report.temperatureCelsius,
+                            "percentage" to report.percentage,
                             "health" to healthStr,
-                            "voltage" to voltage,
+                            "voltage" to report.voltageMv,
+                            "throttleState" to report.throttleState.name,
                             "isPowerSave" to isPowerSaveMode
                         )
                     )
