@@ -16,9 +16,6 @@ object LlmConfig {
     const val OPENROUTER_DEFAULT_MODEL = "meta-llama/llama-3.3-70b-instruct"
     const val OPENROUTER_STRONG_MODEL = "anthropic/claude-3.5-sonnet"
 
-    // Ollama Local
-    const val OLLAMA_DEFAULT_MODEL = "llama3.2"
-
     val CANDIDATE_MODELS = listOf(
         "openai/gpt-oss-20b",
         "llama-3.3-70b-versatile",

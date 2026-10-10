@@ -331,7 +331,7 @@ class AssistantRuntime(
         }
         val effectiveGeminiKey = (secureStore.get("gemini_api_key") ?: secureStore.get("gemini") ?: com.jarvis.BuildConfig.GEMINI_API_KEY).orEmpty()
         val effectiveOpenRouterKey = (secureStore.get("openrouter_api_key") ?: secureStore.get("openrouter") ?: com.jarvis.BuildConfig.OPENROUTER_API_KEY).orEmpty()
-        val effectiveOllamaUrl = (secureStore.get("ollama_base_url") ?: secureStore.get("ollama") ?: com.jarvis.BuildConfig.OLLAMA_BASE_URL).orEmpty()
+
 
         val providers = mutableListOf<ProviderEntry>()
         val strongProviders = mutableListOf<ProviderEntry>()
@@ -359,11 +359,6 @@ class AssistantRuntime(
             strongProviders.add(ProviderEntry("OpenRouter-Strong", OpenRouterLlm(effectiveOpenRouterKey, model = LlmConfig.OPENROUTER_STRONG_MODEL), priority = 2))
         }
 
-        if (effectiveOllamaUrl.isNotBlank()) {
-            val m = if (isModelFor("Ollama")) preferredModel else LlmConfig.OLLAMA_DEFAULT_MODEL
-            providers.add(ProviderEntry("Ollama", OllamaLlm(baseUrl = effectiveOllamaUrl, model = m), priority = if (m == preferredModel) -1 else 3))
-            strongProviders.add(ProviderEntry("Ollama", OllamaLlm(baseUrl = effectiveOllamaUrl, model = m), priority = 3))
-        }
 
         // Also check custom APIs configured via ApiManager
         for (api in uiStore.loadApis().filter { it.active }) {
@@ -383,10 +378,6 @@ class AssistantRuntime(
                     providers.add(ProviderEntry("Groq", GroqLlm(key, model = m), priority = if (m == preferredModel) -1 else 0))
                     strongProviders.add(ProviderEntry("Groq-Strong", GroqLlm(key, model = LlmConfig.STRONG_MODEL), priority = 0))
                 }
-            } else if (name.contains("ollama") && api.baseUrl.isNotBlank() && providers.none { it.name == "Ollama" }) {
-                val m = if (isModelFor("Ollama")) preferredModel else LlmConfig.OLLAMA_DEFAULT_MODEL
-                providers.add(ProviderEntry("Ollama", OllamaLlm(baseUrl = api.baseUrl, model = m), priority = if (m == preferredModel) -1 else 3))
-                strongProviders.add(ProviderEntry("Ollama", OllamaLlm(baseUrl = api.baseUrl, model = m), priority = 3))
             }
         }
 

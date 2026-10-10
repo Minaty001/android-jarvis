@@ -188,9 +188,6 @@ class ApiManagerScreen(
         modelRow.addView(Ui.techChip(context, "OpenRouter", "🎭") {
             showSimpleEditor("OpenRouter")
         })
-        modelRow.addView(Ui.techChip(context, "Ollama", "🖥️") {
-            showSimpleEditor("Ollama")
-        })
         modelScroll.addView(modelRow)
         modelInner.addView(modelScroll)
         modelCard.addView(modelInner)
@@ -293,11 +290,9 @@ class ApiManagerScreen(
 
     private fun showSimpleEditor(providerName: String) {
         val container = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(Ui.dp(context,18), Ui.dp(context,8), Ui.dp(context,18), Ui.dp(context,8)) }
-        val secret = Ui.input(context, if (providerName == "Ollama") "Base URL (e.g. http://10.0.2.2:11434)" else "API Key for $providerName")
-        if (providerName != "Ollama") {
-            secret.second.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-            secret.second.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
-        }
+        val secret = Ui.input(context, "API Key for $providerName")
+        secret.second.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        secret.second.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
         container.addView(secret.first)
         
         androidx.appcompat.app.AlertDialog.Builder(context)
@@ -308,11 +303,7 @@ class ApiManagerScreen(
                 val cfg = ProviderRegistry.getConfigFor(providerName)
                 try {
                     val secretText = secret.second.text?.toString()?.trim()
-                    if (providerName == "Ollama" && !secretText.isNullOrBlank()) {
-                        manager.save(cfg.copy(baseUrl = secretText), null)
-                    } else {
-                        manager.save(cfg, secretText?.takeIf { it.isNotEmpty() })
-                    }
+                    manager.save(cfg, secretText?.takeIf { it.isNotEmpty() })
                     refresh()
                     onChanged?.invoke()
                 } catch (e: Throwable) {

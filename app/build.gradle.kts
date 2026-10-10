@@ -26,7 +26,6 @@ val groqModel = propertyOrEnv("GROQ_MODEL", "openai/gpt-oss-20b")
 val geminiApiKey = propertyOrEnv("GEMINI_API_KEY")
 val openRouterApiKey = propertyOrEnv("OPENROUTER_API_KEY")
 val serpApiKey = propertyOrEnv("SERP_API_KEY")
-val ollamaBaseUrl = propertyOrEnv("OLLAMA_BASE_URL", "http://10.0.2.2:11434")
 
 android {
     namespace = "com.jarvis"
@@ -51,7 +50,6 @@ android {
         buildConfigField("String", "GEMINI_API_KEY", "\"${geminiApiKey.escapeForBuildConfig()}\"")
         buildConfigField("String", "OPENROUTER_API_KEY", "\"${openRouterApiKey.escapeForBuildConfig()}\"")
         buildConfigField("String", "SERP_API_KEY", "\"${serpApiKey.escapeForBuildConfig()}\"")
-        buildConfigField("String", "OLLAMA_BASE_URL", "\"${ollamaBaseUrl.escapeForBuildConfig()}\"")
     }
 
     buildFeatures {

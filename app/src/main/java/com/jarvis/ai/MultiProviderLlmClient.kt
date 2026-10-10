@@ -11,8 +11,7 @@ data class ProviderEntry(
 )
 
 /**
- * Composite multi-provider LLM coordinator with sub-200ms intelligent failover.
- * Routes chat and vision requests across Groq, Gemini, OpenRouter, and Ollama.
+ * Routes chat and vision requests across Groq, Gemini, and OpenRouter.
  */
 class MultiProviderLlmClient(
     val providers: List<ProviderEntry>
