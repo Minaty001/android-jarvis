@@ -136,6 +136,9 @@ class AssistantRuntime(
     val sensitiveScreenCloak by lazy { com.jarvis.security.SensitiveScreenCloakEngine() }
     val duressDefense by lazy { com.jarvis.security.DuressDefenseEngine(context) }
     val usbDataJammer by lazy { com.jarvis.security.UsbDataJammerEngine(context).apply { register() } }
+    val selfRecoveryNetworkEngine by lazy { com.jarvis.network.SelfRecoveryNetworkEngine(context) }
+    val automatedStorageJanitor by lazy { com.jarvis.storage.AutomatedStorageJanitorEngine(context) }
+    val dynamicAudioProfileEngine by lazy { com.jarvis.control.DynamicAudioProfileEngine(context) }
     val macroWorkflowEngine get() = subsystems.macroWorkflowEngine
     val fileManager get() = subsystems.fileManager
     val autonomousDaemon by lazy {
