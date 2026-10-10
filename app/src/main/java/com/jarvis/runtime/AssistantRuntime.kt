@@ -132,6 +132,10 @@ class AssistantRuntime(
     val deepBatteryGovernor by lazy { com.jarvis.battery.DeepBatteryGovernor(context) }
     val predictiveAppPrewarmer by lazy { com.jarvis.app.PredictiveAppPrewarmer(context) }
     val smartNotificationSummarizer by lazy { com.jarvis.notification.SmartNotificationSummarizer() }
+    val bleTrackerSentry by lazy { com.jarvis.bluetooth.BleTrackerSentryEngine(context) }
+    val sensitiveScreenCloak by lazy { com.jarvis.security.SensitiveScreenCloakEngine() }
+    val duressDefense by lazy { com.jarvis.security.DuressDefenseEngine(context) }
+    val usbDataJammer by lazy { com.jarvis.security.UsbDataJammerEngine(context).apply { register() } }
     val macroWorkflowEngine get() = subsystems.macroWorkflowEngine
     val fileManager get() = subsystems.fileManager
     val autonomousDaemon by lazy {

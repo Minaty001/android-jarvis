@@ -101,7 +101,38 @@ class SecurityAuditorTool(
                 )
             }
 
-            else -> return ToolResult.Failed("Unknown security action: '$action'. Supported: audit_permissions, scan_camera_mic_apps, analyze_message, privacy_score.")
+            "scan_trackers", "trackers", "airtag" -> {
+                val bleSentry = com.jarvis.bluetooth.BleTrackerSentryEngine(context)
+                val threats = bleSentry.checkTrackerThreats()
+                if (threats.isEmpty()) {
+                    return ToolResult.Success(
+                        message = "No suspicious or persistent BLE trackers detected in your vicinity.",
+                        data = mapOf("threats_found" to 0)
+                    )
+                }
+                val details = threats.joinToString("\n") { "• [${it.alertLevel}] ${it.name} (${it.macAddress}): ${it.details}" }
+                return ToolResult.Success(
+                    message = "ALERT: ${threats.size} potential tracker(s) identified:\n$details",
+                    data = mapOf("threats_found" to threats.size)
+                )
+            }
+
+            "usb_status", "check_usb" -> {
+                val usbJammer = com.jarvis.security.UsbDataJammerEngine(context)
+                val status = usbJammer.getStatus()
+                return ToolResult.Success(
+                    message = "USB Status: ${status.warningMessage}",
+                    data = mapOf("connected" to status.isConnected, "dataActive" to status.isDataActive)
+                )
+            }
+
+            "duress_toggle", "fake_offline" -> {
+                val duress = com.jarvis.security.DuressDefenseEngine(context)
+                val msg = if (duress.isDuressActive) duress.deactivateDuressMode() else duress.activateDuressMode()
+                return ToolResult.Success(message = msg, data = mapOf("duressActive" to duress.isDuressActive))
+            }
+
+            else -> return ToolResult.Failed("Unknown security action: '$action'. Supported: audit_permissions, scan_camera_mic_apps, analyze_message, privacy_score, scan_trackers, usb_status, duress_toggle.")
         }
     }
 
