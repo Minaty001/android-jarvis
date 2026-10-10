@@ -195,8 +195,6 @@ class TelephonyTool(
                     "on" to com.jarvis.messaging.AutoReplyMode.DRIVING, "enable" to com.jarvis.messaging.AutoReplyMode.DRIVING
                 )[modeStr] ?: com.jarvis.messaging.AutoReplyMode.OFF
 
-                com.jarvis.messaging.AutoReplyPolicyManager.setMode(targetMode, template)
-
                 return if (targetMode == com.jarvis.messaging.AutoReplyMode.OFF) {
                     ToolResult.Success("SMS and Calls auto-reply has been turned off.")
                 } else {
@@ -204,7 +202,27 @@ class TelephonyTool(
                 }
             }
 
-            else -> return ToolResult.Failed("Unknown telephony action: '$action'. Supported: call, dial, answer_call, reject_call, caller_info, sms_send, sms_draft, sms_read, auto_reply, search_contact.")
+            "sim_info", "sim_cards", "dual_sim" -> {
+                val routingEngine = com.jarvis.telecom.DualSimRoutingEngine(context)
+                val sims = routingEngine.getActiveSimCards()
+                if (sims.isEmpty()) {
+                    return ToolResult.Success("No multi-SIM cards detected or permission required.", mapOf("sim_count" to 0))
+                }
+                val desc = sims.joinToString("\n") { "• Slot ${it.simSlotIndex + 1}: ${it.displayName} (${it.carrierName})" }
+                return ToolResult.Success("Active SIM Cards:\n$desc", mapOf("sim_count" to sims.size))
+            }
+
+            "recommend_sim", "choose_sim" -> {
+                val routingEngine = com.jarvis.telecom.DualSimRoutingEngine(context)
+                val isWork = params["context"]?.contains("work", ignoreCase = true) == true
+                val decision = routingEngine.getRecommendedSim(rawTarget, isWork)
+                return ToolResult.Success(
+                    "Recommended: ${decision.simDisplayName} (Slot ${decision.recommendedSlot + 1}). ${decision.rationale}",
+                    mapOf("slot" to decision.recommendedSlot, "name" to decision.simDisplayName)
+                )
+            }
+
+            else -> return ToolResult.Failed("Unknown telephony action: '$action'. Supported: call, dial, answer_call, reject_call, caller_info, sms_send, sms_draft, sms_read, auto_reply, search_contact, sim_info, recommend_sim.")
         }
     }
 

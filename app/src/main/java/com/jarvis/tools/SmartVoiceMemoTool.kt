@@ -72,24 +72,32 @@ class SmartVoiceMemoTool(
                 return ToolResult.Success(summary, mapOf("memoId" to targetMemo.id, "title" to targetMemo.title))
             }
             else -> {
-                // Default: record memo
+                // Default: record memo with structured semantic processing
                 val memoContent = if (query.isNotBlank()) query else "Audio recording transcribed: '$title'"
+                val structuredEngine = com.jarvis.memory.VoiceMemoryNotesEngine()
+                val processed = structuredEngine.processVoiceNote(memoContent, title)
                 val memoId = "memo_${System.currentTimeMillis()}"
-                val entry = VoiceMemoEntry(memoId, title, memoContent)
+                val entry = VoiceMemoEntry(memoId, processed.title, memoContent)
                 
                 inMemoryMemos.add(0, entry)
 
                 // Persist to MemoryStore if available
                 memoryStore?.saveMemory(
                     type = MemoryType.TASK_ARTIFACT,
-                    key = "voice_memo:$title",
-                    content = memoContent,
+                    key = "voice_memo:${processed.title}",
+                    content = "[${processed.category}] ${processed.originalText}",
                     provenance = "SmartVoiceMemoTool"
                 )
 
                 return ToolResult.Success(
-                    "Voice memo '$title' recorded and indexed successfully.",
-                    mapOf("id" to memoId, "title" to title, "saved" to true)
+                    "Voice memo '${processed.title}' recorded and indexed under category ${processed.category.name}.",
+                    mapOf(
+                        "id" to memoId,
+                        "title" to processed.title,
+                        "category" to processed.category.name,
+                        "hasDeadline" to processed.hasDeadline,
+                        "saved" to true
+                    )
                 )
             }
         }
