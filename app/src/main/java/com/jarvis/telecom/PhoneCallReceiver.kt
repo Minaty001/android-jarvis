@@ -38,10 +38,14 @@ class PhoneCallReceiver : BroadcastReceiver() {
                 }
             }
             TelephonyManager.EXTRA_STATE_IDLE -> {
+                if (agent?.activeCallSession?.isRinging == true && agent.activeCallSession?.isAnswered == false) {
+                    agent.onMissedCall()
+                }
                 agent?.onCallEnded()
             }
             TelephonyManager.EXTRA_STATE_OFFHOOK -> {
                 Log.d(TAG, "Call off-hook (in conversation)")
+                agent?.onCallAnswered()
             }
         }
     }

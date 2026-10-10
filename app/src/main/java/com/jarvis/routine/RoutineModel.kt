@@ -8,7 +8,9 @@ enum class TriggerType {
     CHARGER_CONNECTED,
     CHARGER_DISCONNECTED,
     TIME_SCHEDULE,
-    MANUAL
+    MANUAL,
+    GEOFENCE_ENTER,
+    GEOFENCE_EXIT
 }
 
 data class RoutineTrigger(

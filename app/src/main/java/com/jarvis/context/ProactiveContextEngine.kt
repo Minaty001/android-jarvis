@@ -82,6 +82,59 @@ class ProactiveContextEngine(
             Log.w(TAG, "Failed to register battery receiver: ${e.message}")
         }
 
+        scope.launch {
+            com.jarvis.runtime.JarvisEventBus.shared.subscribe<com.jarvis.runtime.JarvisEvent.SystemAlert>().collect { alert ->
+                Log.i(TAG, "System Alert Received [${alert.level}]: ${alert.message}")
+                voiceEngine?.speakProactiveAnnouncement(alert.message)
+            }
+        }
+
+        scope.launch {
+            com.jarvis.runtime.JarvisEventBus.shared.subscribe<com.jarvis.runtime.JarvisEvent.BluetoothStateChanged>().collect { state ->
+                if (state.isConnected) {
+                    val deviceName = state.deviceName ?: "Unknown Device"
+                    val lowerName = deviceName.lowercase()
+                    
+                    val isCar = lowerName.contains("car") || lowerName.contains("auto") || 
+                                lowerName.contains("veh") || lowerName.contains("carkit")
+                                
+                    val isHeadphones = lowerName.contains("buds") || lowerName.contains("headphone") || 
+                                       lowerName.contains("airpod") || lowerName.contains("ear")
+                    
+                    if (isCar || isHeadphones) {
+                        Log.i(TAG, "Media-capable Bluetooth device detected ($deviceName). Proactively starting media playback.")
+                        
+                        val announcement = if (isCar) {
+                            "Connected to $deviceName. Resuming playback."
+                        } else {
+                            "Headphones connected. Resuming playback."
+                        }
+                        
+                        // Wait a brief moment to ensure the A2DP audio route is fully established before speaking
+                        kotlinx.coroutines.delay(1500L) 
+                        
+                        // Speak the greeting
+                        voiceEngine?.speakProactiveAnnouncement(announcement)
+                        
+                        // Wait for the TTS to mostly finish before hitting play
+                        kotlinx.coroutines.delay(2000L)
+                        
+                        // Trigger Playback
+                        context?.let { ctx ->
+                            com.jarvis.tools.MediaPlaybackControlTool(ctx).execute(mapOf("action" to "play"))
+                        }
+                    }
+                }
+            }
+        }
+
+        scope.launch {
+            com.jarvis.runtime.JarvisEventBus.shared.subscribe<com.jarvis.runtime.JarvisEvent.GeofenceTransition>().collect { transition ->
+                Log.i(TAG, "Geofence transition received: region=${transition.regionId}, entered=${transition.entered}")
+                SmartRoutineEngine.instance?.onGeofenceTransition(transition.regionId, transition.entered)
+            }
+        }
+
         tickerJob = scope.launch {
             while (isActive && isRunning.get()) {
                 try {

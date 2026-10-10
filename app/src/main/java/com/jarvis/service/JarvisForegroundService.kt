@@ -50,6 +50,8 @@ class JarvisForegroundService : Service() {
         private set
     var ambientContextEngine: com.jarvis.context.AmbientContextEngine? = null
         private set
+    var geofenceEngine: com.jarvis.location.GeofenceEngine? = null
+        private set
     private var wakeLock: android.os.PowerManager.WakeLock? = null
     private var guardianJob: kotlinx.coroutines.Job? = null
     private var isListeningSuspended = false
@@ -269,6 +271,15 @@ class JarvisForegroundService : Service() {
                 )
             }
             ambientContextEngine?.start()
+            
+            if (geofenceEngine == null) {
+                geofenceEngine = com.jarvis.location.GeofenceEngine(applicationContext).apply {
+                    // Sample gym geofence to test the feature
+                    addGeofence("gym", 37.7749, -122.4194, 150f)
+                }
+            }
+            geofenceEngine?.start()
+            
             voiceEngine?.assistantRuntime?.proactiveMessagingEngine?.start()
             voiceEngine?.assistantRuntime?.financialTrackerEngine?.start()
 
@@ -401,6 +412,8 @@ class JarvisForegroundService : Service() {
             
             ambientContextEngine?.stop()
             ambientContextEngine = null
+            geofenceEngine?.stop()
+            geofenceEngine = null
             voiceEngine?.assistantRuntime?.proactiveMessagingEngine?.stop()
             voiceEngine?.assistantRuntime?.financialTrackerEngine?.stop()
             com.jarvis.wear.WearableNotificationDispatcher.dismiss(applicationContext)
@@ -469,6 +482,8 @@ class JarvisForegroundService : Service() {
             clipboardIntelligenceEngine = null
             ambientContextEngine?.stop()
             ambientContextEngine = null
+            geofenceEngine?.stop()
+            geofenceEngine = null
             voiceEngine?.assistantRuntime?.proactiveMessagingEngine?.stop()
             voiceEngine?.assistantRuntime?.financialTrackerEngine?.stop()
             com.jarvis.wear.WearableNotificationDispatcher.dismiss(applicationContext)

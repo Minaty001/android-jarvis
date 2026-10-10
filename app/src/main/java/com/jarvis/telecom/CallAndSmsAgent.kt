@@ -19,6 +19,7 @@ data class CallSession(
     val number: String,
     val contactName: String,
     val isRinging: Boolean,
+    val isAnswered: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -75,6 +76,35 @@ class CallAndSmsAgent(
 
         val announcement = "Incoming call from $displayName. Say 'answer', 'reject', or 'send busy SMS'."
         onAnnounce?.invoke(announcement)
+    }
+
+    fun onCallAnswered() {
+        activeCallSession = activeCallSession?.copy(isAnswered = true, isRinging = false)
+        Log.i(TAG, "Call explicitly answered (offhook).")
+    }
+
+    fun onMissedCall() {
+        val session = activeCallSession ?: return
+        Log.i(TAG, "Call missed from ${session.contactName} (${session.number})")
+
+        val now = System.currentTimeMillis()
+        val calendarManager = com.jarvis.calendar.CalendarManager(context)
+        val activeEvents = calendarManager.getEventsForRange(now, now)
+
+        if (activeEvents.isNotEmpty()) {
+            val event = activeEvents.first()
+            if (com.jarvis.messaging.AutoReplyPolicyManager.canReplyTo(session.number)) {
+                val message = "I am currently in an event: '${event.title}'. Jarvis AI has recorded your missed call and I will get back to you soon."
+
+                context?.let { ctx ->
+                    runCatching {
+                        val smsManager = ctx.getSystemService(android.telephony.SmsManager::class.java) ?: android.telephony.SmsManager.getDefault()
+                        smsManager.sendTextMessage(session.number, null, message, null, null)
+                        com.jarvis.messaging.AutoReplyPolicyManager.recordReplySent(session.number, "SMS", message)
+                    }
+                }
+            }
+        }
     }
 
     fun onCallEnded() {
@@ -187,7 +217,7 @@ class CallAndSmsAgent(
     fun answerCall(): Boolean {
         val ctx = context ?: run {
             Log.i(TAG, "answerCall: Context null, simulating call answer.")
-            activeCallSession = activeCallSession?.copy(isRinging = false)
+            activeCallSession = activeCallSession?.copy(isRinging = false, isAnswered = true)
             return true
         }
 
@@ -207,7 +237,7 @@ class CallAndSmsAgent(
                 contentDescription = "Answer"
             )
             if (answered) {
-                activeCallSession = activeCallSession?.copy(isRinging = false)
+                activeCallSession = activeCallSession?.copy(isRinging = false, isAnswered = true)
                 Log.i(TAG, "Answered call successfully")
             }
             answered

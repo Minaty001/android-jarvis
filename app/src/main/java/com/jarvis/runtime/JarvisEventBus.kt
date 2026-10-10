@@ -42,6 +42,7 @@ sealed class JarvisEvent(val timestamp: Long = System.currentTimeMillis()) {
         val suggestedAction: String,
         val promptText: String
     ) : JarvisEvent()
+    data class GeofenceTransition(val regionId: String, val entered: Boolean) : JarvisEvent()
 }
 
 /**

@@ -79,10 +79,24 @@ class SmartRoutineEngine(
             cooldownMinutes = 45
         )
 
+        val gymArrival = SmartRoutine(
+            id = "routine_gym_arrival",
+            name = "Gym Arrival",
+            description = "Turns ringer to vibrate and greets when arriving at the gym.",
+            trigger = RoutineTrigger(TriggerType.GEOFENCE_ENTER, parameter = "gym"),
+            actions = listOf(
+                RoutineAction("DEVICE_SETTINGS", mapOf("action" to "set_ringer", "ringer_mode" to "vibrate"), "Set ringer to vibrate"),
+                RoutineAction("SPEAK", mapOf("text" to "Welcome to the gym, boss. Let's get it."), "Gym greeting")
+            ),
+            isEnabled = true,
+            cooldownMinutes = 120
+        )
+
         routines[lowBattery.id] = lowBattery
         routines[bedtime.id] = bedtime
         routines[workMode.id] = workMode
         routines[homeArrival.id] = homeArrival
+        routines[gymArrival.id] = gymArrival
     }
 
     fun getAllRoutines(): List<SmartRoutine> = routines.values.toList()
@@ -189,6 +203,19 @@ class SmartRoutineEngine(
             .forEach { routine ->
                 if (routine.trigger.parameter.trim() == timeStr) {
                     evaluateAndExecute(routine, "Scheduled time $timeStr reached")
+                }
+            }
+    }
+
+    fun onGeofenceTransition(regionId: String, entered: Boolean) {
+        val triggerType = if (entered) TriggerType.GEOFENCE_ENTER else TriggerType.GEOFENCE_EXIT
+        routines.values
+            .filter { it.isEnabled && it.trigger.type == triggerType }
+            .forEach { routine ->
+                val targetRegion = routine.trigger.parameter.trim()
+                if (targetRegion.equals(regionId, ignoreCase = true) || targetRegion.isBlank()) {
+                    val actionStr = if (entered) "Entered" else "Exited"
+                    evaluateAndExecute(routine, "$actionStr geofence region '$regionId'")
                 }
             }
     }

@@ -101,7 +101,13 @@ class ClipboardIntelligenceEngine(
 
         // Check if content is sensitive (passwords, private keys, credit cards)
         if (isSensitiveContent(text)) {
-            Log.d(TAG, "Ignoring clipboard content identified as sensitive/credential.")
+            Log.d(TAG, "Sensitive content detected. Alerting user.")
+            JarvisEventBus.shared.post(
+                JarvisEvent.SystemAlert(
+                    level = "INFO", 
+                    message = "Sensitive data copied to clipboard. Be cautious where you paste this."
+                )
+            )
             return
         }
 
