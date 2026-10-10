@@ -24,19 +24,18 @@ import java.util.concurrent.atomic.AtomicInteger
 
 enum class AsrState {
     STOPPED,
-    STARTING,
     READY,
     LISTENING,
     STOPPING,
     ERROR
 }
 
-open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
-    open val usesRawAudio: Boolean = false
+class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
+    val usesRawAudio: Boolean = false
 
     private val TAG = "AndroidSpeechEngine"
     private val _state = MutableStateFlow(AsrState.STOPPED)
-    open val state: StateFlow<AsrState> = _state.asStateFlow()
+    val state: StateFlow<AsrState> = _state.asStateFlow()
 
     private var speechRecognizer: SpeechRecognizer? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -51,7 +50,7 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
     // Debounce flag: speechStartedCallback should fire at most once per listening session
     @Volatile private var speechStartedFired = false
 
-    open suspend fun start(asrDir: File) {
+    suspend fun start(asrDir: File) {
         mainHandler.post {
             if (context != null && SpeechRecognizer.isRecognitionAvailable(context)) {
                 _state.value = AsrState.READY
@@ -100,7 +99,7 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 700L)
     }
 
-    open suspend fun startListening(
+    suspend fun startListening(
         onSpeechStarted: (() -> Unit)? = null,
         onPartial: (String) -> Unit,
         onFinal: (String) -> Unit,
@@ -146,11 +145,11 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
         }
     }
 
-    open suspend fun pushAudio(samples: ShortArray) {
+    suspend fun pushAudio(samples: ShortArray) {
         // System SpeechRecognizer captures microphone directly
     }
 
-    open suspend fun stopListening() {
+    suspend fun stopListening() {
         if (_state.value != AsrState.LISTENING) return
         mainHandler.post {
             try {
@@ -162,7 +161,7 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
         }
     }
 
-    open suspend fun stop() {
+    suspend fun stop() {
         sessionCounter.incrementAndGet()
         mainHandler.post {
             try {

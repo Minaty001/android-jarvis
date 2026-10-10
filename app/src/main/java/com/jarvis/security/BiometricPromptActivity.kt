@@ -5,7 +5,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
-import androidx.biometric.BiometricPrompt
+import android.hardware.biometrics.BiometricPrompt
+import android.os.CancellationSignal
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.ConcurrentHashMap
@@ -21,11 +22,23 @@ class BiometricPromptActivity : AppCompatActivity() {
         val subtitle = intent.getStringExtra("subtitle") ?: "Authentication required"
 
         val executor = ContextCompat.getMainExecutor(this)
-        val biometricPrompt = BiometricPrompt(this, executor,
+        val biometricPrompt = BiometricPrompt.Builder(this)
+            .setTitle(title)
+            .setSubtitle(subtitle)
+            .setNegativeButton("Cancel", executor, { _, _ ->
+                Log.w("Biometric", "Auth canceled")
+                resolveRequest(requestId, false)
+                finish()
+            })
+            .build()
+            
+        biometricPrompt.authenticate(
+            CancellationSignal(),
+            executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     super.onAuthenticationError(errorCode, errString)
-                    Log.w("Biometric", "Auth error: \$errString")
+                    Log.w("Biometric", "Auth error: $errString")
                     resolveRequest(requestId, false)
                     finish()
                 }
@@ -40,17 +53,8 @@ class BiometricPromptActivity : AppCompatActivity() {
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
                     Log.w("Biometric", "Auth failed")
-                    // Don't finish on fail, let them retry, or it will call error on max retries
                 }
             })
-
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle(title)
-            .setSubtitle(subtitle)
-            .setNegativeButtonText("Cancel")
-            .build()
-
-        biometricPrompt.authenticate(promptInfo)
     }
 
     companion object {

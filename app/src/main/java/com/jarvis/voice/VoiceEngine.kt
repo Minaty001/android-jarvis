@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger
 
 sealed class ModelState {
     object NotInstalled : ModelState()
-    object Ready : ModelState()
 }
 
 data class VoiceEngineStatus(
