@@ -14,30 +14,30 @@ import org.junit.Test
 
 class WhatsAppAutomationTest {
 
-    private lateinit var engine: WhatsAppMessagingEngine
+    private lateinit var engine: UniversalMessagingEngine
     private lateinit var tool: WhatsAppTool
     private lateinit var registry: ToolRegistry
 
     @Before
     fun setup() {
         NotificationStore.clear()
-        engine = WhatsAppMessagingEngine(null)
+        engine = UniversalMessagingEngine(null)
         tool = WhatsAppTool(context = null, messagingEngine = engine)
         registry = ToolRegistry()
     }
 
     @Test
     fun testPlatformPackageResolution() {
-        assertEquals("com.whatsapp", WhatsAppMessagingEngine.resolveTargetPackage(null))
-        assertEquals("com.whatsapp", WhatsAppMessagingEngine.resolveTargetPackage("standard"))
-        assertEquals("com.whatsapp", WhatsAppMessagingEngine.resolveTargetPackage("whatsapp"))
-        assertEquals("com.whatsapp", WhatsAppMessagingEngine.resolveTargetPackage("other"))
+        assertEquals("com.whatsapp", UniversalMessagingEngine.resolveTargetPackage(null))
+        assertEquals("com.whatsapp", UniversalMessagingEngine.resolveTargetPackage("standard"))
+        assertEquals("com.whatsapp", UniversalMessagingEngine.resolveTargetPackage("whatsapp"))
+        assertEquals("com.whatsapp", UniversalMessagingEngine.resolveTargetPackage("other"))
 
-        assertEquals("com.whatsapp.w4b", WhatsAppMessagingEngine.resolveTargetPackage("business"))
-        assertEquals("com.whatsapp.w4b", WhatsAppMessagingEngine.resolveTargetPackage("whatsapp business"))
-        assertEquals("com.whatsapp.w4b", WhatsAppMessagingEngine.resolveTargetPackage("wa business"))
-        assertEquals("com.whatsapp.w4b", WhatsAppMessagingEngine.resolveTargetPackage("w4b"))
-        assertEquals("com.whatsapp.w4b", WhatsAppMessagingEngine.resolveTargetPackage("  BUSINESS  "))
+        assertEquals("com.whatsapp.w4b", UniversalMessagingEngine.resolveTargetPackage("business"))
+        assertEquals("com.whatsapp.w4b", UniversalMessagingEngine.resolveTargetPackage("whatsapp business"))
+        assertEquals("com.whatsapp.w4b", UniversalMessagingEngine.resolveTargetPackage("wa business"))
+        assertEquals("com.whatsapp.w4b", UniversalMessagingEngine.resolveTargetPackage("w4b"))
+        assertEquals("com.whatsapp.w4b", UniversalMessagingEngine.resolveTargetPackage("  BUSINESS  "))
     }
 
     @Test
@@ -83,20 +83,20 @@ class WhatsAppAutomationTest {
         NotificationStore.addNotification(bizItem)
 
         // Reading without filter returns both
-        val allResult = engine.readRecentWhatsApp(limit = 10)
+        val allResult = engine.readRecentMessages(limit = 10)
         assertTrue(allResult.success)
         assertTrue(allResult.message.contains("Alice"))
         assertTrue(allResult.message.contains("Tech Store"))
         assertTrue(allResult.message.contains("[Business]"))
 
         // Reading with business filter returns only business
-        val bizResult = engine.readRecentWhatsApp(limit = 10, platformFilter = "business")
+        val bizResult = engine.readRecentMessages(limit = 10, platformFilter = "business")
         assertTrue(bizResult.success)
         assertTrue(bizResult.message.contains("Tech Store"))
         assertFalse(bizResult.message.contains("Alice"))
 
         // Reading with standard filter returns only standard
-        val stdResult = engine.readRecentWhatsApp(limit = 10, platformFilter = "standard")
+        val stdResult = engine.readRecentMessages(limit = 10, platformFilter = "standard")
         assertTrue(stdResult.success)
         assertTrue(stdResult.message.contains("Alice"))
         assertFalse(stdResult.message.contains("Tech Store"))
@@ -116,7 +116,7 @@ class WhatsAppAutomationTest {
         )
         NotificationStore.addNotification(mediaItem)
 
-        val res = engine.readRecentWhatsApp(limit = 5)
+        val res = engine.readRecentMessages(limit = 5)
         assertTrue(res.success)
         assertTrue(res.message.contains("Bob: [photo]"))
     }

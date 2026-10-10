@@ -30,12 +30,12 @@ enum class AsrState {
     ERROR
 }
 
-class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
-    val usesRawAudio: Boolean = false
+open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
+    open val usesRawAudio: Boolean = false
 
     private val TAG = "AndroidSpeechEngine"
     private val _state = MutableStateFlow(AsrState.STOPPED)
-    val state: StateFlow<AsrState> = _state.asStateFlow()
+    open val state: StateFlow<AsrState> = _state.asStateFlow()
 
     private var speechRecognizer: SpeechRecognizer? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -50,7 +50,7 @@ class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
     // Debounce flag: speechStartedCallback should fire at most once per listening session
     @Volatile private var speechStartedFired = false
 
-    suspend fun start(asrDir: File) {
+    open suspend fun start(asrDir: File) {
         mainHandler.post {
             if (context != null && SpeechRecognizer.isRecognitionAvailable(context)) {
                 _state.value = AsrState.READY
@@ -99,7 +99,7 @@ class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 700L)
     }
 
-    suspend fun startListening(
+    open suspend fun startListening(
         onSpeechStarted: (() -> Unit)? = null,
         onPartial: (String) -> Unit,
         onFinal: (String) -> Unit,
@@ -145,11 +145,11 @@ class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
         }
     }
 
-    suspend fun pushAudio(samples: ShortArray) {
+    open suspend fun pushAudio(samples: ShortArray) {
         // System SpeechRecognizer captures microphone directly
     }
 
-    suspend fun stopListening() {
+    open suspend fun stopListening() {
         if (_state.value != AsrState.LISTENING) return
         mainHandler.post {
             try {
@@ -161,7 +161,7 @@ class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
         }
     }
 
-    suspend fun stop() {
+    open suspend fun stop() {
         sessionCounter.incrementAndGet()
         mainHandler.post {
             try {
