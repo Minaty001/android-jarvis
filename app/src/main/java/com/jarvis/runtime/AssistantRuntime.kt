@@ -143,6 +143,9 @@ class AssistantRuntime(
     val audioSpatializerEngine by lazy { com.jarvis.control.AudioSpatializerEngine(context) }
     val voiceMemoryNotesEngine by lazy { com.jarvis.memory.VoiceMemoryNotesEngine() }
     val dualSimRoutingEngine by lazy { com.jarvis.telecom.DualSimRoutingEngine(context) }
+    val flightTrackerEngine by lazy { com.jarvis.flight.FlightTrackerEngine(context) }
+    val expenseSplitterEngine by lazy { com.jarvis.finance.ExpenseSplitterEngine() }
+    val meetingMinutesEngine by lazy { com.jarvis.meeting.MeetingMinutesEngine() }
     val macroWorkflowEngine get() = subsystems.macroWorkflowEngine
     val fileManager get() = subsystems.fileManager
     val autonomousDaemon by lazy {

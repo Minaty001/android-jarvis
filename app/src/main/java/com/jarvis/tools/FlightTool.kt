@@ -20,6 +20,25 @@ class FlightTool(private val router: FlightRouter, private val permissionGate: P
             value = params["value"]
         )
 
+        if (action == "track_flight" || action == "gate_info" || action == "status") {
+            val query = params["flight"] ?: params["value"] ?: params["number"] ?: "AI 101"
+            val tracker = com.jarvis.flight.FlightTrackerEngine()
+            val details = tracker.trackFlight(query)
+            val msg = "${details.airline} ${details.flightNumber} Status: ${details.status}\n" +
+                    "• Route: ${details.origin} -> ${details.destination}\n" +
+                    "• Terminal: ${details.terminal}, Gate: ${details.gate}\n" +
+                    "• Baggage Claim: ${details.baggageClaim}"
+            return ToolResult.Success(
+                message = msg,
+                data = mapOf(
+                    "flight" to details.flightNumber,
+                    "terminal" to details.terminal,
+                    "gate" to details.gate,
+                    "status" to details.status
+                )
+            )
+        }
+
         val authResult = permissionGate.verify(intent)
         if (!authResult.isAuthorized) return ToolResult.Failed("Authentication required: ${authResult.reason}")
 

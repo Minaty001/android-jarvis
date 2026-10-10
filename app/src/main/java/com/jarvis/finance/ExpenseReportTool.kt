@@ -92,6 +92,26 @@ class ExpenseReportTool(private val context: Context) : Tool {
                         )
                     }
                 }
+
+                "split_bill", "split", "split_expense" -> {
+                    val amount = params["amount"]?.toDoubleOrNull() ?: params["total"]?.toDoubleOrNull() ?: 100.0
+                    val peopleStr = params["people"] ?: params["participants"] ?: "Me, Partner"
+                    val people = peopleStr.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                    val tip = params["tip"]?.toDoubleOrNull() ?: 0.0
+
+                    val splitter = com.jarvis.finance.ExpenseSplitterEngine()
+                    val result = splitter.splitBill(amount, people, tip)
+
+                    ToolResult.Success(
+                        message = result.summaryText,
+                        data = mapOf(
+                            "total" to result.grandTotal,
+                            "per_person" to result.perPersonRounded,
+                            "participant_count" to people.size
+                        )
+                    )
+                }
+
                 else -> ToolResult.Failed("Unknown action: $action")
             }
         } catch (e: Exception) {
