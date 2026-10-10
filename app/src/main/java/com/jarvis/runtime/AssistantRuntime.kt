@@ -57,6 +57,7 @@ class AssistantRuntime(
         get() = subsystems.asrEngine
         set(value) { subsystems.asrEngine = value }
     val ttsEngine get() = subsystems.ttsEngine
+    val offlinePhantomEngine = com.jarvis.voice.OfflinePhantomEngine(context)
 
     // Execution & Verification
     val policyEngine: PolicyEngine get() = subsystems.policyEngine
@@ -935,6 +936,26 @@ class AssistantRuntime(
                 stepResults = emptyList(),
                 verified = false
             )
+        } catch (e: Exception) {
+            Log.e(TAG, "AgentKernel failed, falling back to Offline Phantom Mode", e)
+            val fallbackResponse = offlinePhantomEngine.tryHandleOffline(utterance)
+            if (fallbackResponse != null) {
+                conversationManager.addMessage("assistant", fallbackResponse)
+                onEvent(AgentEvent.Completed(fallbackResponse))
+                return RuntimeExecutionResult(
+                    success = true,
+                    spokenResponse = fallbackResponse,
+                    stepResults = emptyList(),
+                    verified = false
+                )
+            } else {
+                return RuntimeExecutionResult(
+                    success = false,
+                    spokenResponse = "Network unavailable and offline fallback could not handle the request.",
+                    stepResults = emptyList(),
+                    verified = false
+                )
+            }
         } finally {
             activeTaskJob = null
             activeTaskId = null

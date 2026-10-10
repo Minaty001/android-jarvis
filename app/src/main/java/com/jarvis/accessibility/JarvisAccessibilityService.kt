@@ -31,9 +31,12 @@ data class UiNodeInfo(
 
 class JarvisAccessibilityService : AccessibilityService() {
 
+    private var visualSentryEngine: com.jarvis.vision.VisualSentryEngine? = null
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instanceRef.set(this)
+        visualSentryEngine = com.jarvis.vision.VisualSentryEngine(this)
         Log.i(TAG, "JarvisAccessibilityService connected and active")
     }
 
@@ -41,7 +44,10 @@ class JarvisAccessibilityService : AccessibilityService() {
         if (event == null) return
         val pkg = event.packageName?.toString()
         if (!pkg.isNullOrBlank()) {
-            _currentForegroundPackage = pkg
+            if (_currentForegroundPackage != pkg) {
+                _currentForegroundPackage = pkg
+                visualSentryEngine?.onAppForegrounded(pkg)
+            }
             val cls = event.className?.toString()
             if (!cls.isNullOrBlank()) {
                 _currentActivityName = cls
