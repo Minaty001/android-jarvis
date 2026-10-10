@@ -258,6 +258,18 @@ class AssistantRuntime(
     }
 
     var recallService: com.jarvis.memory.JarvisRecallService? = null
+    var swarmOrchestrator: com.jarvis.agent.SwarmOrchestrator? = null
+    var clipboardEngine: com.jarvis.clipboard.ClipboardContextEngine? = null
+    var clipboardOverlay: com.jarvis.ui.overlay.ClipboardOverlayController? = null
+    var diagnosticEngine: com.jarvis.device.SystemDiagnosticEngine? = null
+    var patternEngine: com.jarvis.routine.PatternLearningEngine? = null
+    var photographicMemoryEngine: com.jarvis.memory.PhotographicMemoryEngine? = null
+    var notificationBatchingEngine: com.jarvis.notification.NotificationBatchingEngine? = null
+    var ambientPolitenessEngine: com.jarvis.ambient.AmbientPolitenessEngine? = null
+    var babelFishInterpreter: com.jarvis.voice.BabelFishInterpreter? = null
+    var knowledgeGraphEngine: com.jarvis.memory.KnowledgeGraphEngine? = null
+    var vocalEmpathyEngine: com.jarvis.voice.VocalEmpathyEngine? = null
+    var privacyDefenderEngine: com.jarvis.security.PrivacyDefenderEngine? = null
 
     init {
         registerDefaultTools()
@@ -276,6 +288,7 @@ class AssistantRuntime(
         // Hook up accessibility window changes to trigger memory captures
         com.jarvis.accessibility.JarvisAccessibilityService.onWindowContentChanged = {
             recallService?.requestCapture()
+            photographicMemoryEngine?.requestCapture()
         }
     }
 
@@ -439,6 +452,88 @@ class AssistantRuntime(
             skillDiscoveryEngine = skillDiscoveryEngine,
             llmClient = currentLlmClient
         )
+
+        currentLlmClient?.let { llm ->
+            if (swarmOrchestrator == null) {
+                swarmOrchestrator = com.jarvis.agent.SwarmOrchestrator(llm) { taskId, result ->
+                    ensureActiveScope().launch {
+                        val announcement = "Subagent $taskId completed its task: $result"
+                        Log.i(TAG, announcement)
+                        ttsEngine.speak(announcement)
+                        augmentedMemoryPipeline.rememberFact(
+                            key = "Subagent $taskId",
+                            value = announcement,
+                            provenance = "SwarmOrchestrator"
+                        )
+                    }
+                }
+            }
+            
+            if (clipboardOverlay == null) {
+                clipboardOverlay = com.jarvis.ui.overlay.ClipboardOverlayController(context)
+            }
+            
+            if (clipboardEngine == null) {
+                clipboardEngine = com.jarvis.clipboard.ClipboardContextEngine(context, llm) { text, actions ->
+                    ensureActiveScope().launch(Dispatchers.Main) {
+                        clipboardOverlay?.showContextActions(text, actions) { action ->
+                            ensureActiveScope().launch {
+                                val msg = "User selected clipboard action '$action' on text: $text"
+                                Log.i(TAG, msg)
+                                executeCommand(msg, userApprovalGranted = true)
+                            }
+                        }
+                    }
+                }
+                clipboardEngine?.start()
+            }
+            
+            if (diagnosticEngine == null) {
+                diagnosticEngine = com.jarvis.device.SystemDiagnosticEngine(context)
+                diagnosticEngine?.start()
+            }
+            
+            if (patternEngine == null) {
+                patternEngine = com.jarvis.routine.PatternLearningEngine(llm)
+                patternEngine?.start()
+            }
+            
+            if (photographicMemoryEngine == null) {
+                photographicMemoryEngine = com.jarvis.memory.PhotographicMemoryEngine(ragIndexStore, llm)
+                photographicMemoryEngine?.start()
+            }
+            
+            if (notificationBatchingEngine == null) {
+                notificationBatchingEngine = com.jarvis.notification.NotificationBatchingEngine(llm)
+            }
+            
+            if (ambientPolitenessEngine == null) {
+                ambientPolitenessEngine = com.jarvis.ambient.AmbientPolitenessEngine(context)
+                ambientPolitenessEngine?.start()
+            }
+            
+            if (babelFishInterpreter == null && clipboardOverlay != null) {
+                babelFishInterpreter = com.jarvis.voice.BabelFishInterpreter(
+                    context, llm, asrEngine, clipboardOverlay!!
+                )
+            }
+            
+            if (knowledgeGraphEngine == null) {
+                knowledgeGraphEngine = com.jarvis.memory.KnowledgeGraphEngine(context, llm, memoryStore)
+            }
+            
+            if (vocalEmpathyEngine == null) {
+                vocalEmpathyEngine = com.jarvis.voice.VocalEmpathyEngine(context)
+            }
+            
+            if (privacyDefenderEngine == null) {
+                privacyDefenderEngine = com.jarvis.security.PrivacyDefenderEngine(context)
+            }
+            
+            if (toolExecutor.biometricAuthenticator == null) {
+                toolExecutor.biometricAuthenticator = com.jarvis.security.BiometricAuthenticator(context)
+            }
+        }
     }
 
     fun cancelCurrentTask() {
@@ -488,6 +583,32 @@ class AssistantRuntime(
         ) {
             com.jarvis.tools.AutonomousUiAgentTool(context, currentLlmClient)
         }
+
+        // Web Agent
+        toolRegistry.registerLazy(
+            name = "WEB_AGENT",
+            description = "Navigates the web invisibly to complete tasks like searching, booking, or extracting information"
+        ) {
+            com.jarvis.tools.WebAgentTool(context, currentLlmClient)
+        }
+
+        // Swarm Agent
+        toolRegistry.registerLazy(
+            name = "SPAWN_AGENT",
+            description = "Delegates a long-running or complex task to a specialized background subagent. Params: role, task"
+        ) {
+            com.jarvis.tools.SubagentSpawnTool(swarmOrchestrator!!)
+        }
+
+        // System Diagnostic Fix
+        toolRegistry.registerLazy(
+            name = "SYSTEM_FIX",
+            description = "Autonomously kills rogue background apps to free up memory. Params: action (must be 'clean_memory')"
+        ) {
+            com.jarvis.tools.SystemFixTool(context)
+        }
+
+
 
         // Communication (Lazy)
         toolRegistry.registerLazy(
@@ -678,6 +799,7 @@ class AssistantRuntime(
         clearRecentlySpoken()
         val currentWorldState = worldStateService.fresh()
         conversationManager.addMessage("user", utterance)
+        knowledgeGraphEngine?.processInteraction("user", utterance)
 
         // 1. Check local fast-path intent resolver first for sub-millisecond offline execution.
         //    Actions with real-world side effects (or whose outcome needs verification) are

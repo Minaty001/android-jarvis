@@ -591,13 +591,17 @@ class VoiceEngine(
         onFinalHandled: (String) -> Unit
     ) {
         asrEngine.startListening(
-            onSpeechStarted = onSpeechActivity,
+            onSpeechStarted = {
+                onSpeechActivity()
+                assistantRuntime.vocalEmpathyEngine?.onSpeechStart()
+            },
             onPartial = { partial ->
                 capturePartial(partial)
                 onSpeechActivity()
                 _status.value = _status.value.copy(partialTranscript = partial)
             },
             onFinal = { finalTranscript ->
+                assistantRuntime.vocalEmpathyEngine?.onSpeechEnd()
                 val transcript = finalTranscript.trim().ifBlank { getLastPartial().trim() }
                 if (transcript.isNotBlank()) onFinalHandled(transcript)
                 else onEmptyOrError(-1, "empty final")
@@ -608,6 +612,7 @@ class VoiceEngine(
                 if (conversationManager.currentStateValue == VoiceState.LISTENING) {
                     _status.value = _status.value.copy(audioLevelRms = rms)
                 }
+                assistantRuntime.vocalEmpathyEngine?.onRmsChanged(rms)
             }
         )
     }

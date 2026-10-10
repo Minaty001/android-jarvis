@@ -107,6 +107,18 @@ class ToolRegistry {
         "AUTOPILOT" to "AUTONOMOUS_UI_AGENT",
         "UI_AUTOPILOT" to "AUTONOMOUS_UI_AGENT",
         "AUTO_UI" to "AUTONOMOUS_UI_AGENT",
+        "WEB_AGENT" to "WEB_AGENT",
+        "WEB_BROWSE" to "WEB_AGENT",
+        "BROWSE_WEB" to "WEB_AGENT",
+        "BROWSER" to "WEB_AGENT",
+        "SPAWN_AGENT" to "SPAWN_AGENT",
+        "SUBAGENT" to "SPAWN_AGENT",
+        "BACKGROUND_AGENT" to "SPAWN_AGENT",
+        "DELEGATE_TASK" to "SPAWN_AGENT",
+        "SYSTEM_FIX" to "SYSTEM_FIX",
+        "CLEAN_MEMORY" to "SYSTEM_FIX",
+        "KILL_APPS" to "SYSTEM_FIX",
+        "OPTIMIZE_SYSTEM" to "SYSTEM_FIX",
         // Calculator & Math
         "CALCULATOR" to "CALCULATE",
         // Weather & Forecast
@@ -500,6 +512,7 @@ class ToolExecutor(
     private val verificationEngine: VerificationEngine? = null
 ) {
     private val TAG = "ToolExecutor"
+    var biometricAuthenticator: com.jarvis.security.BiometricAuthenticator? = null
 
     suspend fun execute(
         actionType: String,
@@ -553,6 +566,21 @@ class ToolExecutor(
             val approvalPrompt = "Action '$actionType' requires confirmation: ${policyResult.reason}"
             Log.i(TAG, approvalPrompt)
             return ToolResult.NeedsConfirmation(actionType, approvalPrompt)
+        }
+
+        // V4: Biometric Step-Up Authorization
+        if (effectiveMetadata.riskLevel == com.jarvis.foundation.RiskLevel.HIGH) {
+            biometricAuthenticator?.let { authenticator ->
+                val authPassed = authenticator.verify(
+                    title = "Jarvis Security",
+                    subtitle = "Action '$actionType' requires biometric verification"
+                )
+                if (!authPassed) {
+                    val msg = "Biometric authentication failed or cancelled for '$actionType'"
+                    Log.w(TAG, msg)
+                    return ToolResult.Failed(msg)
+                }
+            }
         }
 
         // Gateway schema validation: required params must be present before any execution.

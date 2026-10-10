@@ -220,6 +220,7 @@
         </service>
 
         <!-- System Assist Activity handling ACTION_ASSIST and ACTION_VOICE_ASSIST -->
+
         <activity
             android:name=".assistant.JarvisAssistActivity"
             android:theme="@android:style/Theme.NoDisplay"
@@ -236,6 +237,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".security.BiometricPromptActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="false" />
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"

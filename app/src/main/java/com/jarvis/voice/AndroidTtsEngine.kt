@@ -168,8 +168,11 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         ensureInitialized()
         applyAudioAttributes()
         
+        val empathyEngine = com.jarvis.service.JarvisForegroundService.instance?.voiceEngine?.assistantRuntime?.vocalEmpathyEngine
+        val adaptedText = empathyEngine?.adaptTtsPrompt(text) ?: text
+        
         // Dynamically switch Locale based on script
-        val hasDevanagari = text.any { it.code in 0x0900..0x097F }
+        val hasDevanagari = adaptedText.any { it.code in 0x0900..0x097F }
         if (hasDevanagari) {
             tts?.language = Locale("hi", "IN")
         } else {
@@ -178,12 +181,15 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         
         val utteranceId = UUID.randomUUID().toString()
         audioFocus.requestDuckFocus()
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
+        tts?.speak(adaptedText, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
         onAudio(ShortArray(0))
     }
 
     override suspend fun speak(text: String): Boolean {
         if (text.isBlank()) return false
+        
+        val empathyEngine = com.jarvis.service.JarvisForegroundService.instance?.voiceEngine?.assistantRuntime?.vocalEmpathyEngine
+        val adaptedText = empathyEngine?.adaptTtsPrompt(text) ?: text
 
         if (!isReady || tts == null) {
             ensureInitialized()
@@ -201,7 +207,7 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         applyAudioAttributes()
         
         // Dynamically switch Locale based on script
-        val hasDevanagari = text.any { it.code in 0x0900..0x097F }
+        val hasDevanagari = adaptedText.any { it.code in 0x0900..0x097F }
         if (hasDevanagari) {
             tts?.language = Locale("hi", "IN")
         } else {
@@ -213,7 +219,7 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         pendingUtterances[utteranceId] = deferred
         audioFocus.requestDuckFocus()
 
-        var res = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
+        var res = tts?.speak(adaptedText, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
 
         // Self-healing recovery if engine binding died
         if (res != TextToSpeech.SUCCESS) {
@@ -227,7 +233,7 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
             }
             if (isReady) {
                 applyAudioAttributes()
-                res = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
+                res = tts?.speak(adaptedText, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
             }
         }
 

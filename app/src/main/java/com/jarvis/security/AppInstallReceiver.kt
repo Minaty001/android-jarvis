@@ -26,35 +26,22 @@ class AppInstallReceiver : BroadcastReceiver() {
     }
 
     private fun analyzeNewApp(context: Context, packageName: String, isUpdating: Boolean) {
-        try {
-            val pm = context.packageManager
-            val pkgInfo = pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
-            val appInfo = pkgInfo.applicationInfo ?: return
-            val appName = pm.getApplicationLabel(appInfo).toString()
-            
-            val perms = pkgInfo.requestedPermissions ?: emptyArray()
-            val hasOverlay = perms.contains("android.permission.SYSTEM_ALERT_WINDOW")
-            val hasSms = perms.contains("android.permission.READ_SMS")
-            val hasCamera = perms.contains("android.permission.CAMERA")
-            val hasMic = perms.contains("android.permission.RECORD_AUDIO")
-            
-            if (hasOverlay) {
-                JarvisEventBus.shared.post(
+        val engine = com.jarvis.service.JarvisForegroundService.instance?.voiceEngine?.assistantRuntime?.privacyDefenderEngine
+        if (engine != null) {
+            engine.onAppInstalledOrUpdated(packageName)
+        } else {
+            // Fallback if Jarvis is not running
+            try {
+                val pm = context.packageManager
+                val appInfo = pm.getApplicationInfo(packageName, 0)
+                val appName = pm.getApplicationLabel(appInfo).toString()
+                com.jarvis.runtime.JarvisEventBus.shared.post(
                     JarvisEvent.SystemAlert(
-                        level = "HIGH", 
-                        message = "Warning. The app $appName requests permission to draw over other apps. This is a common tactic used by screen hijacking malware."
+                        level = "INFO", 
+                        message = "App installed: \$appName"
                     )
                 )
-            } else if (hasCamera && hasMic && hasSms) {
-                JarvisEventBus.shared.post(
-                    JarvisEvent.SystemAlert(
-                        level = "MEDIUM", 
-                        message = "Notice. The app $appName requests access to your camera, microphone, and messages. Please ensure you trust this application."
-                    )
-                )
-            }
-        } catch (e: Exception) {
-            // App might have been uninstalled immediately or not found
+            } catch (e: Exception) {}
         }
     }
 }

@@ -34,7 +34,8 @@ data class MemoryItem(
     val expiresAt: Long? = null,
     val namespace: String = "default",
     val supersedesId: String? = null,
-    val isConfirmed: Boolean = false
+    val isConfirmed: Boolean = false,
+    val vector: FloatArray? = null
 )
 
 data class ConversationRecord(

@@ -44,7 +44,8 @@ class MemoryDatabaseHelper(context: Context) :
                 expires_at INTEGER,
                 namespace TEXT NOT NULL DEFAULT 'default',
                 supersedes_id TEXT,
-                confirmed INTEGER NOT NULL DEFAULT 0
+                confirmed INTEGER NOT NULL DEFAULT 0,
+                vector BLOB
             )
             """.trimIndent()
         )
@@ -89,6 +90,7 @@ class MemoryDatabaseHelper(context: Context) :
         addColumnIfMissing(db, "memory_items", "namespace", "TEXT NOT NULL DEFAULT 'default'")
         addColumnIfMissing(db, "memory_items", "supersedes_id", "TEXT")
         addColumnIfMissing(db, "memory_items", "confirmed", "INTEGER NOT NULL DEFAULT 0")
+        addColumnIfMissing(db, "memory_items", "vector", "BLOB")
         rebuildFts(db)
     }
 
@@ -139,12 +141,13 @@ class MemoryDatabaseHelper(context: Context) :
 
     companion object {
         const val DATABASE_NAME = "jarvis_memory.db"
-        const val DATABASE_VERSION = 4
+        const val DATABASE_VERSION = 5
     }
 }
 
 class MemoryStore(context: android.content.Context) {
     private val dbHelper = MemoryDatabaseHelper(com.jarvis.storage.JarvisStorageHub.createDatabaseContext(context.applicationContext))
+    private val vectorizer = com.jarvis.ai.EmbeddingVectorizer()
 
     fun saveMemory(
         type: MemoryType,
@@ -177,6 +180,8 @@ class MemoryStore(context: android.content.Context) {
             putNull("last_accessed_at")
             if (ttlMs != null && ttlMs > 0) put("expires_at", now + ttlMs) else putNull("expires_at")
             put("namespace", namespace.ifBlank { "default" })
+            val vec = vectorizer.embed("$cleanKey $cleanContent $provenance")
+            put("vector", com.jarvis.ai.VectorUtils.toByteArray(vec))
         }
 
         db.beginTransaction()
@@ -267,6 +272,8 @@ class MemoryStore(context: android.content.Context) {
             put("namespace", item.namespace)
             put("supersedes_id", item.supersedesId)
             put("confirmed", if (item.isConfirmed) 1 else 0)
+            val vec = item.vector ?: vectorizer.embed("${item.key} ${item.content} ${item.provenance}")
+            put("vector", com.jarvis.ai.VectorUtils.toByteArray(vec))
         }
 
         db.beginTransaction()
@@ -425,6 +432,7 @@ class MemoryStore(context: android.content.Context) {
 
         val now = System.currentTimeMillis()
         val queryTokens = tokenize(cleanQuery).toSet()
+        val queryVector = vectorizer.embed(cleanQuery)
 
         return candidates.values
             .map { item ->
@@ -432,14 +440,24 @@ class MemoryStore(context: android.content.Context) {
                 val overlap = if (queryTokens.isEmpty()) 0.0 else {
                     queryTokens.count { q -> textTokens.contains(q) }.toDouble() / queryTokens.size
                 }
+                
+                val semanticSim = if (item.vector != null) {
+                    vectorizer.cosine(queryVector, item.vector)
+                } else {
+                    0.0
+                }
+                
                 val ageHours = ((now - item.createdAt).coerceAtLeast(0L) / 3_600_000.0)
                 val recency = exp(-ageHours / (24.0 * 30.0))
                 val usage = ln(1.0 + item.accessCount.toDouble()).coerceIn(0.0, 2.0) / 2.0
+                
+                // Combine lexical, semantic, importance, recency, and usage
                 val combined = (
-                    overlap * 0.52 +
-                    item.importance * 0.23 +
-                    recency * 0.15 +
-                    usage * 0.10
+                    overlap * 0.35 +
+                    semanticSim * 0.35 +
+                    item.importance * 0.15 +
+                    recency * 0.10 +
+                    usage * 0.05
                 ).coerceIn(0.0, 1.0)
                 item.copy(score = combined)
             }
@@ -584,7 +602,8 @@ class MemoryStore(context: android.content.Context) {
                         expiresAt = getOptionalNullableLong(it, "expires_at"),
                         namespace = getOptionalString(it, "namespace", "default"),
                         supersedesId = getOptionalNullableString(it, "supersedes_id"),
-                        isConfirmed = getOptionalInt(it, "confirmed", 0) == 1
+                        isConfirmed = getOptionalInt(it, "confirmed", 0) == 1,
+                        vector = getOptionalBlob(it, "vector")?.let { b -> com.jarvis.ai.VectorUtils.toFloatArray(b) }
                     )
                 )
             }
@@ -615,4 +634,10 @@ class MemoryStore(context: android.content.Context) {
 
     private fun getOptionalString(c: android.database.Cursor, name: String, default: String): String =
         c.getColumnIndex(name).takeIf { it >= 0 }?.let(c::getString) ?: default
+
+    private fun getOptionalBlob(c: android.database.Cursor, name: String): ByteArray? {
+        val index = c.getColumnIndex(name)
+        if (index < 0 || c.isNull(index)) return null
+        return c.getBlob(index)
+    }
 }
