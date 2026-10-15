@@ -4,12 +4,13 @@ import android.util.Log
 import com.jarvis.ai.Message
 import com.jarvis.voice.VoiceState
 import com.jarvis.wakeword.RaphaelPhoneticMatcher
+import com.jarvis.util.MockContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore) {
+class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore = com.jarvis.memory.MemoryStore(com.jarvis.util.MockContext(), useInMemory = true)) {
     private val TAG = "ConversationManager"
     private val _stateFlow = MutableStateFlow(VoiceState.IDLE)
     val stateFlow: StateFlow<VoiceState> = _stateFlow.asStateFlow()

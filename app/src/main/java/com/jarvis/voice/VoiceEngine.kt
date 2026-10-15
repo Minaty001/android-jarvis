@@ -12,6 +12,7 @@ import com.jarvis.memory.MemoryStore
 import com.jarvis.tools.*
 import com.jarvis.ui.data.UiPreferencesStore
 import com.jarvis.wakeword.RaphaelPhoneticMatcher
+import com.jarvis.voice.MediaControlHandler
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.*
 
@@ -72,12 +73,16 @@ class VoiceEngine(
     val wakeEngine = assistantRuntime.wakeEngine
     @Volatile var asrEngine: AndroidSpeechRecognizerEngine = assistantRuntime.asrEngine
     val ttsEngine = assistantRuntime.ttsEngine
+    // Initialize MediaControlHandler for voice‑triggered media commands
+    private val mediaControlHandler = MediaControlHandler(context)
+
     val voiceRouter = com.jarvis.voice.router.VoiceRouter(
         rollingBuffer = continuousAudioStream.rollingBuffer,
         wakeEngine = wakeEngine,
         vadEngine = vadEngine,
         asrEngine = asrEngine,
-        continuousAudioStream = continuousAudioStream
+        continuousAudioStream = continuousAudioStream,
+        mediaHandler = mediaControlHandler
     )
     private val currentState = java.util.concurrent.atomic.AtomicReference(PipelineState.STANDBY)
     private var idleJob: Job? = null

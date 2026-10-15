@@ -8,6 +8,8 @@ import com.jarvis.foundation.SensitiveTerms
 import java.util.Locale
 import kotlin.math.exp
 import kotlin.math.ln
+import android.database.Cursor
+import com.jarvis.storage.JarvisStorageHub
 
 
 /**
@@ -18,7 +20,7 @@ import kotlin.math.ln
  * generation, but NOT vector-semantic retrieval. A semantic embedding provider
  * can be added later without changing the database contract.
  */
-class MemoryDatabaseHelper(context: Context) :
+open class MemoryDatabaseHelper(context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -145,8 +147,20 @@ class MemoryDatabaseHelper(context: Context) :
     }
 }
 
-class MemoryStore(context: android.content.Context) {
-    private val dbHelper = MemoryDatabaseHelper(com.jarvis.storage.JarvisStorageHub.createDatabaseContext(context.applicationContext))
+class MemoryStore(context: android.content.Context, useInMemory: Boolean = false) {
+    private val dbHelper: MemoryDatabaseHelper = if (useInMemory) {
+        object : MemoryDatabaseHelper(context) {
+            override fun onCreate(db: SQLiteDatabase) {
+                super.onCreate(db)
+            }
+            override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                // No upgrade needed for in‑memory DB
+            }
+        }
+    } else {
+        MemoryDatabaseHelper(JarvisStorageHub.createDatabaseContext(context.applicationContext))
+    }
+
     private val vectorizer = com.jarvis.ai.EmbeddingVectorizer()
 
     fun saveMemory(

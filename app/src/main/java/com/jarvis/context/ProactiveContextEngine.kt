@@ -5,8 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
-import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import com.jarvis.calendar.CalendarEvent
+import android.util.Log
 import com.jarvis.calendar.CalendarManager
 import com.jarvis.device.BatteryMonitor
 import com.jarvis.device.BatteryState
@@ -37,7 +40,20 @@ class ProactiveContextEngine(
     val calendarManager: CalendarManager = CalendarManager(context)
 ) {
     private val TAG = "ProactiveContextEngine"
+    private var lastConnectedDeviceName: String? = null
+    private var lastAnnouncementTime: Long = 0L
+    private val ANNOUNCEMENT_DEBOUNCE_MS = 60_000L // 1 minute debounce
+    private var debounceIntervalMs: Long = ANNOUNCEMENT_DEBOUNCE_MS
+    private var autoMediaControlEnabled: Boolean = true
+    
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    private fun loadSettings() {
+        val ctx = context ?: return
+        val loaded = com.jarvis.ui.data.UiPreferencesStore(ctx).loadSettings()
+        debounceIntervalMs = loaded.debounceIntervalMs
+        autoMediaControlEnabled = loaded.autoMediaControlEnabled
+    }
     private var tickerJob: Job? = null
     private val isRunning = AtomicBoolean(false)
 
@@ -102,26 +118,35 @@ class ProactiveContextEngine(
                                        lowerName.contains("airpod") || lowerName.contains("ear")
                     
                     if (isCar || isHeadphones) {
-                        Log.i(TAG, "Media-capable Bluetooth device detected ($deviceName). Proactively starting media playback.")
-                        
-                        val announcement = if (isCar) {
-                            "Connected to $deviceName. Resuming playback."
+                        val currentTime = System.currentTimeMillis()
+                        // Debounce announcements: only announce if device changed or enough time passed
+                        if (deviceName != lastConnectedDeviceName || currentTime - lastAnnouncementTime > ANNOUNCEMENT_DEBOUNCE_MS) {
+                            lastConnectedDeviceName = deviceName
+                            lastAnnouncementTime = currentTime
+
+                            Log.i(TAG, "Media-capable Bluetooth device detected ($deviceName). Proactively starting media playback.")
+
+                            val announcement = if (isCar) {
+                                "Connected to $deviceName. Resuming playback."
+                            } else {
+                                "Headphones connected. Resuming playback."
+                            }
+
+                            // Wait a brief moment to ensure the A2DP audio route is fully established before speaking
+                            kotlinx.coroutines.delay(1500L)
+
+                            // Speak the greeting
+                            voiceEngine?.speakProactiveAnnouncement(announcement)
+
+                            // Wait for the TTS to mostly finish before hitting play
+                            kotlinx.coroutines.delay(2000L)
+
+                            // Trigger Playback
+                            context?.let { ctx ->
+                                com.jarvis.tools.MediaPlaybackControlTool(ctx).execute(mapOf("action" to "play"))
+                            }
                         } else {
-                            "Headphones connected. Resuming playback."
-                        }
-                        
-                        // Wait a brief moment to ensure the A2DP audio route is fully established before speaking
-                        kotlinx.coroutines.delay(1500L) 
-                        
-                        // Speak the greeting
-                        voiceEngine?.speakProactiveAnnouncement(announcement)
-                        
-                        // Wait for the TTS to mostly finish before hitting play
-                        kotlinx.coroutines.delay(2000L)
-                        
-                        // Trigger Playback
-                        context?.let { ctx ->
-                            com.jarvis.tools.MediaPlaybackControlTool(ctx).execute(mapOf("action" to "play"))
+                            Log.i(TAG, "Bluetooth device ($deviceName) announcement suppressed due to debounce.")
                         }
                     }
                 }

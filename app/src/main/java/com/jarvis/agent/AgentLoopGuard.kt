@@ -1,4 +1,5 @@
 package com.jarvis.agent
+import android.util.Log
 
 /**
  * Autonomous Tool Execution & Safety Loop Guard Engine for Raphael.

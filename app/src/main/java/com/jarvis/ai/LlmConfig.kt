@@ -30,4 +30,6 @@ object LlmConfig {
         "qwen/qwen3.6-27b",           // Groq multimodal (current)
         "gemini-2.5-flash"             // Gemini multimodal (current)
     )
+    // Default vision model used by tests and runtime.
+    const val DEFAULT_VISION_MODEL = "qwen/qwen3.6-27b"
 }

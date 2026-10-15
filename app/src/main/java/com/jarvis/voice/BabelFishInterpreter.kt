@@ -13,7 +13,8 @@ class BabelFishInterpreter(
     private val context: Context,
     private val llmClient: LlmClient,
     private val asrEngine: AndroidSpeechRecognizerEngine,
-    private val overlayController: ClipboardOverlayController
+    private val overlayController: ClipboardOverlayController,
+    private val mediaHandler: MediaControlHandler
 ) {
     private val TAG = "BabelFishInterpreter"
     private val scope = CoroutineScope(Dispatchers.Main + Job())
@@ -41,7 +42,11 @@ class BabelFishInterpreter(
                 },
                 onFinal = { text ->
                     if (text.isNotBlank()) {
-                        translateAndDisplay(text)
+                        // First, attempt to handle as a media control command.
+                        // If handled, skip translation; otherwise translate as usual.
+                        if (!mediaHandler.handleCommand(text)) {
+                            translateAndDisplay(text)
+                        }
                     }
                     if (isListening) {
                         startInterpreter()

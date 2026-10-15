@@ -13,6 +13,7 @@ import com.jarvis.interaction.OsSystemInspectionTool
 import com.jarvis.memory.AugmentedMemoryPipeline
 import com.jarvis.memory.MemoryStore
 import com.jarvis.tools.*
+import com.jarvis.autopilot.SmartAutopilotCoordinator
 import com.jarvis.ui.data.UiPreferencesStore
 import com.jarvis.voice.*
 import kotlinx.coroutines.*
@@ -524,7 +525,7 @@ class AssistantRuntime(
             
             if (babelFishInterpreter == null && clipboardOverlay != null) {
                 babelFishInterpreter = com.jarvis.voice.BabelFishInterpreter(
-                    context, llm, asrEngine, clipboardOverlay!!
+                    context, llm, asrEngine, clipboardOverlay!!, mediaControlHandler
                 )
             }
             
@@ -716,8 +717,13 @@ class AssistantRuntime(
         toolRegistry.registerLazy("MACRO_WORKFLOW", "Runs recorded autonomous UI macro workflows") {
             com.jarvis.tools.MacroWorkflowTool(macroWorkflowEngine)
         }
-        toolRegistry.registerLazy("APP_AUTOPILOT", "Autonomously interacts with on-screen UI across third-party apps") {
-            com.jarvis.tools.AppAutopilotTool(context)
+        // Instantiate SmartAutopilotCoordinator for higher‑level autopilot flows
+        val autopilotCoordinator = com.jarvis.autopilot.SmartAutopilotCoordinator(context)
+        toolRegistry.registerLazy(
+            name = "APP_AUTOPILOT",
+            description = "Autonomously interacts with on-screen UI across third-party apps"
+        ) {
+            com.jarvis.tools.AppAutopilotTool(context, autopilotCoordinator)
         }
         toolRegistry.registerLazy("TELEPHONY_CONTROL", "Places calls, reads SMS, answers/declines calls") {
             com.jarvis.tools.TelephonyTool(context, contactResolver, callAndSmsAgent)

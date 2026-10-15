@@ -15,6 +15,7 @@ import com.jarvis.notification.NotificationStore
 import com.jarvis.telecom.ContactResolver
 import com.jarvis.tools.ToolResult
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +51,53 @@ class UniversalMessagingEngine(
     private val contactResolver: ContactResolver = ContactResolver(context?.applicationContext ?: context)
 ) {
     private val context: Context? = context?.applicationContext ?: context
+
+    // Auto-reply configuration
+    var autoReplyMode: AutoReplyMode = AutoReplyMode.OFF
+    var customAutoReplyTemplate: String? = null
+
+    /**
+     * Set the auto-reply mode and optional custom template.
+     */
+    fun setAutoReplyMode(mode: AutoReplyMode, customTemplate: String? = null) {
+        autoReplyMode = mode
+        customAutoReplyTemplate = customTemplate
+        Log.i(TAG, "Auto-reply mode set to $mode with custom template: ${customTemplate != null}")
+    }
+
+    /**
+     * Returns true if an auto-reply mode other than OFF is active.
+     */
+    fun isAutoReplyActive(): Boolean = autoReplyMode != AutoReplyMode.OFF
+
+    /**
+     * Reads recent WhatsApp notifications and returns a ToolResult.
+     */
+    fun readRecentWhatsApp(limit: Int = 10): ToolResult {
+        val notifs = com.jarvis.notification.NotificationStore.getRecentNotifications(limit, appFilter = PKG_WHATSAPP)
+        return if (notifs.isEmpty()) {
+            ToolResult(true, "You have no unread WhatsApp messages.")
+        } else {
+            val summary = buildString {
+                append("You have ${notifs.size} recent WhatsApp message${if (notifs.size > 1) "s" else ""}. ")
+                val grouped = notifs.groupBy { it.title }
+                grouped.entries.take(3).forEach { (sender, msgs) ->
+                    val latest = msgs.first().text
+                    append("$sender: \"$latest\"; ")
+                }
+            }.trim()
+            ToolResult(true, summary)
+        }
+    }
+
+    /**
+     * Reads recent WhatsApp notifications with an optional sender filter.
+     */
+    fun readRecentWhatsApp(limit: Int = 10, senderFilter: String? = null): ToolResult {
+        // Reuse existing readRecentMessages which already supports sender filtering.
+        val result = readRecentMessages(limit = limit, senderFilter = senderFilter, platformFilter = null)
+        return result
+    }
 
     companion object {
         private const val TAG = "UniversalMessagingEngine"
@@ -103,8 +151,13 @@ class UniversalMessagingEngine(
     private val lastAutoRepliedMap = ConcurrentHashMap<String, Long>()
     private val autoReplyHistory = mutableListOf<AutoReplyRecord>()
 
+    // Overload for registering a reply action using only an ID and reply text.
+    // The reply text is not used for direct notification replies, so we delegate to the existing method
+    // with a blank sender and null action, which effectively registers a placeholder.
+    fun registerReplyAction(id: String, replyText: String) {
+        registerReplyAction(id, sender = "", action = null)
+    }
     fun registerReplyAction(id: String, sender: String, action: Notification.Action?) {
-        if (sender.isBlank()) return
         val normalized = sender.trim().lowercase(Locale.ROOT)
         val entry = DirectReplyAction(id, sender.trim(), action)
         replyActions[normalized] = entry
@@ -130,41 +183,53 @@ class UniversalMessagingEngine(
      * Tier 1: Instant background reply via Android RemoteInput API.
      * Completes without launching WhatsApp or disturbing the active UI.
      */
-    fun sendDirectNotificationReply(recipient: String, replyText: String): Boolean {
-        if (replyText.isBlank() || context == null) return false
-        val normalized = recipient.trim().lowercase(Locale.ROOT)
+/**
+ * Sends a direct notification reply using RemoteInput.
+ * Returns true if the reply was successfully dispatched.
+ */
+fun sendDirectNotificationReply(recipient: String, replyText: String): Boolean {
+    if (replyText.isBlank() || context == null) return false
+    val normalized = recipient.trim().lowercase(Locale.ROOT)
 
-        // Find candidate action by exact match or substring
-        val candidate = replyActions[normalized]
-            ?: replyActions.values.firstOrNull {
-                it.sender.lowercase(Locale.ROOT).contains(normalized) ||
-                        normalized.contains(it.sender.lowercase(Locale.ROOT))
-            } ?: return false
+    // Find candidate action by exact match or substring
+    val candidate = replyActions[normalized]
+        ?: replyActions.values.firstOrNull {
+            it.sender.lowercase(Locale.ROOT).contains(normalized) ||
+            normalized.contains(it.sender.lowercase(Locale.ROOT))
+        } ?: return false
 
-        val action = candidate.action ?: return false
+    val action = candidate.action ?: return false
 
-        return runCatching {
-            val remoteInputs = action.remoteInputs
-            if (remoteInputs.isNullOrEmpty()) {
-                Log.w(TAG, "No RemoteInputs found on action for ${candidate.sender}")
-                return false
-            }
-
-            val fillInIntent = Intent()
-            val bundle = Bundle()
-            for (input in remoteInputs) {
-                bundle.putCharSequence(input.resultKey, replyText)
-            }
-            RemoteInput.addResultsToIntent(remoteInputs, fillInIntent, bundle)
-
-            action.actionIntent.send(context, 0, fillInIntent)
-            Log.i(TAG, "Successfully dispatched background RemoteInput reply to ${candidate.sender}: $replyText")
-            true
-        }.getOrElse { e ->
-            Log.w(TAG, "Failed sending RemoteInput reply to ${candidate.sender}: ${e.message}")
-            false
+    return runCatching {
+        val remoteInputs = action.remoteInputs
+        if (remoteInputs.isNullOrEmpty()) {
+            Log.w(TAG, "No RemoteInputs found on action for ${candidate.sender}")
+            return false
         }
+
+        val fillInIntent = Intent()
+        val bundle = Bundle()
+        for (input in remoteInputs) {
+            bundle.putCharSequence(input.resultKey, replyText)
+        }
+        RemoteInput.addResultsToIntent(remoteInputs, fillInIntent, bundle)
+
+        action.actionIntent.send(context, 0, fillInIntent)
+        Log.i(TAG, "Successfully dispatched background RemoteInput reply to ${candidate.sender}: $replyText")
+        true
+    }.getOrElse { e ->
+        Log.w(TAG, "Failed sending RemoteInput reply to ${candidate.sender}: ${e.message}")
+        false
     }
+}
+
+/**
+ * Synchronous wrapper for sendDirectNotificationReply.
+ * Useful for callers that require a blocking call.
+ */
+fun sendDirectNotificationReplySync(recipient: String, replyText: String): Boolean {
+    return runBlocking { sendDirectNotificationReply(recipient, replyText) }
+}
 
     /**
      * Direct WhatsApp Messaging Engine via api.whatsapp.com / whatsapp:// URI scheme.
@@ -481,7 +546,7 @@ class UniversalMessagingEngine(
         senderFilter: String? = null,
         platformFilter: String? = null
     ): ToolResult {
-        val targetPkg = resolveTargetPackage(platformFilter)
+        val targetPkg = if (platformFilter.isNullOrBlank()) null else resolveTargetPackage(platformFilter)
         val allNotifs = NotificationStore.getRecentNotifications(limit = 25, appFilter = targetPkg)
         if (allNotifs.isEmpty()) {
             return ToolResult(true, "You have no unread messages right now.")
@@ -515,7 +580,7 @@ class UniversalMessagingEngine(
             val msgType = classifyMessageType(latestMsg)
             val displayMsg = if (msgType != "text") "[$msgType]" else "\"$latestMsg\""
             val countText = if (messages.size > 1) " (${messages.size} messages)" else ""
-            val srcLabel = if (messages.first().packageName == PKG_WHATSAPP_BIZ) " [Business]" else ""
+            val srcLabel = if (messages.first().platform == com.jarvis.notification.WhatsAppPlatform.BUSINESS) " [Business]" else ""
             senderSummaries.add("$sender$srcLabel$countText: $displayMsg")
         }
 

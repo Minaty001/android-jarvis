@@ -33,8 +33,11 @@ data class AppSettings(
     val offlineAsrPreferred: Boolean = true,
     val batteryAnnouncementsEnabled: Boolean = true,
     val proactiveCalendarAlertsEnabled: Boolean = true,
-    val proactivePreBriefingMinutes: Int = 15,
     val proactiveBatteryAlertsEnabled: Boolean = true,
+    val proactivePreBriefingMinutes: Int = 15,
+    val autoMediaControlEnabled: Boolean = true,
+    val speedControlEnabled: Boolean = true,
+    val debounceIntervalMs: Long = 60_000L, // default 1 minute debounce
     val wakeSensitivity: String = "BALANCED",
     val wakeDetectionTimeoutSeconds: Int = 8,
     val mediaDuckingEnabled: Boolean = true,
@@ -56,7 +59,9 @@ data class AppSettings(
     val callScreeningEnabled: Boolean = true,
     val clipboardIntelligenceEnabled: Boolean = true,
     val deviceUnlockPin: String = "",
-    val autoLearnEnabled: Boolean = true
+    val autoLearnEnabled: Boolean = true,
+    val autopilotEnabled: Boolean = false,
+    val autopilotTimeoutMs: Long = 30_000L
 )
 
 fun String.safeDisplay(): String = replace(Regex("[\\r\\n\\t]"), " ").trim()

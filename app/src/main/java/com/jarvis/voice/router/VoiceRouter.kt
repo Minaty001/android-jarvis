@@ -5,6 +5,7 @@ import com.jarvis.voice.AndroidSpeechRecognizerEngine
 import com.jarvis.voice.VadEngine
 import com.jarvis.voice.VadEvent
 import com.jarvis.voice.WakeWordEngine
+import com.jarvis.voice.MediaControlHandler
 import com.jarvis.voice.audio.AudioFrameConsumer
 import com.jarvis.voice.audio.RollingPcmBuffer
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +35,8 @@ class VoiceRouter(
     val vadEngine: VadEngine,
     var asrEngine: AndroidSpeechRecognizerEngine,
     val bargeInDetector: com.jarvis.voice.BargeInDetector = com.jarvis.voice.BargeInDetector(),
-    var continuousAudioStream: com.jarvis.voice.audio.ContinuousAudioStream? = null
+    var continuousAudioStream: com.jarvis.voice.audio.ContinuousAudioStream? = null,
+    private val mediaHandler: MediaControlHandler
 ) : AudioFrameConsumer {
 
     private val currentTarget = AtomicReference(AudioRoutingTarget.WAKE_WORD_PASSIVE)
