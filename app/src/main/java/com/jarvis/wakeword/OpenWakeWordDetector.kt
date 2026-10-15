@@ -20,8 +20,12 @@ class OpenWakeWordDetector(
 ) : WakeWordDetector {
     private data class Head(val phrase: String, val asset: String, val threshold: Float, val interpreter: Interpreter)
 
-    private val rawPcm = ArrayDeque<Short>(RAW_HISTORY_SAMPLES)
-    private val audioChunk = ArrayList<Short>(FRAME_SAMPLES)
+    private val rawPcm = ShortArray(RAW_HISTORY_SAMPLES)
+    private var rawPcmIndex = 0
+    private var rawPcmFilled = false
+
+    private val audioChunk = ShortArray(FRAME_SAMPLES)
+    private var audioChunkIndex = 0
     private val melFrames = ArrayDeque<FloatArray>(MEL_HISTORY_FRAMES)
     private val embeddingFrames = ArrayDeque<FloatArray>(FEATURE_HISTORY_FRAMES)
     private var melInterpreter: Interpreter? = null
@@ -33,6 +37,7 @@ class OpenWakeWordDetector(
     private var latestScore = 0f
     private var detectedPhrase: String? = null
     private var realEmbeddingCount = 0
+    private var latestEnergyGatePassed: Boolean? = null
     private val confirmation = KwsTemporalConfirmation(config.confirmationWindowCount, config.requiredPositiveWindows)
     private var melInputBuffer: FloatBuffer? = null
     private var melOutputBuffer: ByteBuffer? = null
@@ -88,7 +93,7 @@ class OpenWakeWordDetector(
             embeddingOutputBuffer = byteBuffer(embeddingInterpreter!!.getOutputTensor(0).numBytes())
             headInputBuffer = floatBufferElements(FEATURE_WINDOW * EMBEDDING_SIZE)
             headOutputBuffer = byteBuffer(loadedHeads.first().interpreter.getOutputTensor(0).numBytes())
-            repeat(MEL_WINDOW) { melFrames.addLast(FloatArray(MEL_BINS) { 1f }) }
+            repeat(MEL_WINDOW) { melFrames.addLast(FloatArray(MEL_BINS)) }
             repeat(FEATURE_HISTORY_FRAMES) { embeddingFrames.addLast(FloatArray(EMBEDDING_SIZE)) }
             heads = loadedHeads
             available = true
@@ -148,6 +153,7 @@ class OpenWakeWordDetector(
     override fun getInputShape(): String? = "[1,16,96] FLOAT32 (per classifier)"
     override fun getOutputShape(): String? = "[1,1] FLOAT32 (per classifier)"
     override fun getLatestRawScore(): Float? = latestScore
+    override fun getLatestEnergyGatePassed(): Boolean? = latestEnergyGatePassed
     override fun getModelMetadata(): WakeWordModelMetadata? = null
     override fun getDetectedPhrase(): String? = detectedPhrase
     @Synchronized override fun getSupportedPhrases(): List<String> {
@@ -172,16 +178,29 @@ class OpenWakeWordDetector(
         if (!available || samples.isEmpty()) return 0f
         var processedFrame = false
         for (sample in samples) {
-            if (rawPcm.size == RAW_HISTORY_SAMPLES) rawPcm.removeFirst()
-            rawPcm.addLast(sample)
-            audioChunk.add(sample)
-            if (audioChunk.size == FRAME_SAMPLES) {
+            rawPcm[rawPcmIndex] = sample
+            rawPcmIndex++
+            if (rawPcmIndex == RAW_HISTORY_SAMPLES) {
+                rawPcmIndex = 0
+                rawPcmFilled = true
+            }
+
+            audioChunk[audioChunkIndex++] = sample
+            if (audioChunkIndex == FRAME_SAMPLES) {
+                val rms = calculateRms(audioChunk)
+                val energyPassed = rms >= config.minEnergyRms
+                latestEnergyGatePassed = energyPassed
                 processChunk()
-                audioChunk.clear()
+                audioChunkIndex = 0
                 processedFrame = true
+                if (!energyPassed) {
+                    confirmation.reset()
+                    latestScore = 0f
+                    detectedPhrase = null
+                }
             }
         }
-        if (!processedFrame) return 0f
+        if (!processedFrame || latestEnergyGatePassed == false) return 0f
         if (realEmbeddingCount < FEATURE_WINDOW) return 0f
         val featureInput = flattenLastFeatures() ?: return 0f
         var bestRatio = 0f
@@ -208,8 +227,18 @@ class OpenWakeWordDetector(
         val embedding = embeddingInterpreter ?: return
         val input = melInputBuffer ?: return
         input.clear()
-        val skip = (rawPcm.size - RAW_HISTORY_SAMPLES).coerceAtLeast(0)
-        rawPcm.forEachIndexed { index, sample -> if (index >= skip) input.put(sample.toFloat()) }
+        if (rawPcmFilled) {
+            for (i in rawPcmIndex until RAW_HISTORY_SAMPLES) {
+                input.put(rawPcm[i].toFloat())
+            }
+            for (i in 0 until rawPcmIndex) {
+                input.put(rawPcm[i].toFloat())
+            }
+        } else {
+            val pad = RAW_HISTORY_SAMPLES - rawPcmIndex
+            for (i in 0 until pad) input.put(0f)
+            for (i in 0 until rawPcmIndex) input.put(rawPcm[i].toFloat())
+        }
         if (input.position() != RAW_HISTORY_SAMPLES) return
         input.rewind()
         val melTensor = mel.getOutputTensor(0)
@@ -287,12 +316,27 @@ class OpenWakeWordDetector(
     }
 
     @Synchronized override fun resetDetectorState() {
-        rawPcm.clear(); audioChunk.clear(); melFrames.clear(); embeddingFrames.clear()
+        rawPcm.fill(0)
+        rawPcmIndex = 0
+        rawPcmFilled = false
+        audioChunk.fill(0)
+        audioChunkIndex = 0
+        melFrames.clear(); embeddingFrames.clear()
         if (available) {
-            repeat(MEL_WINDOW) { melFrames.addLast(FloatArray(MEL_BINS) { 1f }) }
+            repeat(MEL_WINDOW) { melFrames.addLast(FloatArray(MEL_BINS)) }
             repeat(FEATURE_HISTORY_FRAMES) { embeddingFrames.addLast(FloatArray(EMBEDDING_SIZE)) }
         }
         latestScore = 0f; detectedPhrase = null; realEmbeddingCount = 0; confirmation.reset()
+        latestEnergyGatePassed = null
+    }
+
+    private fun calculateRms(samples: ShortArray): Double {
+        var sum = 0.0
+        for (i in 0 until FRAME_SAMPLES) {
+            val norm = samples[i].toDouble() / 32768.0
+            sum += norm * norm
+        }
+        return kotlin.math.sqrt(sum / FRAME_SAMPLES)
     }
 
     @Synchronized override fun close() {
