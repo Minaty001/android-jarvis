@@ -62,7 +62,8 @@ class SystemDiagnosticEngine(private val context: Context) {
         activityManager.getMemoryInfo(memInfo)
         
         if (memInfo.lowMemory) {
-            JarvisEventBus.shared.post(JarvisEvent.SystemAlert("CRITICAL", "System memory is critically low. Device may lag. Suggest killing rogue background apps."))
+            runCatching { android.database.sqlite.SQLiteDatabase.releaseMemory() }
+            JarvisEventBus.shared.post(JarvisEvent.SystemAlert("CRITICAL", "System memory is critically low. Trimmed local caches to protect foreground tasks."))
         }
     }
 

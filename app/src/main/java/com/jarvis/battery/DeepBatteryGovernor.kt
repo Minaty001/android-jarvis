@@ -6,6 +6,9 @@ import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.PowerManager
 import android.util.Log
+import com.jarvis.runtime.JarvisEvent
+import com.jarvis.runtime.JarvisEventBus
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Deep Battery Saver & Thermal Governor.
@@ -15,6 +18,7 @@ import android.util.Log
 class DeepBatteryGovernor(private val context: Context? = null) {
 
     private val TAG = "DeepBatteryGovernor"
+    private val listeners = CopyOnWriteArrayList<(ThrottleState) -> Unit>()
 
     enum class ThrottleState {
         NORMAL,
@@ -25,6 +29,27 @@ class DeepBatteryGovernor(private val context: Context? = null) {
 
     var currentThrottleState: ThrottleState = ThrottleState.NORMAL
         private set
+
+    fun addThrottleListener(listener: (ThrottleState) -> Unit) {
+        listeners.add(listener)
+    }
+
+    fun removeThrottleListener(listener: (ThrottleState) -> Unit) {
+        listeners.remove(listener)
+    }
+
+    fun notifyThrottleChanged(newState: ThrottleState) {
+        currentThrottleState = newState
+        listeners.forEach { runCatching { it(newState) } }
+        if (newState != ThrottleState.NORMAL) {
+            JarvisEventBus.shared.post(
+                JarvisEvent.SystemAlert(
+                    level = if (newState == ThrottleState.THERMAL_THROTTLED || newState == ThrottleState.CRITICAL_SAVINGS) "CRITICAL" else "WARNING",
+                    message = "Device entered throttle state: ${newState.name}. Throttling non-essential background tasks."
+                )
+            )
+        }
+    }
 
     data class HealthReport(
         val percentage: Int,
@@ -68,7 +93,11 @@ class DeepBatteryGovernor(private val context: Context? = null) {
             else -> ThrottleState.NORMAL
         }
 
-        currentThrottleState = newState
+        if (newState != currentThrottleState) {
+            notifyThrottleChanged(newState)
+        } else {
+            currentThrottleState = newState
+        }
 
         val recommendation = when (newState) {
             ThrottleState.THERMAL_THROTTLED -> "Device temperature (${tempC}°C) is high. Throttling background tasks to cool down."
