@@ -31,6 +31,8 @@ build/
 /dist/
 /exports/
 exports/
+/release-export/
+release-export/
 
 # Understand-Anything transient files
 .ua/intermediate/
