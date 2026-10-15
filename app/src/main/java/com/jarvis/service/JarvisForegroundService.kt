@@ -87,7 +87,7 @@ class JarvisForegroundService : Service() {
         super.onCreate()
         instance = this
         Log.i(TAG, "JarvisForegroundService onCreate")
-        createNotificationChannel()
+        com.jarvis.notification.JarvisNotificationManager.initializeChannels(this)
 
         val (apiKey, model) = loadActiveConfig()
         voiceEngine = VoiceEngine(applicationContext, groqApiKey = apiKey, groqModel = model)
@@ -387,6 +387,7 @@ class JarvisForegroundService : Service() {
     }
 
     fun updateNotification(content: String) {
+        if (!com.jarvis.notification.JarvisNotificationManager.shouldUpdateNotification(content)) return
         try {
             val manager = getSystemService(NotificationManager::class.java)
             val notification = createNotification(content)
@@ -528,36 +529,11 @@ class JarvisForegroundService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Jarvis Voice Assistant",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Keeps Jarvis wake word detection active in background"
-            }
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
-        }
+        com.jarvis.notification.JarvisNotificationManager.initializeChannels(this)
     }
 
     private fun createNotification(content: String): Notification {
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Jarvis Assistant")
-            .setContentText(content)
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+        return com.jarvis.notification.JarvisNotificationManager.buildServiceNotification(this, content)
     }
 
     companion object {
