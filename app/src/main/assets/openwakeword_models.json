@@ -16,13 +16,13 @@
     {
       "phrase": "Hey Jarvis",
       "asset": "hey_jarvis_v0.1.tflite",
-      "threshold": 0.35,
+      "threshold": 0.50,
       "sha256": "14bff778604985e1b5c19f0f7bbe477a69cf281d8db34b232b3b972411f710e2"
     },
     {
       "phrase": "Jarvis",
       "asset": "jarvis.tflite",
-      "threshold": 0.4,
+      "threshold": 0.65,
       "sha256": "b2318c313eca75596203d5e7af080328520fd8e3b362c289d8798a52564a44ef"
     }
   ]
