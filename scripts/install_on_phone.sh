@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-APK_PATH="/home/shanu/Desktop/android-jarvis/exports/Jarvis-v1.0-release.apk"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "=== Jarvis Android ADB Auto-Installer ==="
 echo "Checking ADB connection..."
@@ -10,16 +10,43 @@ DEVICE=$(adb devices | grep -v "List of devices" | grep "device$" | head -n 1 | 
 
 if [ -z "$DEVICE" ]; then
     echo "Phone not recognized by ADB yet."
-    echo "Please ensure USB Debugging is turned ON in Developer Options on your Samsung phone."
+    echo "Please ensure USB Debugging is turned ON in Developer Options."
     echo "Waiting for device..."
     adb wait-for-device
+    DEVICE=$(adb devices | grep -v "List of devices" | grep "device$" | head -n 1 | awk '{print $1}')
 fi
 
-echo "Connected Device: $(adb devices -l | grep -v 'List of devices' | head -n 1)"
+echo "Connected Device: $(adb devices -l | grep "$DEVICE")"
+
+# Discover the newest APK in the repository
+APK_PATH="${1:-}"
+
+if [ -z "$APK_PATH" ]; then
+    for candidate in \
+        "$DIR/jarvis-app.apk" \
+        "$DIR/dist/jarvis-v1.1-release.apk" \
+        "$DIR/dist/jarvis-v1.1-debug.apk" \
+        "$DIR/app/build/outputs/apk/release/app-release.apk" \
+        "$DIR/app/build/outputs/apk/debug/app-debug.apk"; do
+        if [ -f "$candidate" ]; then
+            APK_PATH="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ]; then
+    echo "❌ Error: Could not find any installable APK in $DIR."
+    exit 1
+fi
+
 echo "Installing $APK_PATH with permissions granted (-g)..."
-adb install -r -d -g "$APK_PATH"
+adb -s "$DEVICE" install -r -d -g "$APK_PATH"
 
-echo "Launching Jarvis..."
-adb shell am start -n com.jarvis/.ui.MainActivity
+echo "Whitelisting com.jarvis from battery optimization (Doze bypass)..."
+adb -s "$DEVICE" shell "dumpsys deviceidle whitelist +com.jarvis" 2>/dev/null || true
 
-echo "✅ Jarvis successfully installed and launched!"
+echo "Launching Jarvis MainActivity..."
+adb -s "$DEVICE" shell am start -n com.jarvis/.ui.MainActivity
+
+echo "✅ Jarvis successfully installed, optimized, and launched on $DEVICE!"
