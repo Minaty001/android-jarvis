@@ -189,7 +189,7 @@ class WakeWordEngine(
         onDetectedCallback = onDetected
         detectionInProgress = false
         detector?.resetDetectorState()
-        lastDetectionAt = 0L
+        lastDetectionAt = System.currentTimeMillis()
         state = WakeWordState.RUNNING
         Log.i(tag, "WakeWordEngine started (modelAvailable=${isAvailable()}, mode=${getDetectorMode()})")
     }
@@ -241,7 +241,7 @@ class WakeWordEngine(
         if (state == WakeWordState.CLOSED) return
         detectionInProgress = false
         detector?.resetDetectorState()
-        lastDetectionAt = 0L
+        lastDetectionAt = System.currentTimeMillis()
         state = WakeWordState.RUNNING
     }
 
