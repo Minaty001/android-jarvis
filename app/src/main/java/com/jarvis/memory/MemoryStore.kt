@@ -162,6 +162,32 @@ class MemoryStore(context: android.content.Context, useInMemory: Boolean = false
     }
 
     private val vectorizer = com.jarvis.ai.EmbeddingVectorizer()
+    private val maxQueryLimit: Int = com.jarvis.device.HardwareProfileManager.getMaxMemoryStoreResults(context)
+
+    fun saveMemory(content: String, tags: List<String> = emptyList()): Long {
+        val key = content.take(30).trim()
+        val prov = if (tags.isNotEmpty()) tags.joinToString(",") else "general"
+        return saveMemory(
+            type = MemoryType.FACT,
+            key = key,
+            content = content,
+            provenance = prov
+        )
+    }
+
+    fun searchMemories(query: String, maxResults: Int = -1): List<MemoryItem> {
+        val effectiveLimit = if (maxResults <= 0) maxQueryLimit else minOf(maxResults, maxQueryLimit * 2)
+        return queryRelevantMemories(
+            query = query,
+            limit = effectiveLimit
+        ).map { it.item }
+    }
+
+    fun trimCache(level: Int = 0) {
+        try {
+            dbHelper.writableDatabase.releaseMemory()
+        } catch (_: Exception) {}
+    }
 
     fun saveMemory(
         type: MemoryType,
