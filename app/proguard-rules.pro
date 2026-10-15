@@ -2,14 +2,7 @@
 # Only what reflection / JNI genuinely needs is kept; everything else is shrunk.
 
 # ---------------------------------------------------------------------------
-# 1. sherpa-onnx (ASR + TTS) — pure JNI bridge.
-#    libsherpa-onnx-jni.so resolves Kotlin classes, methods and fields by name,
-#    so their names must survive obfuscation.
-# ---------------------------------------------------------------------------
--keep class com.k2fsa.sherpa.onnx.** { *; }
-
-# ---------------------------------------------------------------------------
-# 2. TensorFlow Lite (wake-word + vision inference) — JNI bridge classes.
+# 1. TensorFlow Lite (wake-word + vision inference) — JNI bridge classes.
 # ---------------------------------------------------------------------------
 -keep class org.tensorflow.lite.** { *; }
 

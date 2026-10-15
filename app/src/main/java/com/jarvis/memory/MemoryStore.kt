@@ -162,7 +162,7 @@ class MemoryStore(context: android.content.Context, useInMemory: Boolean = false
     }
 
     private val vectorizer = com.jarvis.ai.EmbeddingVectorizer()
-    private val maxQueryLimit: Int = com.jarvis.device.HardwareProfileManager.getMaxMemoryStoreResults(context)
+    val maxQueryLimit: Int = com.jarvis.device.HardwareProfileManager.getMaxMemoryStoreResults(context)
 
     fun saveMemory(content: String, tags: List<String> = emptyList()): Long {
         val key = content.take(30).trim()

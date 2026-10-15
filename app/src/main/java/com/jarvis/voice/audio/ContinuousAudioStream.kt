@@ -264,8 +264,8 @@ class ContinuousAudioStream(
 
                 rollingBuffer.write(readBuffer, 0, read)
 
-                // Dispatch snapshot to active registered consumers
-                val frame = readBuffer.copyOf(read)
+                // Dispatch snapshot to active registered consumers without allocating on steady-state
+                val frame = if (read == readBuffer.size) readBuffer else readBuffer.copyOf(read)
                 for (consumer in consumers) {
                     try {
                         consumer.onAudioFrame(frame, read)

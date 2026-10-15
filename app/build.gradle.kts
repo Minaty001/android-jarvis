@@ -109,7 +109,4 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20231013")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
-
-    // Sherpa-ONNX for Speaker Verification
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
 }
