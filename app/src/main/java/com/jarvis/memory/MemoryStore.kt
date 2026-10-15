@@ -168,7 +168,7 @@ class MemoryStore(context: android.content.Context, useInMemory: Boolean = false
         val key = content.take(30).trim()
         val prov = if (tags.isNotEmpty()) tags.joinToString(",") else "general"
         return saveMemory(
-            type = MemoryType.FACT,
+            type = MemoryType.STRUCTURED_FACT,
             key = key,
             content = content,
             provenance = prov
@@ -176,16 +176,17 @@ class MemoryStore(context: android.content.Context, useInMemory: Boolean = false
     }
 
     fun searchMemories(query: String, maxResults: Int = -1): List<MemoryItem> {
-        val effectiveLimit = if (maxResults <= 0) maxQueryLimit else minOf(maxResults, maxQueryLimit * 2)
+        val effectiveLimit = if (maxResults <= 0) maxQueryLimit else minOf(maxResults, maxQueryLimit)
         return queryRelevantMemories(
             query = query,
+            types = emptySet(),
             limit = effectiveLimit
-        ).map { it.item }
+        )
     }
 
     fun trimCache(level: Int = 0) {
         try {
-            dbHelper.writableDatabase.releaseMemory()
+            android.database.sqlite.SQLiteDatabase.releaseMemory()
         } catch (_: Exception) {}
     }
 

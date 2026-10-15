@@ -88,6 +88,7 @@ class DeepBatteryGovernor(private val context: Context? = null) {
 
         val newState = when {
             tempC >= 42.0 -> ThrottleState.THERMAL_THROTTLED
+            currentThrottleState == ThrottleState.THERMAL_THROTTLED && tempC >= 40.0 -> ThrottleState.THERMAL_THROTTLED
             pct in 0..10 && !isCharging -> ThrottleState.CRITICAL_SAVINGS
             (pct in 0..20 && !isCharging) || isSystemPowerSave -> ThrottleState.BATTERY_SAVING
             else -> ThrottleState.NORMAL

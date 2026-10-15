@@ -44,16 +44,13 @@ object HardwareProfileManager {
     fun getProfile(context: Context?): DeviceHardwareProfile {
         val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
         if (context == null) {
-            val isLow = cores <= 2
-            val tier = if (isLow) DeviceTier.LOW_END else DeviceTier.MID_RANGE
-            val threads = calculateOptimalThreads(cores, isLow)
             return DeviceHardwareProfile(
                 cpuCores = cores,
-                totalRamBytes = 2L * 1024 * 1024 * 1024,
-                isLowRamDevice = isLow,
-                tier = tier,
-                recommendedTfliteThreads = threads,
-                maxMemoryStoreResults = 50
+                totalRamBytes = 4L * 1024 * 1024 * 1024,
+                isLowRamDevice = false,
+                tier = DeviceTier.MID_RANGE,
+                recommendedTfliteThreads = 2,
+                maxMemoryStoreResults = 150
             )
         }
 

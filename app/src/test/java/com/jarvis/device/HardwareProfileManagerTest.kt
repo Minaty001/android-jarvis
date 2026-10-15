@@ -10,8 +10,9 @@ class HardwareProfileManagerTest {
         val profile = HardwareProfileManager.getProfile(null)
         assertNotNull(profile)
         assertTrue(profile.cpuCores >= 1)
-        assertTrue(profile.recommendedTfliteThreads in 1..2)
-        assertEquals(50, profile.maxMemoryStoreResults)
+        assertEquals(2, profile.recommendedTfliteThreads)
+        assertEquals(DeviceTier.MID_RANGE, profile.tier)
+        assertEquals(150, profile.maxMemoryStoreResults)
     }
 
     @Test
