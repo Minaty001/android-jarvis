@@ -36,7 +36,7 @@ class VoiceRouter(
     var asrEngine: AndroidSpeechRecognizerEngine,
     val bargeInDetector: com.jarvis.voice.BargeInDetector = com.jarvis.voice.BargeInDetector(),
     var continuousAudioStream: com.jarvis.voice.audio.ContinuousAudioStream? = null,
-    private val mediaHandler: MediaControlHandler
+    private val mediaHandler: MediaControlHandler? = null
 ) : AudioFrameConsumer {
 
     private val currentTarget = AtomicReference(AudioRoutingTarget.WAKE_WORD_PASSIVE)

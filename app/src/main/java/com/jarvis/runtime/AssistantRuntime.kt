@@ -525,7 +525,7 @@ class AssistantRuntime(
             
             if (babelFishInterpreter == null && clipboardOverlay != null) {
                 babelFishInterpreter = com.jarvis.voice.BabelFishInterpreter(
-                    context, llm, asrEngine, clipboardOverlay!!, mediaControlHandler
+                    context, llm, asrEngine, clipboardOverlay!!, com.jarvis.voice.MediaControlHandler(context)
                 )
             }
             

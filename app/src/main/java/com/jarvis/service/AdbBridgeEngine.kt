@@ -40,7 +40,7 @@ object AdbBridgeEngine {
     fun formatPingResponse(context: Context?): String {
         val serviceRunning = JarvisForegroundService.instance != null
         val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
-        val tier = if (context != null) HardwareProfileManager.getDeviceTier(context).name else "UNKNOWN"
+        val tier = if (context != null) HardwareProfileManager.getProfile(context).tier.name else "UNKNOWN"
         return "PONG:service=${if (serviceRunning) "RUNNING" else "STOPPED"},cores=$cores,tier=$tier"
     }
 

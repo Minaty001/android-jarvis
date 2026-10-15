@@ -41,12 +41,6 @@ class PlaybackSpeedTool(private val context: Context) : Tool {
             }
             // Use the first active controller
             val controller = controllers[0]
-            val playbackParams = controller.playbackInfo?.playbackParams
-            if (playbackParams == null) {
-                // Fallback: use MediaPlayer if possible (unlikely in this context)
-                return ToolResult.Failed("PlaybackParams not available for the active session.")
-            }
-            playbackParams.speed = speed
             controller.transportControls.setPlaybackSpeed(speed)
             Log.i(name, "Set playback speed to $speed")
             ToolResult.Success(message = "Playback speed set to $speed", data = mapOf("speed" to speed))
