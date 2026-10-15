@@ -143,4 +143,28 @@ object JarvisNotificationManager {
             .addAction(android.R.drawable.ic_media_pause, "🛑 Sleep", stopPendingIntent)
             .build()
     }
+
+    /**
+     * Direct navigation to Android system notification settings for Jarvis or a specific channel.
+     */
+    fun openNotificationChannelSettings(context: Context, channelId: String? = null) {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && channelId != null) {
+            Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+                putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, channelId)
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+            }
+        } else {
+            Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = android.net.Uri.fromParts("package", context.packageName, null)
+            }
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(intent)
+        } catch (_: Exception) {}
+    }
 }

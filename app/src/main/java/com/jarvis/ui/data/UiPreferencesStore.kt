@@ -126,6 +126,9 @@ class UiPreferencesStore(context: Context) {
     private fun AppSettings.toJson(): JSONObject = JSONObject().apply {
         put("theme", theme)
         put("notificationsEnabled", notificationsEnabled)
+        put("reminderNotificationsEnabled", reminderNotificationsEnabled)
+        put("proactiveAlertsEnabled", proactiveAlertsEnabled)
+        put("dailyBriefingNotificationsEnabled", dailyBriefingNotificationsEnabled)
         put("defaultTimeoutMs", defaultTimeoutMs)
         put("maxRetryAttempts", maxRetryAttempts)
         put("logVerbosity", logVerbosity)
@@ -169,6 +172,9 @@ class UiPreferencesStore(context: Context) {
         return AppSettings(
             theme = json.optString("theme", d.theme),
             notificationsEnabled = json.optBoolean("notificationsEnabled", d.notificationsEnabled),
+            reminderNotificationsEnabled = json.optBoolean("reminderNotificationsEnabled", d.reminderNotificationsEnabled),
+            proactiveAlertsEnabled = json.optBoolean("proactiveAlertsEnabled", d.proactiveAlertsEnabled),
+            dailyBriefingNotificationsEnabled = json.optBoolean("dailyBriefingNotificationsEnabled", d.dailyBriefingNotificationsEnabled),
             defaultTimeoutMs = json.optLong("defaultTimeoutMs", d.defaultTimeoutMs),
             maxRetryAttempts = json.optInt("maxRetryAttempts", d.maxRetryAttempts),
             logVerbosity = json.optString("logVerbosity", d.logVerbosity),

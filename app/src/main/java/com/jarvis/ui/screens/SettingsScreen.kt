@@ -31,6 +31,9 @@ class SettingsScreen(
     private val ttsProviderSpinner = Spinner(context)
     private val ttsVoiceSpinner = Spinner(context)
     private val notifications = MaterialSwitch(context)
+    private val reminderNotificationsSwitch = MaterialSwitch(context)
+    private val proactiveAlertsSwitch = MaterialSwitch(context)
+    private val dailyBriefingNotificationsSwitch = MaterialSwitch(context)
     private val dailyBriefingSwitch = MaterialSwitch(context)
     private val briefingTimeBtn = TextView(context)
     private var currentBriefingTime: String = initial.dailyBriefingTime
@@ -872,6 +875,26 @@ class SettingsScreen(
         notifications.isChecked = initial.notificationsEnabled
         prefInner.addView(notifications)
 
+        reminderNotificationsSwitch.text = "Reminders & Alarms Channel"
+        reminderNotificationsSwitch.setTextColor(Ui.TEXT)
+        reminderNotificationsSwitch.isChecked = initial.reminderNotificationsEnabled
+        prefInner.addView(reminderNotificationsSwitch)
+
+        proactiveAlertsSwitch.text = "Proactive Alerts & Health Channel"
+        proactiveAlertsSwitch.setTextColor(Ui.TEXT)
+        proactiveAlertsSwitch.isChecked = initial.proactiveAlertsEnabled
+        prefInner.addView(proactiveAlertsSwitch)
+
+        dailyBriefingNotificationsSwitch.text = "Daily Morning Briefing Channel"
+        dailyBriefingNotificationsSwitch.setTextColor(Ui.TEXT)
+        dailyBriefingNotificationsSwitch.isChecked = initial.dailyBriefingNotificationsEnabled
+        prefInner.addView(dailyBriefingNotificationsSwitch)
+
+        val channelBtn = Ui.button(context, "CONFIGURE ANDROID NOTIFICATION CHANNELS") {
+            com.jarvis.notification.JarvisNotificationManager.openNotificationChannelSettings(context)
+        }
+        prefInner.addView(channelBtn)
+
         prefCard.addView(prefInner)
         root.addView(prefCard)
 
@@ -937,6 +960,9 @@ class SettingsScreen(
         }
         themeSpinner.onItemSelectedListener = simpleSpinnerListener { markDirty() }
         notifications.setOnCheckedChangeListener { _, _ -> markDirty() }
+        reminderNotificationsSwitch.setOnCheckedChangeListener { _, _ -> markDirty() }
+        proactiveAlertsSwitch.setOnCheckedChangeListener { _, _ -> markDirty() }
+        dailyBriefingNotificationsSwitch.setOnCheckedChangeListener { _, _ -> markDirty() }
         suppressDirty = false
 
     }
@@ -980,6 +1006,9 @@ class SettingsScreen(
         settings = settings.copy(
             theme = themeSpinner.selectedItem.toString(),
             notificationsEnabled = notifications.isChecked,
+            reminderNotificationsEnabled = reminderNotificationsSwitch.isChecked,
+            proactiveAlertsEnabled = proactiveAlertsSwitch.isChecked,
+            dailyBriefingNotificationsEnabled = dailyBriefingNotificationsSwitch.isChecked,
             wakeWord = wakeWord.text.toString().trim().ifBlank { com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE },
             wakeAcknowledgment = wakeAckSpinner.selectedItem.toString(),
             dailyBriefingEnabled = dailyBriefingSwitch.isChecked,
@@ -1007,6 +1036,10 @@ class SettingsScreen(
     private fun reset() {
         settings = AppSettings()
         store.saveSettings(settings)
+        notifications.isChecked = settings.notificationsEnabled
+        reminderNotificationsSwitch.isChecked = settings.reminderNotificationsEnabled
+        proactiveAlertsSwitch.isChecked = settings.proactiveAlertsEnabled
+        dailyBriefingNotificationsSwitch.isChecked = settings.dailyBriefingNotificationsEnabled
         dailyBriefingSwitch.isChecked = settings.dailyBriefingEnabled
         currentBriefingTime = settings.dailyBriefingTime
         updateBriefingTimeBtnText()

@@ -21,6 +21,9 @@ data class ApiConfig(
 data class AppSettings(
     val theme: String = "system",
     val notificationsEnabled: Boolean = true,
+    val reminderNotificationsEnabled: Boolean = true,
+    val proactiveAlertsEnabled: Boolean = true,
+    val dailyBriefingNotificationsEnabled: Boolean = true,
     val defaultTimeoutMs: Long = 30_000L,
     val maxRetryAttempts: Int = 3,
     val logVerbosity: String = "INFO",
