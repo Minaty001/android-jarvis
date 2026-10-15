@@ -45,7 +45,9 @@ class JarvisNotificationListenerService : NotificationListenerService() {
         val extras = notif.extras ?: return
 
         val pkg = sbn.packageName.orEmpty()
-        // Ignore Jarvis's own notifications to avoid recursion
+        // Strict read-only guarantee: Jarvis strictly monitors incoming notifications and never
+        // dismisses, cancels, or alters notifications belonging to other applications.
+        // Ignore Jarvis's own notifications to avoid recursion.
         if (pkg == packageName) return
 
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()

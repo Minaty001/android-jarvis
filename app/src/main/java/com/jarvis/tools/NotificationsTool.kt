@@ -10,7 +10,7 @@ import com.jarvis.notification.NotificationStore
 
 class NotificationsTool(private val context: Context? = null) : Tool {
     override val name: String = "NOTIFICATIONS_READ"
-    override val description: String = "Reads and summarizes incoming device notifications (WhatsApp, SMS, Email, etc.)."
+    override val description: String = "Reads and summarizes incoming device notifications (WhatsApp, SMS, Email, etc.) in read-only mode without altering external notifications."
     override val policy: ToolPolicy = ToolPolicy(idempotent = true, retryable = true, riskLevel = RiskLevel.LOW)
 
     val metadata = ToolMetadata(
@@ -51,7 +51,7 @@ class NotificationsTool(private val context: Context? = null) : Tool {
             "clear_spam", "clear_promotions", "dismiss_spam" -> {
                 val cleared = NotificationStore.clearPromotions()
                 return ToolResult.Success(
-                    message = "Cleared $cleared promotional notification${if (cleared == 1) "" else "s"}.",
+                    message = "Cleared $cleared promotional notification${if (cleared == 1) "" else "s"} from Jarvis memory (device notifications remain untouched).",
                     data = mapOf("action" to "clear_spam", "cleared_count" to cleared)
                 )
             }
