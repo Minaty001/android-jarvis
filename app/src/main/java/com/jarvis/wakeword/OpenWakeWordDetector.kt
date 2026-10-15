@@ -108,7 +108,11 @@ class OpenWakeWordDetector(
             stream.channel.map(FileChannel.MapMode.READ_ONLY, descriptor.startOffset, descriptor.declaredLength)
         }
         descriptor.close()
-        return Interpreter(mapped, Interpreter.Options().apply { setNumThreads(4); setUseNNAPI(false) })
+        val threadCount = com.jarvis.device.HardwareProfileManager.getRecommendedTfliteThreads(context)
+        return Interpreter(mapped, Interpreter.Options().apply {
+            setNumThreads(threadCount)
+            setUseNNAPI(false)
+        })
     }
 
     private fun validateHead(model: Interpreter) {
