@@ -43,6 +43,17 @@ class ContinuousAudioStream(
     private val consumers = CopyOnWriteArrayList<AudioFrameConsumer>()
 
     private val isSuspended = AtomicBoolean(false)
+    @Volatile private var isBluetoothScoActive = false
+    @Volatile private var latestAudioRms = 0.0
+
+    fun getLatestRms(): Double = latestAudioRms
+
+    fun setBluetoothScoActive(active: Boolean) {
+        if (isBluetoothScoActive != active) {
+            isBluetoothScoActive = active
+            updatePreferredDevice()
+        }
+    }
 
     val minBufferSize: Int = maxOf(
         AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat),
@@ -88,18 +99,9 @@ class ContinuousAudioStream(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null) {
                     try {
                         val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-                        val isScoOn = am?.isBluetoothScoOn == true
-                        val inputDevices = am?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-                        val btInput = inputDevices?.firstOrNull {
-                            it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && it.type == AudioDeviceInfo.TYPE_BLE_HEADSET) ||
-                            it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                            it.type == AudioDeviceInfo.TYPE_USB_HEADSET
-                        }
-                        if (btInput != null) {
-                            val ok = record.setPreferredDevice(btInput)
-                            Log.i(TAG, "Preferred AudioRecord input device set to ${btInput.productName} (type ${btInput.type}): $ok")
-                        }
+                        val targetInput = resolvePreferredInputDevice(am)
+                        val ok = record.setPreferredDevice(targetInput)
+                        Log.i(TAG, "AudioRecord input device initialized to ${targetInput?.productName ?: "Built-in Mic"} (type=${targetInput?.type ?: "DEFAULT"}): $ok")
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed setting preferred audio input device: ${e.message}")
                     }
@@ -116,27 +118,44 @@ class ContinuousAudioStream(
     }
 
     /**
+     * Resolves the proper input device based on whether Bluetooth SCO routing is actively engaged.
+     */
+    private fun resolvePreferredInputDevice(am: AudioManager?): AudioDeviceInfo? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || am == null) return null
+        val inputDevices = am.getDevices(AudioManager.GET_DEVICES_INPUTS)
+        val isScoOn = isBluetoothScoActive && am.isBluetoothScoOn
+
+        return if (isScoOn) {
+            // When Bluetooth SCO routing is explicitly engaged, route mic to SCO/BLE headset
+            inputDevices.firstOrNull {
+                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && it.type == AudioDeviceInfo.TYPE_BLE_HEADSET)
+            } ?: inputDevices.firstOrNull {
+                it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET || it.type == AudioDeviceInfo.TYPE_USB_HEADSET
+            }
+        } else {
+            // Default: prefer physical wired/USB headset if plugged in, otherwise built-in microphone (null)
+            inputDevices.firstOrNull {
+                it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET || it.type == AudioDeviceInfo.TYPE_USB_HEADSET
+            }
+        }
+    }
+
+    /**
      * Dynamically updates the active AudioRecord's preferred input device (e.g. switching to/from Bluetooth).
      */
     fun updatePreferredDevice() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null) {
             try {
                 val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-                val isScoOn = am?.isBluetoothScoOn == true
-                val inputDevices = am?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-                val btInput = inputDevices?.firstOrNull {
-                    it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                    (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && it.type == AudioDeviceInfo.TYPE_BLE_HEADSET) ||
-                    it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                    it.type == AudioDeviceInfo.TYPE_USB_HEADSET
-                }
+                val targetInput = resolvePreferredInputDevice(am)
                 synchronized(this) {
                     val currentRecord = audioRecord
                     if (currentRecord != null) {
                         val currentDev = currentRecord.preferredDevice
-                        if (currentDev != btInput) {
-                            val ok = currentRecord.setPreferredDevice(btInput)
-                            Log.i(TAG, "Dynamic updatePreferredDevice applied (device=${btInput?.productName ?: "Built-in Mic"}): $ok")
+                        if (currentDev != targetInput) {
+                            val ok = currentRecord.setPreferredDevice(targetInput)
+                            Log.i(TAG, "Dynamic updatePreferredDevice applied (device=${targetInput?.productName ?: "Built-in Mic"}): $ok")
                         }
                     }
                 }
@@ -236,6 +255,13 @@ class ContinuousAudioStream(
             }
 
             if (read > 0) {
+                var sum = 0.0
+                for (i in 0 until read) {
+                    val norm = readBuffer[i].toDouble() / 32768.0
+                    sum += norm * norm
+                }
+                latestAudioRms = kotlin.math.sqrt(sum / read)
+
                 rollingBuffer.write(readBuffer, 0, read)
 
                 // Dispatch snapshot to active registered consumers

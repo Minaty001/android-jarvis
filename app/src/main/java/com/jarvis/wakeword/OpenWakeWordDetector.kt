@@ -192,8 +192,14 @@ class OpenWakeWordDetector(
             if (ratio > bestRatio) { bestRatio = ratio; bestPhrase = head.phrase }
         }
         latestScore = bestRatio
+        if (bestRatio >= 0.5f) {
+            Log.d(TAG, "openWakeWord candidate: $bestPhrase ratio=$bestRatio (thr=${heads.firstOrNull { it.phrase == bestPhrase }?.threshold})")
+        }
         val confirmed = confirmation.add(bestRatio, 1f)
         detectedPhrase = if (confirmed >= 1f) bestPhrase else null
+        if (detectedPhrase != null) {
+            Log.i(TAG, "openWakeWord CONFIRMED: phrase='$detectedPhrase' score=$confirmed")
+        }
         return if (detectedPhrase != null) confirmed else 0f
     }
 

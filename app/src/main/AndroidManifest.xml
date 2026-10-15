@@ -318,6 +318,8 @@
             <intent-filter>
                 <action android:name="com.jarvis.action.EXECUTE_COMMAND" />
                 <action android:name="com.jarvis.intent.ACTION_EXECUTE_COMMAND" />
+                <action android:name="com.jarvis.action.PING" />
+                <action android:name="com.jarvis.action.EXECUTE_TOOL" />
             </intent-filter>
         </receiver>
 

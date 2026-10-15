@@ -16,28 +16,9 @@ class CommandReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.action
-        if (action == ACTION_EXECUTE_COMMAND || action == "com.jarvis.intent.ACTION_EXECUTE_COMMAND") {
-            val command = intent.getStringExtra(EXTRA_COMMAND)
-                ?: intent.getStringExtra("query")
-                ?: intent.getStringExtra("command_text")
-                ?: return
-
-            Log.i(TAG, "CommandReceiver received command: '$command'")
-            val service = JarvisForegroundService.instance
-            if (service != null) {
-                service.executeTextCommand(command)
-            } else {
-                val serviceIntent = Intent(context, JarvisForegroundService::class.java).apply {
-                    this.action = JarvisForegroundService.ACTION_EXECUTE
-                    putExtra(EXTRA_COMMAND, command)
-                }
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
-                } else {
-                    context.startService(serviceIntent)
-                }
-            }
+        val handled = AdbBridgeEngine.handleBroadcast(this, context, intent)
+        if (!handled) {
+            Log.d(TAG, "CommandReceiver received unhandled action: ${intent.action}")
         }
     }
 }

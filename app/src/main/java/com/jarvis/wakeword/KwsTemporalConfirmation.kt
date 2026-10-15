@@ -14,15 +14,22 @@ class KwsTemporalConfirmation(
 
     @Synchronized
     fun add(score: Float, threshold: Float): Float {
-        if (requiredPositiveWindows == 1 && score >= threshold) {
+        if (!score.isFinite() || !threshold.isFinite()) return 0f
+
+        // High-confidence single-window spike or single required window immediately triggers
+        if (score >= threshold * 1.25f || (requiredPositiveWindows == 1 && score >= threshold)) {
             scores.clear()
             return score
         }
+
         scores.addLast(score)
         while (scores.size > windowCount) scores.removeFirst()
-        if (scores.size >= windowCount && scores.count { it >= threshold } >= requiredPositiveWindows) {
+
+        val positiveScores = scores.filter { it >= threshold }
+        if (positiveScores.size >= requiredPositiveWindows) {
+            val confirmedScore = positiveScores.maxOrNull() ?: score
             scores.clear()
-            return score
+            return confirmedScore
         }
         return 0f
     }

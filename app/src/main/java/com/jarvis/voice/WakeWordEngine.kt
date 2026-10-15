@@ -202,7 +202,12 @@ class WakeWordEngine(
         val det = detector ?: return false
         if (!det.isModelAvailable()) return false
         val score = det.pushAudio(samples)
-        latestScore = score
+        val raw = det.getLatestRawScore()
+        if (raw != null && raw > 0f) {
+            latestScore = raw
+        } else if (score > 0f) {
+            latestScore = score
+        }
         val threshold = det.getModelThreshold() ?: return false
         val now = System.currentTimeMillis()
         if (!score.isFinite() || score < threshold || now - lastDetectionAt < config.detectionCooldownMs) return false

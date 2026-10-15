@@ -206,6 +206,7 @@ class VoiceEngine(
     fun updateBluetoothScoState(scoActive: Boolean) {
         ttsEngine.updateBluetoothScoState(scoActive)
         acousticFeedbackEngine.isBluetoothScoActive = scoActive
+        continuousAudioStream.setBluetoothScoActive(scoActive)
         continuousAudioStream.updatePreferredDevice()
     }
 
@@ -350,7 +351,7 @@ class VoiceEngine(
         }
     }
 
-    private fun onWakeDetectedDirect(phrase: String = "") {
+    fun onWakeDetectedDirect(phrase: String = "") {
         val currentState = conversationManager.currentStateValue
         if (currentState == VoiceState.SPEAKING || currentState == VoiceState.THINKING || currentState == VoiceState.RESEARCHING) {
             Log.i(TAG, "Wake word '$phrase' detected during $currentState — triggering barge-in!")
