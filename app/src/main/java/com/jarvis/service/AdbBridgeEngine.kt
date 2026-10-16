@@ -92,12 +92,15 @@ object AdbBridgeEngine {
                     val wakeEngine = engine?.wakeEngine
                     val audioStream = engine?.continuousAudioStream
                     val diag = wakeEngine?.getDiagnostics()
+                    val config = wakeEngine?.getConfig()
                     val data = mapOf(
                         "mode" to (diag?.detectorMode?.name ?: "UNKNOWN"),
                         "modelAvailable" to (diag?.modelAvailable ?: false),
                         "latestScore" to "%.3f".format(diag?.latestScore ?: 0f),
                         "threshold" to "%.2f".format(diag?.threshold ?: 0f),
                         "audioRms" to "%.5f".format(audioStream?.getLatestRms() ?: diag?.audioRms ?: 0.0),
+                        "energyFloor" to "%.5f".format(config?.minEnergyRms ?: 0.0),
+                        "silenceDecayLimit" to (config?.silenceFramesBeforeReset ?: 0),
                         "isRecording" to (audioStream?.isRecording() ?: false),
                         "isHealthy" to (audioStream?.isHealthy() ?: false),
                         "voiceState" to (engine?.conversationManager?.currentStateValue?.name ?: "UNKNOWN")
@@ -117,6 +120,51 @@ object AdbBridgeEngine {
                     service.voiceEngine?.onWakeDetectedDirect(phrase)
                     val result = formatToolExecutionResult(true, "Simulated wake phrase '$phrase' dispatched")
                     Log.i(TAG, "trigger_wake result: $result")
+                    if (isOrdered) {
+                        receiver.resultCode = Activity.RESULT_OK
+                        receiver.resultData = result
+                    }
+                    return true
+                }
+
+                // Handle direct PCM audio frame injection for end-to-end acoustic testing
+                if (toolName == "inject_audio_frame") {
+                    val pcmType = params["type"] ?: "synthetic"
+                    val samplesCount = (params["samples"]?.toIntOrNull() ?: 1280).coerceIn(640, 16000)
+                    val amplitude = params["amplitude"]?.toIntOrNull() ?: 1000
+                    val base64Pcm = params["base64"]
+
+                    val pcmData: ShortArray = if (!base64Pcm.isNullOrBlank()) {
+                        try {
+                            val bytes = android.util.Base64.decode(base64Pcm, android.util.Base64.DEFAULT)
+                            val shorts = ShortArray(bytes.size / 2)
+                            java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(shorts)
+                            shorts
+                        } catch (e: Exception) {
+                            ShortArray(samplesCount) { amplitude.toShort() }
+                        }
+                    } else if (pcmType == "sine") {
+                        val freq = params["freq"]?.toDoubleOrNull() ?: 440.0
+                        ShortArray(samplesCount) { i ->
+                            (amplitude * kotlin.math.sin(2 * Math.PI * freq * i / 16000)).toInt().toShort()
+                        }
+                    } else {
+                        ShortArray(samplesCount) { amplitude.toShort() }
+                    }
+
+                    val wakeEngine = service.voiceEngine?.wakeEngine
+                    val accepted = wakeEngine?.acceptAudio(pcmData) ?: false
+                    val latestScore = wakeEngine?.getDiagnostics()?.latestScore ?: 0f
+                    val result = formatToolExecutionResult(
+                        true,
+                        "Injected ${pcmData.size} PCM samples (amplitude=$amplitude)",
+                        mapOf(
+                            "accepted" to accepted,
+                            "samples" to pcmData.size,
+                            "latestScore" to "%.3f".format(latestScore)
+                        )
+                    )
+                    Log.i(TAG, "inject_audio_frame result: $result")
                     if (isOrdered) {
                         receiver.resultCode = Activity.RESULT_OK
                         receiver.resultData = result

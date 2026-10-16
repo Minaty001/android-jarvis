@@ -40,6 +40,32 @@ class AdbBridgeEngineTest {
     }
 
     @Test
+    fun testFormatToolExecutionResultWithAcousticDiagnostics() {
+        val diag = mapOf(
+            "mode" to "NEURAL_READY",
+            "modelAvailable" to true,
+            "latestScore" to "0.750",
+            "threshold" to "0.50",
+            "audioRms" to "0.00043",
+            "energyFloor" to "0.00030",
+            "silenceDecayLimit" to 5
+        )
+        val result = AdbBridgeEngine.formatToolExecutionResult(true, "Wake word telemetry captured", diag)
+        assertTrue(result.contains("energyFloor=0.00030"))
+        assertTrue(result.contains("silenceDecayLimit=5"))
+        assertTrue(result.contains("threshold=0.50"))
+    }
+
+    @Test
+    fun testParseInjectAudioParams() {
+        val params = AdbBridgeEngine.parseParams("type=sine,samples=1280,amplitude=1500,freq=300.0")
+        assertEquals("sine", params["type"])
+        assertEquals("1280", params["samples"])
+        assertEquals("1500", params["amplitude"])
+        assertEquals("300.0", params["freq"])
+    }
+
+    @Test
     fun testSupportedActions() {
         assertEquals("com.jarvis.action.PING", AdbBridgeEngine.ACTION_PING)
         assertEquals("com.jarvis.action.EXECUTE_TOOL", AdbBridgeEngine.ACTION_EXECUTE_TOOL)
