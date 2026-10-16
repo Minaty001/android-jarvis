@@ -2,7 +2,7 @@ package com.jarvis.wakeword
 
 /** Runtime buffering and energy-gate settings. The model manifest owns the KWS threshold. */
 data class WakeWordConfig(
-    val confirmationWindowCount: Int = 3,
+    val confirmationWindowCount: Int = 4,
     val requiredPositiveWindows: Int = 2,
     /** Normalized PCM RMS floor; calibrated to 0.0003 for mobile phone microphones in indoor acoustic environments. */
     val minEnergyRms: Double = 0.0003,
