@@ -47,6 +47,7 @@ class WakeWordEngine(
 ) {
     private val tag = "WakeWordEngine"
     private val spec = KwsFeatureSpec.DEFAULT
+    private var activeConfig: WakeWordConfig = config
     private var detector: WakeWordDetector? = customDetector
     private var currentVoiceProfile = UserVoiceProfile.DEFAULT
     private val recentAudio = ShortArray(spec.windowSamples)
@@ -62,8 +63,24 @@ class WakeWordEngine(
     private var detectionInProgress = false
 
     private fun ensureDetectorInitialized() {
-        if (detector == null) detector = HybridWakeWordDetector(context, config = config)
+        if (detector == null) detector = HybridWakeWordDetector(context, config = activeConfig)
     }
+
+    @Synchronized
+    fun setSensitivity(sensitivity: String) {
+        val isLowEnd = context?.let { com.jarvis.device.HardwareProfileManager.isLowEndDevice(it) } ?: false
+        activeConfig = WakeWordConfig.fromSensitivity(sensitivity, isLowEnd)
+        if (customDetector == null) {
+            detector?.close()
+            detector = HybridWakeWordDetector(context, config = activeConfig)
+            if (state == WakeWordState.RUNNING) {
+                detector?.resetDetectorState()
+            }
+        }
+        Log.i(tag, "WakeWordEngine sensitivity set to '$sensitivity' (minEnergyRms=${activeConfig.minEnergyRms}, windows=${activeConfig.confirmationWindowCount}, required=${activeConfig.requiredPositiveWindows})")
+    }
+
+    fun getConfig(): WakeWordConfig = activeConfig
 
     @Synchronized
     fun applyVoiceProfile(profile: UserVoiceProfile) {
@@ -210,7 +227,7 @@ class WakeWordEngine(
         }
         val threshold = det.getModelThreshold() ?: return false
         val now = System.currentTimeMillis()
-        if (!score.isFinite() || score < threshold || now - lastDetectionAt < config.detectionCooldownMs) return false
+        if (!score.isFinite() || score < threshold || now - lastDetectionAt < activeConfig.detectionCooldownMs) return false
 
         val candidateAudio = recentAudioWindow()
         val verified = wakeGate?.processWakeScore(score, candidateAudio, threshold) ?: true

@@ -18,4 +18,34 @@ data class WakeWordConfig(
         require(silenceFramesBeforeReset in 1..20)
         require(detectionCooldownMs >= 0L)
     }
+
+    companion object {
+        fun fromSensitivity(sensitivity: String, isLowEnd: Boolean = false): WakeWordConfig {
+            val baseConfig = when (sensitivity.trim().uppercase()) {
+                "HIGH" -> WakeWordConfig(
+                    confirmationWindowCount = 4,
+                    requiredPositiveWindows = 2,
+                    minEnergyRms = 0.00015,
+                    silenceFramesBeforeReset = 6
+                )
+                "LOW" -> WakeWordConfig(
+                    confirmationWindowCount = 5,
+                    requiredPositiveWindows = 3,
+                    minEnergyRms = 0.00100,
+                    silenceFramesBeforeReset = 4
+                )
+                else -> WakeWordConfig( // BALANCED / MEDIUM / DEFAULT
+                    confirmationWindowCount = 4,
+                    requiredPositiveWindows = 2,
+                    minEnergyRms = 0.00030,
+                    silenceFramesBeforeReset = 5
+                )
+            }
+            return if (isLowEnd) {
+                baseConfig.copy(minEnergyRms = baseConfig.minEnergyRms * 0.75)
+            } else {
+                baseConfig
+            }
+        }
+    }
 }

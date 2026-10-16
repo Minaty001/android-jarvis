@@ -219,6 +219,7 @@ class VoiceEngine(
         followUpTimeoutMs = (appSettings.followUpTimeoutSeconds * 1000L).coerceIn(3000L, 15000L)
         voiceRouter.bargeInDetector.setEnabled(appSettings.bargeInEnabled)
         voiceRouter.bargeInDetector.setSensitivity(appSettings.wakeSensitivity)
+        wakeEngine.setSensitivity(appSettings.wakeSensitivity)
         acousticFeedbackEngine.isAudioEnabled = appSettings.acousticFeedbackEnabled
         acousticFeedbackEngine.isHapticEnabled = appSettings.hapticFeedbackEnabled
         val voiceProfile = runCatching { store.loadVoiceProfile() }.getOrDefault(com.jarvis.wakeword.UserVoiceProfile.DEFAULT)

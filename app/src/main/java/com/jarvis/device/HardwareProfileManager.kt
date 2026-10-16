@@ -90,4 +90,7 @@ object HardwareProfileManager {
 
     fun isConstrainedDevice(context: Context?): Boolean =
         getProfile(context).tier == DeviceTier.LOW_END
+
+    fun isLowEndDevice(context: Context?): Boolean =
+        isConstrainedDevice(context)
 }
