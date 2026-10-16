@@ -38,6 +38,7 @@ class OpenWakeWordDetector(
     private var detectedPhrase: String? = null
     private var realEmbeddingCount = 0
     private var latestEnergyGatePassed: Boolean? = null
+    private var consecutiveSilenceFrames = 0
     private val confirmation = KwsTemporalConfirmation(config.confirmationWindowCount, config.requiredPositiveWindows)
     private var melInputBuffer: FloatBuffer? = null
     private var melOutputBuffer: ByteBuffer? = null
@@ -194,9 +195,14 @@ class OpenWakeWordDetector(
                 audioChunkIndex = 0
                 processedFrame = true
                 if (!energyPassed) {
-                    confirmation.reset()
-                    latestScore = 0f
-                    detectedPhrase = null
+                    consecutiveSilenceFrames++
+                    if (consecutiveSilenceFrames >= config.silenceFramesBeforeReset) {
+                        confirmation.reset()
+                        latestScore = 0f
+                        detectedPhrase = null
+                    }
+                } else {
+                    consecutiveSilenceFrames = 0
                 }
             }
         }
@@ -328,6 +334,7 @@ class OpenWakeWordDetector(
         }
         latestScore = 0f; detectedPhrase = null; realEmbeddingCount = 0; confirmation.reset()
         latestEnergyGatePassed = null
+        consecutiveSilenceFrames = 0
     }
 
     private fun calculateRms(samples: ShortArray): Double {
