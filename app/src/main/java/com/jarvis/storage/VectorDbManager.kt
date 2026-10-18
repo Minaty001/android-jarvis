@@ -6,10 +6,9 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
 import com.jarvis.ai.EmbeddingVectorizer
+import com.jarvis.ai.VectorUtils
 import org.json.JSONObject
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 
 
@@ -90,7 +89,7 @@ class VectorDbManager(private val context: Context) {
     ): Boolean {
         return try {
             val vec = vectorizer.embed(text)
-            val blob = floatArrayToByteArray(vec)
+            val blob = VectorUtils.toByteArray(vec)
             val metaJson = JSONObject(metadata).toString()
             val now = System.currentTimeMillis()
 
@@ -190,7 +189,7 @@ class VectorDbManager(private val context: Context) {
                     val metaStr = cursor.getString(5)
                     val createdAt = cursor.getLong(6)
 
-                    val vec = byteArrayToFloatArray(blob, dims)
+                    val vec = VectorUtils.toFloatArray(blob) ?: FloatArray(dims)
                     val meta = parseMetadata(metaStr)
 
                     list.add(VectorRecord(id, topic, text, vec, dims, meta, createdAt))
@@ -237,17 +236,5 @@ class VectorDbManager(private val context: Context) {
         } catch (_: Exception) {
             emptyMap()
         }
-    }
-
-    private fun floatArrayToByteArray(floats: FloatArray): ByteArray {
-        val buffer = ByteBuffer.allocate(floats.size * 4).order(ByteOrder.LITTLE_ENDIAN)
-        buffer.asFloatBuffer().put(floats)
-        return buffer.array()
-    }
-
-    private fun byteArrayToFloatArray(bytes: ByteArray, dims: Int): FloatArray {
-        val floats = FloatArray(dims)
-        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(floats)
-        return floats
     }
 }

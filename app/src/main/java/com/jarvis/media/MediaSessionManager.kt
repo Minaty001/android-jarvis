@@ -110,4 +110,38 @@ class MediaSessionManager(
         history.clear()
         isPlaying = false
     }
+
+    fun getActiveController(): MediaController? {
+        if (context == null) return null
+        return try {
+            val sm = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as? AndroidMediaSessionManager
+            val activeSessions = sm?.getActiveSessions(null).orEmpty()
+            activeSessions.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+                ?: activeSessions.firstOrNull()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun seekBy(deltaSeconds: Long): Boolean {
+        val controller = getActiveController() ?: return false
+        return try {
+            val currentPos = controller.playbackState?.position ?: 0L
+            val targetPos = maxOf(0L, currentPos + (deltaSeconds * 1000L))
+            controller.transportControls.seekTo(targetPos)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun setPlaybackSpeed(speed: Float): Boolean {
+        val controller = getActiveController() ?: return false
+        return try {
+            controller.transportControls.setPlaybackSpeed(speed)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
 }

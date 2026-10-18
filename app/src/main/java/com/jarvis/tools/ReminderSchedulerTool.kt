@@ -15,7 +15,7 @@ import com.jarvis.reminder.ScheduledKind
 class ReminderSchedulerTool(private val context: Context) : Tool {
     override val name: String = "REMINDER_SCHEDULE"
     override val description: String =
-        "Schedules timers, alarms, reminders and recurring routine jobs. Parameters: action ('set_timer', 'set_alarm', 'remind_me', 'schedule_routine', 'cancel', 'list'), what (label/note), minutes, time, routine, days."
+        "Schedules timers, alarms, reminders and recurring routine jobs. Parameters: action ('set_timer', 'set_alarm', 'remind_me', 'schedule_routine', 'cancel', 'list'), what (label/note), minutes, time, routine, days. Cancel by id or a unique reminder description."
 
     val metadata = com.jarvis.foundation.ToolMetadata(
         name = "REMINDER_SCHEDULE",
@@ -108,12 +108,19 @@ class ReminderSchedulerTool(private val context: Context) : Tool {
     }
 
     private fun cancelItem(params: Map<String, String>): ToolResult {
-        val id = params["id"] ?: return ToolResult.Failed("Reminder id missing.")
         val store = ReminderStore(context)
-        val found = store.load().any { it.id == id }
-        if (!found) return ToolResult.Failed("No reminder with id '$id'.")
-        ReminderScheduler.cancel(context, id)
-        store.remove(id)
+        val items = store.load()
+        val id = params["id"]
+        val matches = if (id != null) items.filter { it.id == id } else {
+            val target = params["routine"] ?: params["query"] ?: params["what"]
+                ?: return ToolResult.Failed("Specify a reminder ID or description to cancel.")
+            items.filter { it.label.contains(target, true) || it.routineId.contains(target, true) }
+        }
+        if (matches.isEmpty()) return ToolResult.Failed("No matching reminder was found.")
+        if (matches.size > 1) return ToolResult.Failed("More than one reminder matches. Use its ID to cancel the right one.")
+        val matchedId = matches.single().id
+        ReminderScheduler.cancel(context, matchedId)
+        store.remove(matchedId)
         return ToolResult.Success("Reminder cancelled.")
     }
 

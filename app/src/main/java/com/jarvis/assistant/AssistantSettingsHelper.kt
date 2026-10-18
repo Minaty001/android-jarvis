@@ -94,4 +94,15 @@ object AssistantSettingsHelper {
             }
         }
     }
+
+    /**
+     * Returns a spoken status message describing whether Jarvis is the default digital assistant.
+     */
+    fun formatStatusMessage(isDefault: Boolean): String {
+        return if (isDefault) {
+            "Jarvis is configured as your system default digital assistant and active for long-press invocation."
+        } else {
+            "Jarvis is currently not the default assistant. Say 'Open assistant settings' to configure it in Android Settings."
+        }
+    }
 }

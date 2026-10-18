@@ -19,6 +19,15 @@ import org.junit.Test
 class RepeatLoopRegressionTest {
 
     @Test
+    fun testOnlyExplicitPositiveReplyApprovesPendingAction() {
+        assertTrue(AgentKernel.isExplicitApprovalReply("yes, send it"))
+        assertTrue(AgentKernel.isExplicitApprovalReply("haan bhejo"))
+        assertFalse(AgentKernel.isExplicitApprovalReply("don't send it"))
+        assertFalse(AgentKernel.isExplicitApprovalReply("no, do it"))
+        assertFalse(AgentKernel.isExplicitApprovalReply("maybe send it"))
+    }
+
+    @Test
     fun testCheckpointRoundTripPreservesExecutedActs() {
         val goal = "YouTube per gana chalao"
         val state = AgentState(taskId = 7, goal = goal)

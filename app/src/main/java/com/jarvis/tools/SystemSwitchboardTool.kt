@@ -50,6 +50,7 @@ class SystemSwitchboardTool(private val context: Context) : Tool {
         }
 
         val target = params["target"]?.trim()?.lowercase()
+        val routineMode = params["routine_mode"] == "true"
         val on = when (target) {
             "on", "enable", "1", "true" -> true
             "off", "disable", "0", "false" -> false
@@ -62,8 +63,8 @@ class SystemSwitchboardTool(private val context: Context) : Tool {
 
         val decision = SystemCapability.decide(Build.VERSION.SDK_INT, action)
         return when (action) {
-            "wifi" -> toggleWifi(on, decision)
-            "bt", "bluetooth" -> toggleBluetooth(on, decision)
+            "wifi" -> toggleWifi(on, decision, routineMode)
+            "bt", "bluetooth" -> toggleBluetooth(on, decision, routineMode)
             "dnd" -> toggleDnd(on, decision)
             "hotspot" -> blocked(decision, "hotspot")
             "led", "flashlight" -> toggleTorch(on)
@@ -71,8 +72,8 @@ class SystemSwitchboardTool(private val context: Context) : Tool {
         }
     }
 
-    private fun toggleWifi(on: Boolean, decision: CapabilityDecision): ToolResult {
-        if (!decision.canAttempt) return openPanel(decision, "wifi")
+    private fun toggleWifi(on: Boolean, decision: CapabilityDecision, routineMode: Boolean): ToolResult {
+        if (!decision.canAttempt) return openPanel(decision, "wifi", routineMode = routineMode)
         val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
             ?: return ToolResult.Failed("Wi-Fi manager unavailable.")
         return try {
@@ -80,17 +81,17 @@ class SystemSwitchboardTool(private val context: Context) : Tool {
             wifi.isWifiEnabled = on
             val state = wifi.isWifiEnabled
             if (state == on) ToolResult.Success("Wi-Fi turned ${if (on) "on" else "off"}.", mapOf("wifi" to state))
-            else openPanel(decision, "wifi", "Wi-Fi did not change; opening settings.")
+            else openPanel(decision, "wifi", "Wi-Fi did not change; opening settings.", routineMode)
         } catch (e: Exception) {
             ToolResult.Failed("Couldn't change Wi-Fi: ${e.message}")
         }
     }
 
-    private fun toggleBluetooth(on: Boolean, decision: CapabilityDecision): ToolResult {
+    private fun toggleBluetooth(on: Boolean, decision: CapabilityDecision, routineMode: Boolean): ToolResult {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
             context.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
         ) {
-            return openPanel(decision, "bluetooth", "Bluetooth permission is required to change this setting.")
+            return openPanel(decision, "bluetooth", "Bluetooth permission is required to change this setting.", routineMode)
         }
         val adapter = BluetoothAdapter.getDefaultAdapter()
             ?: return ToolResult.Failed("No Bluetooth adapter on this device.")
@@ -101,7 +102,7 @@ class SystemSwitchboardTool(private val context: Context) : Tool {
             if (state == on) {
                 ToolResult.Success("Bluetooth turned ${if (on) "on" else "off"}.", mapOf("bluetooth" to state))
             } else {
-                openPanel(decision, "bluetooth", "This Android version blocks app toggling of Bluetooth; opening settings.")
+                openPanel(decision, "bluetooth", "This Android version blocks app toggling of Bluetooth; opening settings.", routineMode)
             }
         } catch (e: Exception) {
             ToolResult.Failed("Couldn't change Bluetooth: ${e.message}")
@@ -146,8 +147,9 @@ class SystemSwitchboardTool(private val context: Context) : Tool {
     private fun blocked(decision: CapabilityDecision, what: String): ToolResult =
         openPanel(decision, what)
 
-    private fun openPanel(decision: CapabilityDecision, what: String, message: String? = null): ToolResult {
+    private fun openPanel(decision: CapabilityDecision, what: String, message: String? = null, routineMode: Boolean = false): ToolResult {
         val panel = decision.panelAction
+        if (routineMode) return ToolResult.Failed("Couldn't change $what automatically. Android blocked the action; no settings screen was opened.")
         val opened = panel != null
         try {
             if (opened) {

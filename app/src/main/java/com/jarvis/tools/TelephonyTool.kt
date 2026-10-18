@@ -45,14 +45,51 @@ class TelephonyTool(
                 }
             }
 
-            "reject_call", "reject", "decline", "end_call", "cut_call" -> {
+            "reject_call", "reject", "decline", "end_call", "cut_call", "hang_up" -> {
                 val autoSms = message.ifBlank { null }
                 val rejected = agent.rejectCall(autoReplySms = autoSms)
                 return if (rejected) {
                     val note = if (autoSms != null) " and auto-reply SMS sent: \"$autoSms\"" else ""
-                    ToolResult.Success("Call rejected$note.")
+                    val verb = if (action in listOf("end_call", "cut_call", "hang_up")) "ended" else "rejected"
+                    ToolResult.Success("Call $verb$note.")
                 } else {
-                    ToolResult.Failed("Could not reject call.")
+                    ToolResult.Failed("Could not end/reject call.")
+                }
+            }
+
+            "speaker_on", "speakerphone_on" -> {
+                val success = agent.setSpeakerphone(true)
+                return if (success) {
+                    ToolResult.Success("Speakerphone enabled.", mapOf("action" to "speaker_on", "speakerphone" to "true"))
+                } else {
+                    ToolResult.Failed("Could not enable speakerphone.")
+                }
+            }
+
+            "speaker_off", "speakerphone_off" -> {
+                val success = agent.setSpeakerphone(false)
+                return if (success) {
+                    ToolResult.Success("Speakerphone disabled.", mapOf("action" to "speaker_off", "speakerphone" to "false"))
+                } else {
+                    ToolResult.Failed("Could not disable speakerphone.")
+                }
+            }
+
+            "mute_mic", "mute_microphone" -> {
+                val success = agent.setMicrophoneMute(true)
+                return if (success) {
+                    ToolResult.Success("Microphone muted.", mapOf("action" to "mute_mic", "muted" to "true"))
+                } else {
+                    ToolResult.Failed("Could not mute microphone.")
+                }
+            }
+
+            "unmute_mic", "unmute_microphone" -> {
+                val success = agent.setMicrophoneMute(false)
+                return if (success) {
+                    ToolResult.Success("Microphone unmuted.", mapOf("action" to "unmute_mic", "muted" to "false"))
+                } else {
+                    ToolResult.Failed("Could not unmute microphone.")
                 }
             }
 
@@ -93,10 +130,14 @@ class TelephonyTool(
 
                 val displayName = contact?.name ?: targetNumber
                 val uri = Uri.parse("tel:$targetNumber")
+                val useSpeaker = params["speaker"]?.toBoolean() == true || params["mode"] == "speaker"
+                if (useSpeaker) {
+                    agent.setSpeakerphone(true)
+                }
 
                 val ctx = context ?: return ToolResult.Success(
-                    message = "Calling $displayName ($targetNumber) [Simulation Mode].",
-                    data = mapOf("number" to targetNumber, "contact" to displayName)
+                    message = "Calling $displayName ($targetNumber)${if (useSpeaker) " on speaker" else ""} [Simulation Mode].",
+                    data = mapOf("number" to targetNumber, "contact" to displayName, "speaker" to useSpeaker.toString())
                 )
 
                 // Check direct CALL_PHONE permission

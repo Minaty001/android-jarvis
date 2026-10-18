@@ -100,6 +100,15 @@ class WhatsAppAutomationTest {
         assertTrue(stdResult.success)
         assertTrue(stdResult.message.contains("Alice"))
         assertFalse(stdResult.message.contains("Tech Store"))
+
+        repeat(24) { index ->
+            NotificationStore.addNotification(bizItem.copy(
+                id = "com.whatsapp.w4b:${200 + index}",
+                title = "Business $index"
+            ))
+        }
+        val olderStandardResult = engine.readRecentMessages(limit = 10, platformFilter = "standard")
+        assertTrue(olderStandardResult.message.contains("Alice"))
     }
 
     @Test

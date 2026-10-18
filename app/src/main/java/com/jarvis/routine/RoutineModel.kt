@@ -33,7 +33,8 @@ data class SmartRoutine(
     val actions: List<RoutineAction>,
     var isEnabled: Boolean = true,
     var lastTriggeredAt: Long = 0L,
-    val cooldownMinutes: Int = 15
+    val cooldownMinutes: Int = 15,
+    var lastResult: String = ""
 )
 
 data class RoutineExecutionResult(

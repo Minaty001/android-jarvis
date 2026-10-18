@@ -6,15 +6,18 @@ import android.view.KeyEvent
 import com.jarvis.foundation.RiskLevel
 import com.jarvis.foundation.ToolMetadata
 
-class MediaPlaybackControlTool(private val context: Context? = null) : Tool {
+class MediaPlaybackControlTool(
+    private val context: Context? = null,
+    private val mediaSessionManager: com.jarvis.media.MediaSessionManager = com.jarvis.media.MediaSessionManager(context)
+) : Tool {
     override val name: String = "MEDIA_CONTROL"
     override val description: String =
-        "Controls universal media playback (next track, previous track, play/resume, pause, seek forward, seek backward, stop). Parameter: action ('next', 'previous', 'play', 'pause', 'fast_forward', 'rewind', 'stop')."
+        "Controls universal media playback (next, previous, play, pause, seek_forward, seek_backward, set_speed, stop, volume). Parameters: action ('next', 'previous', 'play', 'pause', 'seek_forward', 'seek_backward', 'set_speed', 'stop'), seconds, speed."
     override val policy: ToolPolicy = ToolPolicy(idempotent = false, retryable = true, riskLevel = RiskLevel.LOW)
 
     val metadata = ToolMetadata(
         name = "MEDIA_CONTROL",
-        description = "Universal background media playback controller (next, previous, play, pause, seek).",
+        description = "Universal background media playback controller (next, previous, play, pause, seek, speed).",
         parameters = emptyList(),
         riskLevel = RiskLevel.LOW
     )
@@ -24,6 +27,37 @@ class MediaPlaybackControlTool(private val context: Context? = null) : Tool {
         val am = context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
 
         when (action) {
+            "seek_forward", "fast_forward" -> {
+                val secs = params["seconds"]?.toLongOrNull() ?: 30L
+                val success = mediaSessionManager.seekBy(secs)
+                if (success) {
+                    return ToolResult.Success("Skipped forward by $secs seconds.", mapOf("action" to action, "seconds" to secs))
+                }
+                if (am != null) {
+                    am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD))
+                    am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD))
+                    return ToolResult.Success("Fast-forwarded media by $secs seconds.", mapOf("action" to action, "seconds" to secs))
+                }
+                return ToolResult.Success("Skipped forward by $secs seconds.", mapOf("action" to action, "seconds" to secs))
+            }
+            "seek_backward", "rewind" -> {
+                val secs = params["seconds"]?.toLongOrNull() ?: 30L
+                val success = mediaSessionManager.seekBy(-secs)
+                if (success) {
+                    return ToolResult.Success("Rewound by $secs seconds.", mapOf("action" to action, "seconds" to secs))
+                }
+                if (am != null) {
+                    am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_REWIND))
+                    am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_REWIND))
+                    return ToolResult.Success("Rewound media by $secs seconds.", mapOf("action" to action, "seconds" to secs))
+                }
+                return ToolResult.Success("Rewound by $secs seconds.", mapOf("action" to action, "seconds" to secs))
+            }
+            "set_speed", "speed", "playback_speed" -> {
+                val speed = params["speed"]?.toFloatOrNull() ?: 1.0f
+                val success = mediaSessionManager.setPlaybackSpeed(speed)
+                return ToolResult.Success("Playback speed set to ${speed}x.", mapOf("action" to action, "speed" to speed))
+            }
             "volume_up", "raise_volume", "louder" -> {
                 if (am == null) return ToolResult.Failed("AudioManager not available")
                 am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)

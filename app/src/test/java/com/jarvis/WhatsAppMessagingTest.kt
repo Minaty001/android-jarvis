@@ -30,6 +30,7 @@ class WhatsAppMessagingTest {
     @Before
     fun setUp() {
         NotificationStore.clear()
+        com.jarvis.messaging.AutoReplyPolicyManager.setMode(AutoReplyMode.OFF)
         contactResolver = ContactResolver(null)
         contactResolver.addCachedContact(ContactInfo("c_rahul", "Rahul", "+919876543210", "Mobile"))
         contactResolver.addCachedContact(ContactInfo("c_amit", "Amit", "+919876543211", "Mobile"))

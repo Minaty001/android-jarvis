@@ -192,11 +192,25 @@ object UiAutomationManager {
                     -1
                 }
             }
+            "split_screen", "toggle_split_screen", "split", "side_by_side", "side_by_side_mode" -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    AccessibilityService.GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN
+                } else {
+                    -1
+                }
+            }
+            "app_drawer", "all_apps", "apps" -> {
+                if (Build.VERSION.SDK_INT >= 31) {
+                    14 // AccessibilityService.GLOBAL_ACTION_ACCESSIBILITY_ALL_APPS
+                } else {
+                    AccessibilityService.GLOBAL_ACTION_HOME
+                }
+            }
             else -> return ToolResult(false, "Unknown global action: $actionName")
         }
 
         if (actionInt == -1) {
-            return ToolResult(false, "Screen lock global action requires Android 9.0+ (API 28)")
+            return ToolResult(false, "Action '$actionName' requires a newer Android version.")
         }
 
         val success = service.performGlobalAction(actionInt)

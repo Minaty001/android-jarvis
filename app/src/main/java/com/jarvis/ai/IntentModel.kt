@@ -59,7 +59,18 @@ enum class AssistantIntent {
     SCREEN_UNLOCK,
     SMART_HOME_CONTROL,
     FLIGHT_ASSISTANT,
-    FLIGHT_SIMULATOR
+    FLIGHT_SIMULATOR,
+    UI_GLOBAL_ACTION,
+    UI_SCROLL_ACTION,
+    VOICE_ACCESS_OVERLAY,
+    SCREEN_READER,
+    AMBIENT_OPEN_MIC,
+    DEFAULT_ASSISTANT_SETTINGS,
+    HANDS_FREE_CAMERA,
+    AIR_GESTURES,
+    VOICE_TYPING,
+    DRIVING_MODE,
+    TELEPHONY_CONTROL
 }
 
 data class ResolvedIntent(
@@ -162,6 +173,61 @@ object IntentResolver {
                 confidence = 0.98f,
                 params = params,
                 directPlan = ExecutionPlan(desc, listOf(ActionPlan("FLASHLIGHT", params)))
+            )
+        }
+
+        // 0.18 Display Brightness Scrubbing
+        if (text in listOf("full brightness", "max brightness", "100% brightness", "full screen brightness", "brightness full")) {
+            val params = mapOf("action" to "set_brightness", "brightness_percent" to "100")
+            return ResolvedIntent(
+                intent = AssistantIntent.DEVICE_SETTINGS,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Setting screen brightness to 100%.", listOf(ActionPlan("DEVICE_SETTINGS", params)))
+            )
+        }
+
+        if (text in listOf("dim screen", "screen dim karo", "brightness low", "dim the screen", "low brightness")) {
+            val params = mapOf("action" to "set_brightness", "brightness_percent" to "20")
+            return ResolvedIntent(
+                intent = AssistantIntent.DEVICE_SETTINGS,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Dimming screen brightness to 20%.", listOf(ActionPlan("DEVICE_SETTINGS", params)))
+            )
+        }
+
+        val brightnessMatch = Regex("(?:set\\s+)?(?:screen\\s+)?brightness\\s+(?:to\\s+)?(\\d{1,3})%?|(?:set\\s+)?(\\d{1,3})%?\\s*brightness", RegexOption.IGNORE_CASE).find(text)
+        if (brightnessMatch != null && !text.contains("smart home") && !text.contains("light")) {
+            val pctStr = brightnessMatch.groupValues.drop(1).firstOrNull { it.isNotBlank() } ?: "50"
+            val pct = pctStr.toIntOrNull()?.coerceIn(0, 100) ?: 50
+            val params = mapOf("action" to "set_brightness", "brightness_percent" to pct.toString(), "percent" to pct.toString())
+            return ResolvedIntent(
+                intent = AssistantIntent.DEVICE_SETTINGS,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Setting screen brightness to $pct%.", listOf(ActionPlan("DEVICE_SETTINGS", params)))
+            )
+        }
+
+        // 0.19 Stream-Specific Audio Volume Scrubbing
+        val streamVolumeMatch = Regex("(?:set\\s+)?(alarm|ringtone|ring|notification|notif|media|music)\\s+volume\\s+(?:to\\s+)?(\\d{1,3})%?|(?:set\\s+)?(\\d{1,3})%?\\s+(alarm|ringtone|ring|notification|notif|media|music)\\s+volume", RegexOption.IGNORE_CASE).find(text)
+        if (streamVolumeMatch != null) {
+            val rawStream = if (streamVolumeMatch.groupValues[1].isNotBlank()) streamVolumeMatch.groupValues[1] else streamVolumeMatch.groupValues[4]
+            val pctStr = if (streamVolumeMatch.groupValues[2].isNotBlank()) streamVolumeMatch.groupValues[2] else streamVolumeMatch.groupValues[3]
+            val pct = pctStr.toIntOrNull()?.coerceIn(0, 100) ?: 50
+            val streamType = when (rawStream.lowercase()) {
+                "ring", "ringtone" -> "ring"
+                "alarm" -> "alarm"
+                "notification", "notif" -> "notification"
+                else -> "music"
+            }
+            val params = mapOf("action" to "set_volume", "stream" to streamType, "volume_percent" to pct.toString(), "percent" to pct.toString())
+            return ResolvedIntent(
+                intent = AssistantIntent.MEDIA_VOLUME,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Setting $rawStream volume to $pct%.", listOf(ActionPlan("DEVICE_SETTINGS", params)))
             )
         }
 
@@ -272,6 +338,413 @@ object IntentResolver {
                 confidence = 0.98f,
                 params = params,
                 directPlan = ExecutionPlan("Closing all open applications.", listOf(ActionPlan("APPS_CLOSE_ALL", params)))
+            )
+        }
+
+        // 0.45 Hands-Free Global Navigation & System Gestures
+        if (text in listOf("go back", "back", "piche", "piche jao", "back jao") || text == "back") {
+            val params = mapOf("action" to "back")
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_GLOBAL_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Going back.", listOf(ActionPlan("UI_GLOBAL", params)))
+            )
+        }
+
+        if (text in listOf("go home", "home", "home screen", "ghar", "ghar jao") || text == "home") {
+            val params = mapOf("action" to "home")
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_GLOBAL_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Going to home screen.", listOf(ActionPlan("UI_GLOBAL", params)))
+            )
+        }
+
+        if (text in listOf("recent apps", "recent app", "recents", "overview", "switch apps", "open recents")) {
+            val params = mapOf("action" to "recents")
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_GLOBAL_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Opening recent apps.", listOf(ActionPlan("UI_GLOBAL", params)))
+            )
+        }
+
+        if (text in listOf("notifications", "open notifications", "pull down notifications", "notification shade", "show notifications")) {
+            val params = mapOf("action" to "notifications")
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_GLOBAL_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Opening notifications shade.", listOf(ActionPlan("UI_GLOBAL", params)))
+            )
+        }
+
+        if (text in listOf("quick settings", "open quick settings", "settings shade", "show quick settings")) {
+            val params = mapOf("action" to "quick_settings")
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_GLOBAL_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Opening quick settings.", listOf(ActionPlan("UI_GLOBAL", params)))
+            )
+        }
+
+        if (text in listOf("take screenshot", "take a screenshot", "screenshot", "capture screen", "screenshot lo", "screen shot")) {
+            val params = mapOf("action" to "screenshot")
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_GLOBAL_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Capturing screenshot.", listOf(ActionPlan("UI_GLOBAL", params)))
+            )
+        }
+
+        if (text in listOf("split screen", "toggle split screen", "open split screen", "start split screen", "side by side", "side by side mode", "close split screen", "exit split screen")) {
+            val params = mapOf("action" to "split_screen")
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_GLOBAL_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Toggling split screen mode.", listOf(ActionPlan("UI_GLOBAL", params)))
+            )
+        }
+
+        if (text in listOf("open app drawer", "show app drawer", "app drawer", "all apps", "show all apps", "open apps")) {
+            val params = mapOf("action" to "app_drawer")
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_GLOBAL_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Opening app drawer.", listOf(ActionPlan("UI_GLOBAL", params)))
+            )
+        }
+
+        // 0.46 Hands-Free In-App Scrolling
+        if (text in listOf("scroll down", "niche scroll karo", "scroll down karo", "niche scroll", "page down")) {
+            val params = mapOf("direction" to "down")
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_SCROLL_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Scrolling down.", listOf(ActionPlan("UI_SCROLL", params)))
+            )
+        }
+
+        if (text in listOf("scroll up", "uper scroll karo", "scroll up karo", "upar scroll", "page up")) {
+            val params = mapOf("direction" to "up")
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_SCROLL_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Scrolling up.", listOf(ActionPlan("UI_SCROLL", params)))
+            )
+        }
+
+        // 0.47 Voice Access Numbered Overlay
+        if (text in listOf("show numbers", "show grid", "numbers dikhao", "numbers on", "show badges", "display numbers")) {
+            val params = mapOf("action" to "show")
+            return ResolvedIntent(
+                intent = AssistantIntent.VOICE_ACCESS_OVERLAY,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Displaying numbered badges.", listOf(ActionPlan("VOICE_ACCESS", params)))
+            )
+        }
+
+        if (text in listOf("hide numbers", "hide grid", "numbers band karo", "numbers off", "hide badges")) {
+            val params = mapOf("action" to "hide")
+            return ResolvedIntent(
+                intent = AssistantIntent.VOICE_ACCESS_OVERLAY,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Hiding numbered badges.", listOf(ActionPlan("VOICE_ACCESS", params)))
+            )
+        }
+
+        val tapNumberMatch = Regex("^(?:tap|click|select|choose|number|no|dabao)\\s+(\\d{1,3})$").find(text)
+        if (tapNumberMatch != null) {
+            val num = tapNumberMatch.groupValues[1]
+            val params = mapOf("action" to "click", "number" to num)
+            return ResolvedIntent(
+                intent = AssistantIntent.VOICE_ACCESS_OVERLAY,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Tapping item $num.", listOf(ActionPlan("VOICE_ACCESS", params)))
+            )
+        }
+
+        // 0.48 Screen Reader & Narration
+        if (text in listOf("read screen", "read this screen", "read page", "read this page", "read article", "screen padho", "read content")) {
+            val params = mapOf("action" to "read")
+            return ResolvedIntent(
+                intent = AssistantIntent.SCREEN_READER,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Reading on-screen content aloud.", listOf(ActionPlan("SCREEN_READER", params)))
+            )
+        }
+
+        // 0.49 Continuous Ambient Open-Mic Mode
+        if (text in listOf("open mic", "turn on open mic", "start open mic", "enable open mic", "walkie talkie mode", "continuous listening", "continuous mode", "open mic on")) {
+            val params = mapOf("action" to "start")
+            return ResolvedIntent(
+                intent = AssistantIntent.AMBIENT_OPEN_MIC,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Enabling continuous open-mic mode.", listOf(ActionPlan("AMBIENT_OPEN_MIC", params)))
+            )
+        }
+
+        if (text in listOf("stop open mic", "turn off open mic", "disable open mic", "exit open mic", "close open mic", "open mic off", "jarvis sleep", "go to sleep", "sleep")) {
+            val params = mapOf("action" to "stop")
+            return ResolvedIntent(
+                intent = AssistantIntent.AMBIENT_OPEN_MIC,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Disabling open-mic mode and returning to standby.", listOf(ActionPlan("AMBIENT_OPEN_MIC", params)))
+            )
+        }
+
+        // 0.494 Dedicated In-Car Driving Mode & Ambient HUD
+        if (text in listOf("start driving mode", "enable driving mode", "driving mode on", "i am driving", "car mode", "turn on driving mode", "drive mode on")) {
+            val params = mapOf("action" to "start")
+            return ResolvedIntent(
+                intent = AssistantIntent.DRIVING_MODE,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Enabling in-car driving mode.", listOf(ActionPlan("DRIVING_MODE", params)))
+            )
+        }
+
+        if (text in listOf("stop driving mode", "disable driving mode", "driving mode off", "i have arrived", "exit car mode", "turn off driving mode", "drive mode off", "exit driving mode")) {
+            val params = mapOf("action" to "stop")
+            return ResolvedIntent(
+                intent = AssistantIntent.DRIVING_MODE,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Disabling driving mode.", listOf(ActionPlan("DRIVING_MODE", params)))
+            )
+        }
+
+        if (text in listOf("driving mode status", "is driving mode on", "check driving mode", "car mode status")) {
+            val params = mapOf("action" to "status")
+            return ResolvedIntent(
+                intent = AssistantIntent.DRIVING_MODE,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Checking driving mode status.", listOf(ActionPlan("DRIVING_MODE", params)))
+            )
+        }
+
+        // 0.495 Default Voice Assistant Settings & Status
+        if (text in listOf("set jarvis as default assistant", "make jarvis default assistant", "open assistant settings", "default assistant settings", "change default assistant", "assistant settings")) {
+            val params = mapOf("action" to "open")
+            return ResolvedIntent(
+                intent = AssistantIntent.DEFAULT_ASSISTANT_SETTINGS,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Opening Default Assistant settings.", listOf(ActionPlan("DEFAULT_ASSISTANT", params)))
+            )
+        }
+
+        if (text in listOf("default assistant status", "is jarvis default assistant", "check default assistant", "assistant status")) {
+            val params = mapOf("action" to "check")
+            return ResolvedIntent(
+                intent = AssistantIntent.DEFAULT_ASSISTANT_SETTINGS,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Checking Default Assistant status.", listOf(ActionPlan("DEFAULT_ASSISTANT", params)))
+            )
+        }
+
+        // 0.496 Hands-Free Camera Voice Triggers & Photo Capture
+        if (text in listOf("take a picture", "take a photo", "take photo", "capture photo", "click a picture", "click photo", "photo khicho", "picture khicho")) {
+            val params = mapOf("action" to "take_photo", "facing" to "back")
+            return ResolvedIntent(
+                intent = AssistantIntent.HANDS_FREE_CAMERA,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Taking a picture.", listOf(ActionPlan("HANDS_FREE_CAMERA", params)))
+            )
+        }
+
+        if (text in listOf("take a selfie", "take selfie", "click selfie", "click a selfie", "selfie lo", "selfie khicho", "selfie")) {
+            val params = mapOf("action" to "take_photo", "facing" to "front")
+            return ResolvedIntent(
+                intent = AssistantIntent.HANDS_FREE_CAMERA,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Taking a selfie.", listOf(ActionPlan("HANDS_FREE_CAMERA", params)))
+            )
+        }
+
+        if (text in listOf("open camera", "launch camera", "start camera", "camera kholo", "open the camera")) {
+            val params = mapOf("action" to "launch_camera", "mode" to "still")
+            return ResolvedIntent(
+                intent = AssistantIntent.HANDS_FREE_CAMERA,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Opening camera.", listOf(ActionPlan("HANDS_FREE_CAMERA", params)))
+            )
+        }
+
+        if (text in listOf("record video", "start recording video", "record a video", "take a video", "start recording", "video record karo", "video shoot karo")) {
+            val params = mapOf("action" to "launch_camera", "mode" to "video")
+            return ResolvedIntent(
+                intent = AssistantIntent.HANDS_FREE_CAMERA,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Starting video recording.", listOf(ActionPlan("HANDS_FREE_CAMERA", params)))
+            )
+        }
+
+        if (text in listOf("press shutter", "click shutter", "capture shutter", "camera shutter", "shutter click karo")) {
+            val params = mapOf("action" to "shutter")
+            return ResolvedIntent(
+                intent = AssistantIntent.HANDS_FREE_CAMERA,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Clicking camera shutter.", listOf(ActionPlan("HANDS_FREE_CAMERA", params)))
+            )
+        }
+
+        // 0.497 Touchless Air Gestures
+        if (text in listOf("turn on air gestures", "enable air gestures", "touchless control on", "air gestures on", "touchless mode on", "air gesture on")) {
+            val params = mapOf("action" to "enable")
+            return ResolvedIntent(
+                intent = AssistantIntent.AIR_GESTURES,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Enabling air gestures.", listOf(ActionPlan("AIR_GESTURES", params)))
+            )
+        }
+
+        if (text in listOf("turn off air gestures", "disable air gestures", "touchless control off", "air gestures off", "touchless mode off", "air gesture off")) {
+            val params = mapOf("action" to "disable")
+            return ResolvedIntent(
+                intent = AssistantIntent.AIR_GESTURES,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Disabling air gestures.", listOf(ActionPlan("AIR_GESTURES", params)))
+            )
+        }
+
+        if (text in listOf("air gestures status", "touchless status", "air gesture status", "check air gestures")) {
+            val params = mapOf("action" to "status")
+            return ResolvedIntent(
+                intent = AssistantIntent.AIR_GESTURES,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Checking air gestures status.", listOf(ActionPlan("AIR_GESTURES", params)))
+            )
+        }
+
+        // 0.498 Universal Voice Typing & Field Dictation
+        val typeMatch = Regex("^(?:type|write|dictate|likho)\\s+(.+)$", RegexOption.IGNORE_CASE).find(text)
+        if (typeMatch != null) {
+            val content = typeMatch.groupValues[1].trim()
+            val params = mapOf("action" to "type", "text" to content)
+            return ResolvedIntent(
+                intent = AssistantIntent.VOICE_TYPING,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Typing: \"$content\"", listOf(ActionPlan("VOICE_TYPING", params)))
+            )
+        }
+
+        if (text in listOf("backspace", "press backspace", "delete word", "delete letter", "one backspace", "piche karo")) {
+            val params = mapOf("action" to "backspace")
+            return ResolvedIntent(
+                intent = AssistantIntent.VOICE_TYPING,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Backspacing in input field.", listOf(ActionPlan("VOICE_TYPING", params)))
+            )
+        }
+
+        if (text in listOf("clear text", "clear input", "clear field", "delete text", "clear all text", "sab saaf karo")) {
+            val params = mapOf("action" to "clear")
+            return ResolvedIntent(
+                intent = AssistantIntent.VOICE_TYPING,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Clearing input field.", listOf(ActionPlan("VOICE_TYPING", params)))
+            )
+        }
+
+        if (text in listOf("press send", "press enter", "hit send", "hit enter", "send input", "submit field", "bhejo")) {
+            val params = mapOf("action" to "send")
+            return ResolvedIntent(
+                intent = AssistantIntent.VOICE_TYPING,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Submitting input.", listOf(ActionPlan("VOICE_TYPING", params)))
+            )
+        }
+
+        // 0.499 Hands-Free Speakerphone & In-Call Voice Management
+        val callOnSpeakerMatch = Regex("^(?:call|dial)\\s+(.+?)\\s+on\\s+speaker$", RegexOption.IGNORE_CASE).find(text)
+        if (callOnSpeakerMatch != null) {
+            val target = callOnSpeakerMatch.groupValues[1].trim()
+            val params = mapOf("action" to "call", "recipient" to target, "speaker" to "true")
+            return ResolvedIntent(
+                intent = AssistantIntent.TELEPHONY_CONTROL,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Calling $target on speaker.", listOf(ActionPlan("TELEPHONY_CONTROL", params)))
+            )
+        }
+
+        if (text in listOf("put on speaker", "turn on speaker", "speaker on", "enable speaker", "turn on speakerphone", "speakerphone on", "loudspeaker", "speaker par dalo")) {
+            val params = mapOf("action" to "speaker_on")
+            return ResolvedIntent(
+                intent = AssistantIntent.TELEPHONY_CONTROL,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Enabling speakerphone.", listOf(ActionPlan("TELEPHONY_CONTROL", params)))
+            )
+        }
+
+        if (text in listOf("turn off speaker", "speaker off", "disable speaker", "turn off speakerphone", "speakerphone off")) {
+            val params = mapOf("action" to "speaker_off")
+            return ResolvedIntent(
+                intent = AssistantIntent.TELEPHONY_CONTROL,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Disabling speakerphone.", listOf(ActionPlan("TELEPHONY_CONTROL", params)))
+            )
+        }
+
+        if (text in listOf("mute mic", "mute microphone", "mute my mic", "mic mute", "mic mute karo")) {
+            val params = mapOf("action" to "mute_mic")
+            return ResolvedIntent(
+                intent = AssistantIntent.TELEPHONY_CONTROL,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Muting microphone.", listOf(ActionPlan("TELEPHONY_CONTROL", params)))
+            )
+        }
+
+        if (text in listOf("unmute mic", "unmute microphone", "unmute my mic", "mic unmute", "mic unmute karo", "turn on mic")) {
+            val params = mapOf("action" to "unmute_mic")
+            return ResolvedIntent(
+                intent = AssistantIntent.TELEPHONY_CONTROL,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Unmuting microphone.", listOf(ActionPlan("TELEPHONY_CONTROL", params)))
+            )
+        }
+
+        if (text in listOf("hang up", "end call", "cut call", "disconnect call", "hang up the call", "phone kato", "call kato")) {
+            val params = mapOf("action" to "end_call")
+            return ResolvedIntent(
+                intent = AssistantIntent.TELEPHONY_CONTROL,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Ending active call.", listOf(ActionPlan("TELEPHONY_CONTROL", params)))
             )
         }
 
@@ -392,6 +865,56 @@ object IntentResolver {
                     }
                 }
             }
+        }
+
+        // 2.05 Media Scrubbing (Seek Forward / Rewind)
+        val forwardSecsMatch = Regex("^(?:skip|forward|fast forward)\\s+(\\d+)\\s*(?:seconds?|secs?|s)$").find(text)
+        val forwardMinsMatch = Regex("^(?:skip|forward|fast forward)\\s+(\\d+)\\s*(?:minutes?|mins?|m)$").find(text)
+        if (forwardSecsMatch != null || forwardMinsMatch != null) {
+            val secs = if (forwardMinsMatch != null) {
+                ((forwardMinsMatch.groupValues[1].toIntOrNull() ?: 1) * 60).toString()
+            } else {
+                forwardSecsMatch!!.groupValues[1]
+            }
+            val params = mapOf("action" to "seek_forward", "seconds" to secs)
+            return ResolvedIntent(
+                intent = AssistantIntent.STOP_MEDIA,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Skipping forward by $secs seconds.", listOf(ActionPlan("MEDIA_CONTROL", params)))
+            )
+        }
+
+        val rewindSecsMatch = Regex("^(?:rewind|go back|replay)\\s+(\\d+)\\s*(?:seconds?|secs?|s)$").find(text)
+        val rewindMinsMatch = Regex("^(?:rewind|go back|replay)\\s+(\\d+)\\s*(?:minutes?|mins?|m)$").find(text)
+        if (rewindSecsMatch != null || rewindMinsMatch != null) {
+            val secs = if (rewindMinsMatch != null) {
+                ((rewindMinsMatch.groupValues[1].toIntOrNull() ?: 1) * 60).toString()
+            } else {
+                rewindSecsMatch!!.groupValues[1]
+            }
+            val params = mapOf("action" to "seek_backward", "seconds" to secs)
+            return ResolvedIntent(
+                intent = AssistantIntent.STOP_MEDIA,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Rewinding by $secs seconds.", listOf(ActionPlan("MEDIA_CONTROL", params)))
+            )
+        }
+
+        // 2.06 Media Playback Speed
+        val speedMatch = Regex("^(?:set\\s+)?(?:playback\\s+)?speed\\s+(?:to\\s+)?([0-9.]+)(?:x)?$").find(text)
+            ?: Regex("^play\\s+at\\s+([0-9.]+)(?:x)?$").find(text)
+        if (speedMatch != null || text == "normal speed") {
+            val rawSpeed = speedMatch?.groupValues?.get(1) ?: "1.0"
+            val formattedSpeed = if (rawSpeed == "2") "2.0" else rawSpeed
+            val params = mapOf("action" to "set_speed", "speed" to formattedSpeed)
+            return ResolvedIntent(
+                intent = AssistantIntent.STOP_MEDIA,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Setting playback speed to ${formattedSpeed}x.", listOf(ActionPlan("MEDIA_CONTROL", params)))
+            )
         }
 
         // 2.1 Media Next Track ("next song", "skip song", "agla gaana", "next track", "skip")
@@ -587,15 +1110,20 @@ object IntentResolver {
         )
         val isScreenQuery = !text.contains("log") && (
             visionTriggers.any { text.contains(it) } ||
-            text.contains("what am i looking at") ||
             (text.contains("screen") && (text.contains("what") || text.contains("describe") || text.contains("see") || text.contains("look") || text.contains("error") || text.contains("crash") || text.contains("bug") || text.contains("issue") || text.contains("problem") || text.contains("summar") || text.contains("page") || text.contains("explain")))
         )
         if (isScreenQuery) {
             val mode = when {
+                text.contains("error") || text.contains("crash") || text.contains("bug") || text.contains("issue") -> "error_check"
+                text.contains("extract") -> "extract"
+                text.contains("summar") -> "summarize"
+                text.contains("explain") -> "explain"
+                text.contains("describe") -> "describe"
+                text.contains("read") -> "read"
                 text.contains("off") || text.contains("stop") || text.contains("band") -> "off"
                 text.contains("driving") || text.contains("drive") -> "driving"
                 text.contains("meeting") || text.contains("meet") -> "meeting"
-                text.contains("ai") || text.contains("smart") -> "ai"
+                Regex("\\bai\\b").containsMatchIn(text) || text.contains("smart") -> "ai"
                 text.contains("busy") -> "busy"
                 else -> "driving"
             }
@@ -1089,7 +1617,7 @@ object IntentResolver {
                 text.contains("off") || text.contains("stop") || text.contains("band") -> "off"
                 text.contains("driving") || text.contains("drive") -> "driving"
                 text.contains("meeting") || text.contains("meet") -> "meeting"
-                text.contains("ai") || text.contains("smart") -> "ai"
+                Regex("\\bai\\b").containsMatchIn(text) || text.contains("smart") -> "ai"
                 text.contains("busy") -> "busy"
                 else -> "driving"
             }
@@ -1261,6 +1789,17 @@ object IntentResolver {
                 confidence = 0.96f,
                 params = params,
                 directPlan = ExecutionPlan("Setting an alarm.", listOf(ActionPlan("REMINDER_SCHEDULE", params)))
+            )
+        }
+
+        val cancelReminder = Regex("^(?:cancel|delete|remove)\\s+(?:the\\s+)?(?:reminder|routine reminder)(?:\\s+(?:for|about|matching))?\\s+(.+)$").find(text)
+        if (cancelReminder != null) {
+            val params = mapOf("action" to "cancel", "routine" to cancelReminder.groupValues[1].trim())
+            return ResolvedIntent(
+                intent = AssistantIntent.REMIND_ME,
+                confidence = 0.97f,
+                params = params,
+                directPlan = ExecutionPlan("Cancelling the matching reminder.", listOf(ActionPlan("REMINDER_SCHEDULE", params)))
             )
         }
 

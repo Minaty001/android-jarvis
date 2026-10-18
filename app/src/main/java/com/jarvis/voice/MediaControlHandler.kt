@@ -11,7 +11,7 @@ import com.jarvis.voice.AppWhitelist
 import kotlinx.coroutines.runBlocking
 
 /**
- * Handles voice‑triggered media control commands. The handler is injected into [BabelFishInterpreter] and can be called directly
+ * Handles voice‑triggered media control commands. Can be called directly
  * to execute commands without round‑tripping through the LLM.
  */
 class MediaControlHandler(

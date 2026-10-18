@@ -13,11 +13,11 @@ echo "=== Building Production Release APK ==="
 
 echo "=== Exporting Release Artifacts ==="
 mkdir -p dist
-cp -f app/build/outputs/apk/release/app-release.apk dist/jarvis-v1.0-release.apk
-sha256sum dist/jarvis-v1.0-release.apk > dist/jarvis-v1.0-release.apk.sha256
+cp -f app/build/outputs/apk/release/app-release.apk dist/jarvis-v1.1-release.apk
+sha256sum dist/jarvis-v1.1-release.apk > dist/jarvis-v1.1-release.apk.sha256
 
 echo "================================================="
 echo " Production APK successfully exported to:"
-echo " -> dist/jarvis-v1.0-release.apk ($(du -h dist/jarvis-v1.0-release.apk | cut -f1))"
-echo " -> Checksum: $(cat dist/jarvis-v1.0-release.apk.sha256)"
+echo " -> dist/jarvis-v1.1-release.apk ($(du -h dist/jarvis-v1.1-release.apk | cut -f1))"
+echo " -> Checksum: $(cat dist/jarvis-v1.1-release.apk.sha256)"
 echo "================================================="

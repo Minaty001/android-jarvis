@@ -33,8 +33,6 @@ class JarvisForegroundService : Service() {
     }
 
     var voiceEngine: VoiceEngine? = null
-    var iotDiscoveryEngine: com.jarvis.iot.IoTDiscoveryEngine? = null
-        private set
     var proactiveContextEngine: com.jarvis.context.ProactiveContextEngine? = null
         private set
     var bluetoothHeadsetManager: com.jarvis.bluetooth.BluetoothHeadsetManager? = null
@@ -99,17 +97,6 @@ class JarvisForegroundService : Service() {
         // Run daily auto-schedule analysis
         com.jarvis.routine.SmartRoutineEngine.instance?.let { engine ->
             com.jarvis.routine.AutoScheduleEngine.analyzeAndSchedule(applicationContext, engine)
-        }
-
-        // Init and start IoT Discovery Radar
-        val memStore = voiceEngine?.assistantRuntime?.memoryStore ?: com.jarvis.memory.MemoryStore(applicationContext)
-        iotDiscoveryEngine = com.jarvis.iot.IoTDiscoveryEngine(memStore)
-        ensureActiveScope().launch {
-            try {
-                iotDiscoveryEngine?.sweepNetwork()
-            } catch (e: Exception) {
-                Log.e(TAG, "IoT Radar sweep failed", e)
-            }
         }
     }
 

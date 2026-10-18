@@ -1,6 +1,7 @@
 package com.jarvis
 
 import com.jarvis.agent.AgentWorkingMemory
+import com.jarvis.agent.AgentAction
 import com.jarvis.agent.skills.RoutineSkill
 import com.jarvis.agent.skills.SkillContext
 import com.jarvis.ai.AssistantIntent
@@ -12,6 +13,9 @@ import com.jarvis.routine.SmartRoutineEngine
 import com.jarvis.routine.TriggerType
 import com.jarvis.tools.RoutineManageTool
 import com.jarvis.tools.ToolRegistry
+import com.jarvis.tools.Tool
+import com.jarvis.tools.ToolExecutor
+import com.jarvis.tools.ToolResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
@@ -40,7 +44,7 @@ class SmartRoutineEngineTest {
     @Test
     fun testSmartRoutineRegistrationAndDefaults() {
         val all = routineEngine.getAllRoutines()
-        assertEquals(4, all.size)
+        assertEquals(5, all.size)
 
         val bedtime = routineEngine.getRoutine("bedtime")
         assertNotNull(bedtime)
@@ -57,6 +61,8 @@ class SmartRoutineEngineTest {
         val homeArrival = routineEngine.getRoutine("home")
         assertNotNull(homeArrival)
         assertEquals("Home Arrival", homeArrival?.name)
+
+        assertNotNull(routineEngine.getRoutine("routine_gym_arrival"))
     }
 
     @Test
@@ -202,38 +208,101 @@ class SmartRoutineEngineTest {
     }
 
     @Test
-    fun testRoutineManageToolCreateAndDelete() = runBlocking {
-        // Create custom scheduled routine
-        val createRes = routineManageTool.execute(mapOf(
-            "action" to "create",
-            "name" to "Drink Water Reminder",
-            "time" to "10:00",
-            "speech" to "Time to drink water boss!"
+    fun testRoutineDraftRequiresExplicitConfirmationBeforeSaving() = runBlocking {
+        val result = routineManageTool.execute(mapOf(
+            "action" to "prepare_create", "name" to "Drink Water",
+            "trigger_type" to "TIME_SCHEDULE", "trigger_parameter" to "10:00",
+            "actions_json" to "[{\"toolName\":\"SPEAK\",\"params\":{\"text\":\"Drink water\"}}]"
         ))
-        assertTrue(createRes.success)
-        assertTrue(createRes.message.contains("Drink Water Reminder"))
-
-        val added = routineEngine.getRoutine("Drink Water Reminder")
-        assertNotNull(added)
-        assertEquals("TIME_SCHEDULE", added?.trigger?.type?.name)
-        assertEquals("10:00", added?.trigger?.parameter)
-
-        // Delete custom routine
-        val deleteRes = routineManageTool.execute(mapOf("action" to "delete", "name" to "Drink Water Reminder"))
-        assertTrue(deleteRes.success)
-        assertNull(routineEngine.getRoutine("Drink Water Reminder"))
+        assertTrue(result.message, result.success)
+        assertTrue(result.message, result.message.contains("confirm", ignoreCase = true))
+        assertNull(routineEngine.getRoutine("Drink Water"))
+        assertNotNull(routineEngine.pendingDraft())
     }
 
     @Test
-    fun testRoutineSkillVoiceScheduling() = runBlocking {
+    fun testRoutineDraftRejectsUnsupportedActions() = runBlocking {
+        val result = routineManageTool.execute(mapOf(
+            "action" to "prepare_create", "name" to "Unsafe",
+            "trigger_type" to "TIME_SCHEDULE", "trigger_parameter" to "10:00",
+            "actions_json" to "[{\"toolName\":\"SEND_SMS\",\"params\":{\"text\":\"hello\"}}]"
+        ))
+        assertFalse(result.success)
+        assertNull(routineEngine.pendingDraft())
+    }
+
+    @Test
+    fun testConfirmedRoutineIsSavedAndCancelledDraftIsDiscarded() = runBlocking {
+        routineManageTool.execute(mapOf(
+            "action" to "prepare_create", "name" to "Morning",
+            "trigger_type" to "TIME_SCHEDULE", "trigger_parameter" to "07:30",
+            "actions_json" to "[{\"toolName\":\"SPEAK\",\"params\":{\"text\":\"Good morning\"}}]"
+        ))
+        val saved = routineEngine.confirmPendingDraft()
+        assertNotNull(saved)
+        assertNotNull(routineEngine.getRoutine("Morning"))
+
+        routineManageTool.execute(mapOf(
+            "action" to "prepare_create", "name" to "Evening",
+            "trigger_type" to "TIME_SCHEDULE", "trigger_parameter" to "20:30",
+            "actions_json" to "[{\"toolName\":\"SPEAK\",\"params\":{\"text\":\"Good evening\"}}]"
+        ))
+        assertTrue(routineEngine.discardPendingDraft())
+        assertNull(routineEngine.getRoutine("Evening"))
+    }
+
+    @Test
+    fun testRoutineContinuesAfterFailureAndReportsPartialResult() = runBlocking {
+        var laterActionRan = false
+        val registry = ToolRegistry().apply {
+            register(object : Tool {
+                override val name = "FAIL_STEP"
+                override suspend fun execute(params: Map<String, String>) = ToolResult.Failed("blocked")
+            })
+            register(object : Tool {
+                override val name = "LATER_STEP"
+                override suspend fun execute(params: Map<String, String>): ToolResult {
+                    laterActionRan = true
+                    return ToolResult.Success("done")
+                }
+            })
+        }
+        val engine = SmartRoutineEngine(ToolExecutor(registry), testScope)
+        val routine = SmartRoutine("test_partial", "Partial", "", RoutineTrigger(TriggerType.TIME_SCHEDULE, "12:00"), listOf(
+            RoutineAction("FAIL_STEP"), RoutineAction("LATER_STEP")
+        ))
+        val result = engine.executeRoutine(routine, isManual = true)
+        assertTrue(laterActionRan)
+        assertFalse(result.executed)
+        assertEquals(1, result.executedActionsCount)
+        assertTrue(result.reason.contains("Partially executed"))
+        assertTrue(result.errors.isNotEmpty())
+    }
+
+    @Test
+    fun testRoutineSkillDefersCreationToConfiguredPlanner() = runBlocking {
         val ctx = SkillContext("remind me to take medicine at 9 pm", AgentWorkingMemory("remind me to take medicine at 9 pm"))
         assertTrue(routineSkill.canHandle(ctx.goal, ctx))
 
         val res = routineSkill.execute(ctx.goal, ctx)
-        assertTrue(res.handled)
-        assertEquals("ROUTINE_MANAGE", res.proposedAction?.type)
-        assertEquals("create", res.proposedAction?.params?.get("action"))
-        assertEquals("21:00", res.proposedAction?.params?.get("time"))
+        assertFalse(res.handled)
+        assertNull(res.proposedAction)
+    }
+
+    @Test
+    fun testRecurringReminderUsesRoutineBuilderButOneOffReminderKeepsReminderPath() {
+        assertTrue(RoutineSkill.isRoutineCreationRequest("remind me to water a plant every day at 23:58"))
+        assertFalse(RoutineSkill.isRoutineCreationRequest("remind me in 20 minutes to water a plant"))
+        assertFalse(RoutineSkill.isRoutineDraftAction(AgentAction("WHATSAPP_SEND")))
+        assertTrue(RoutineSkill.isRoutineDraftAction(AgentAction("ROUTINE_MANAGE", mapOf("action" to "prepare_create"))))
+    }
+
+    @Test
+    fun testCancelReminderByDescriptionDoesNotCreateAnotherReminder() {
+        val intent = IntentResolver.resolve("cancel reminder for small plant routine")
+        assertEquals(AssistantIntent.REMIND_ME, intent?.intent)
+        assertEquals("cancel", intent?.directPlan?.actions?.firstOrNull()?.params?.get("action"))
+        assertEquals("small plant routine", intent?.directPlan?.actions?.firstOrNull()?.params?.get("routine"))
     }
 
     @Test

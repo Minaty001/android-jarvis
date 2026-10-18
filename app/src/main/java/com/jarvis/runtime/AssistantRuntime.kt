@@ -13,7 +13,6 @@ import com.jarvis.interaction.OsSystemInspectionTool
 import com.jarvis.memory.AugmentedMemoryPipeline
 import com.jarvis.memory.MemoryStore
 import com.jarvis.tools.*
-import com.jarvis.autopilot.SmartAutopilotCoordinator
 import com.jarvis.ui.data.UiPreferencesStore
 import com.jarvis.voice.*
 import kotlinx.coroutines.*
@@ -78,9 +77,7 @@ class AssistantRuntime(
     )
     val haClient = com.jarvis.smart_home.HomeAssistantClient()
     val smartHomeRouter = com.jarvis.smart_home.SmartHomeRouter(haClient)
-    val flightAssistant = com.jarvis.flight.FlightAssistant(context)
-    val simulatorBridge = com.jarvis.flight.SimulatorBridge()
-    val flightRouter = com.jarvis.flight.FlightRouter(flightAssistant, simulatorBridge)
+
 
     // Autonomous Control Plane Architecture (Layers 0 - 10)
 
@@ -125,28 +122,10 @@ class AssistantRuntime(
     val experienceManager by lazy { AgentExperienceManager(taskStateManager, augmentedMemoryPipeline) }
     val habitManager by lazy { com.jarvis.habit.HabitManager(memoryStore) }
     val smartRoutineEngine by lazy {
-        com.jarvis.routine.SmartRoutineEngine(toolExecutor).also {
+        com.jarvis.routine.SmartRoutineEngine(toolExecutor, repository = com.jarvis.routine.CustomRoutineRepository(context)).also {
             com.jarvis.routine.SmartRoutineEngine.instance = it
         }
     }
-    val adaptiveDailyBriefingEngine by lazy { com.jarvis.routine.AdaptiveDailyBriefingEngine(context) }
-    val deepBatteryGovernor by lazy { com.jarvis.battery.DeepBatteryGovernor(context) }
-    val predictiveAppPrewarmer by lazy { com.jarvis.app.PredictiveAppPrewarmer(context) }
-    val smartNotificationSummarizer by lazy { com.jarvis.notification.SmartNotificationSummarizer() }
-    val bleTrackerSentry by lazy { com.jarvis.bluetooth.BleTrackerSentryEngine(context) }
-    val sensitiveScreenCloak by lazy { com.jarvis.security.SensitiveScreenCloakEngine() }
-    val duressDefense by lazy { com.jarvis.security.DuressDefenseEngine(context) }
-    val usbDataJammer by lazy { com.jarvis.security.UsbDataJammerEngine(context).apply { register() } }
-    val selfRecoveryNetworkEngine by lazy { com.jarvis.network.SelfRecoveryNetworkEngine(context) }
-    val automatedStorageJanitor by lazy { com.jarvis.storage.AutomatedStorageJanitorEngine(context) }
-    val dynamicAudioProfileEngine by lazy { com.jarvis.control.DynamicAudioProfileEngine(context) }
-    val whisperModeEngine by lazy { com.jarvis.voice.WhisperModeEngine() }
-    val audioSpatializerEngine by lazy { com.jarvis.control.AudioSpatializerEngine(context) }
-    val voiceMemoryNotesEngine by lazy { com.jarvis.memory.VoiceMemoryNotesEngine() }
-    val dualSimRoutingEngine by lazy { com.jarvis.telecom.DualSimRoutingEngine(context) }
-    val flightTrackerEngine by lazy { com.jarvis.flight.FlightTrackerEngine(context) }
-    val expenseSplitterEngine by lazy { com.jarvis.finance.ExpenseSplitterEngine() }
-    val meetingMinutesEngine by lazy { com.jarvis.meeting.MeetingMinutesEngine() }
     val macroWorkflowEngine get() = subsystems.macroWorkflowEngine
     val fileManager get() = subsystems.fileManager
     val autonomousDaemon by lazy {
@@ -278,7 +257,6 @@ class AssistantRuntime(
     }
 
     var recallService: com.jarvis.memory.JarvisRecallService? = null
-    var swarmOrchestrator: com.jarvis.agent.SwarmOrchestrator? = null
     var clipboardEngine: com.jarvis.clipboard.ClipboardContextEngine? = null
     var clipboardOverlay: com.jarvis.ui.overlay.ClipboardOverlayController? = null
     var diagnosticEngine: com.jarvis.device.SystemDiagnosticEngine? = null
@@ -286,7 +264,6 @@ class AssistantRuntime(
     var photographicMemoryEngine: com.jarvis.memory.PhotographicMemoryEngine? = null
     var notificationBatchingEngine: com.jarvis.notification.NotificationBatchingEngine? = null
     var ambientPolitenessEngine: com.jarvis.ambient.AmbientPolitenessEngine? = null
-    var babelFishInterpreter: com.jarvis.voice.BabelFishInterpreter? = null
     var knowledgeGraphEngine: com.jarvis.memory.KnowledgeGraphEngine? = null
     var vocalEmpathyEngine: com.jarvis.voice.VocalEmpathyEngine? = null
     var privacyDefenderEngine: com.jarvis.security.PrivacyDefenderEngine? = null
@@ -465,21 +442,6 @@ class AssistantRuntime(
         )
 
         currentLlmClient?.let { llm ->
-            if (swarmOrchestrator == null) {
-                swarmOrchestrator = com.jarvis.agent.SwarmOrchestrator(llm) { taskId, result ->
-                    ensureActiveScope().launch {
-                        val announcement = "Subagent $taskId completed its task: $result"
-                        Log.i(TAG, announcement)
-                        ttsEngine.speak(announcement)
-                        augmentedMemoryPipeline.rememberFact(
-                            key = "Subagent $taskId",
-                            value = announcement,
-                            provenance = "SwarmOrchestrator"
-                        )
-                    }
-                }
-            }
-            
             if (clipboardOverlay == null) {
                 clipboardOverlay = com.jarvis.ui.overlay.ClipboardOverlayController(context)
             }
@@ -523,12 +485,6 @@ class AssistantRuntime(
                 ambientPolitenessEngine?.start()
             }
             
-            if (babelFishInterpreter == null && clipboardOverlay != null) {
-                babelFishInterpreter = com.jarvis.voice.BabelFishInterpreter(
-                    context, llm, asrEngine, clipboardOverlay!!, com.jarvis.voice.MediaControlHandler(context)
-                )
-            }
-            
             if (knowledgeGraphEngine == null) {
                 knowledgeGraphEngine = com.jarvis.memory.KnowledgeGraphEngine(context, llm, memoryStore)
             }
@@ -565,10 +521,7 @@ class AssistantRuntime(
         // Control Layer Tools
         val smartHomeTool = com.jarvis.tools.SmartHomeTool(smartHomeRouter, permissionGate)
         toolRegistry.register(smartHomeTool)
-        val flightTool = com.jarvis.tools.FlightTool(flightRouter, permissionGate)
-        toolRegistry.register(flightTool)
-        val flightSimTool = com.jarvis.tools.FlightSimTool(flightRouter, permissionGate)
-        toolRegistry.register(flightSimTool)
+
 
         // App controls & Discovery
         val appListTool = ListInstalledAppsTool(context)
@@ -603,13 +556,6 @@ class AssistantRuntime(
             com.jarvis.tools.WebAgentTool(context, currentLlmClient)
         }
 
-        // Swarm Agent
-        toolRegistry.registerLazy(
-            name = "SPAWN_AGENT",
-            description = "Delegates a long-running or complex task to a specialized background subagent. Params: role, task"
-        ) {
-            com.jarvis.tools.SubagentSpawnTool(swarmOrchestrator!!)
-        }
 
         // System Diagnostic Fix
         toolRegistry.registerLazy(
@@ -697,6 +643,27 @@ class AssistantRuntime(
         val briefing = com.jarvis.tools.DailyBriefingTool(context)
         val screenLock = com.jarvis.tools.ScreenLockTool(context)
         val screenUnlock = com.jarvis.tools.ScreenUnlockTool(context)
+        val voiceAccess = com.jarvis.tools.VoiceAccessTool(context)
+        val screenReader = com.jarvis.tools.ScreenReaderTool(context, ttsEngine)
+        val defaultAssistant = com.jarvis.tools.DefaultAssistantTool(context)
+        val cameraTool = com.jarvis.tools.HandsFreeCameraTool(context)
+        val airGestureEngine = com.jarvis.sensors.AirGestureEngine(context)
+        val airGestureTool = com.jarvis.tools.AirGestureTool(context, airGestureEngine)
+        val voiceTypingTool = com.jarvis.tools.VoiceTypingTool(context)
+        val drivingModeEngine = com.jarvis.automotive.DrivingModeEngine(context)
+        val drivingModeTool = com.jarvis.tools.DrivingModeTool(context, drivingModeEngine)
+
+        airGestureEngine.onWaveDetected = {
+            ensureActiveScope().launch(Dispatchers.IO) {
+                val mediaSessions = com.jarvis.media.MediaSessionManager(context)
+                if (mediaSessions.isCurrentlyPlaying()) {
+                    toolRegistry.get("MEDIA_CONTROL")?.execute(mapOf("action" to "play_pause"))
+                } else {
+                    toolRegistry.get("UI_SCROLL")?.execute(mapOf("direction" to "down"))
+                }
+            }
+        }
+
         toolRegistry.register(uiClick, uiClick.metadata)
         toolRegistry.register(uiScroll, uiScroll.metadata)
         toolRegistry.register(uiType, uiType.metadata)
@@ -704,6 +671,13 @@ class AssistantRuntime(
         toolRegistry.register(uiGlobal, uiGlobal.metadata)
         toolRegistry.register(screenLock, screenLock.metadata)
         toolRegistry.register(screenUnlock, screenUnlock.metadata)
+        toolRegistry.register(voiceAccess, voiceAccess.metadata)
+        toolRegistry.register(screenReader, screenReader.metadata)
+        toolRegistry.register(defaultAssistant, defaultAssistant.metadata)
+        toolRegistry.register(cameraTool, cameraTool.metadata)
+        toolRegistry.register(airGestureTool, airGestureTool.metadata)
+        toolRegistry.register(voiceTypingTool, voiceTypingTool.metadata)
+        toolRegistry.register(drivingModeTool, drivingModeTool.metadata)
         toolRegistry.register(notifs, notifs.metadata)
         toolRegistry.register(battery, battery.metadata)
         toolRegistry.register(briefing, briefing.metadata)
@@ -711,19 +685,17 @@ class AssistantRuntime(
         // Lazy automation and knowledge tools
         val deviceSettings = com.jarvis.tools.DeviceSettingsTool(context)
         toolRegistry.register(deviceSettings, deviceSettings.metadata)
-        toolRegistry.registerLazy("ROUTINE_MANAGE", "Creates, executes, and manages smart automation routines") {
+        toolRegistry.registerLazy("ROUTINE_MANAGE", "Routine creation: call action=prepare_create with name, trigger_type, trigger_parameter, and actions_json (JSON array of ordered actions). Allowed triggers: TIME_SCHEDULE (daily HH:mm), WIFI_CONNECTED (SSID), WIFI_DISCONNECTED, BATTERY_LEVEL_DROPS_BELOW (1-99), BATTERY_FULL, CHARGER_CONNECTED, CHARGER_DISCONNECTED. Allowed actions: SPEAK text; DEVICE_SETTINGS set_volume/set_ringer; MEDIA_CONTROL action=stop; SYSTEM_SWITCHBOARD action=wifi|bt|led with target=on|off. The user must confirm aloud before save. Never use another tool to satisfy a routine creation request.") {
             com.jarvis.tools.RoutineManageTool(smartRoutineEngine)
         }
         toolRegistry.registerLazy("MACRO_WORKFLOW", "Runs recorded autonomous UI macro workflows") {
             com.jarvis.tools.MacroWorkflowTool(macroWorkflowEngine)
         }
-        // Instantiate SmartAutopilotCoordinator for higher‑level autopilot flows
-        val autopilotCoordinator = com.jarvis.autopilot.SmartAutopilotCoordinator(context)
         toolRegistry.registerLazy(
             name = "APP_AUTOPILOT",
             description = "Autonomously interacts with on-screen UI across third-party apps"
         ) {
-            com.jarvis.tools.AppAutopilotTool(context, autopilotCoordinator)
+            com.jarvis.tools.AppAutopilotTool(context)
         }
         toolRegistry.registerLazy("TELEPHONY_CONTROL", "Places calls, reads SMS, answers/declines calls") {
             com.jarvis.tools.TelephonyTool(context, contactResolver, callAndSmsAgent)
@@ -734,9 +706,6 @@ class AssistantRuntime(
         toolRegistry.register(securityTool, securityTool.metadata)
         toolRegistry.registerLazy("FILE_MANAGER", "Searches storage, inspects disk space, and suggests cleanup") {
             com.jarvis.tools.FileManagerTool(context)
-        }
-        toolRegistry.registerLazy("FIND_IN_ZARCHIVER", "Searches for a specific file or folder and opens it directly in ZArchiver.") {
-            com.jarvis.tools.ZArchiverFindTool(context)
         }
         toolRegistry.registerLazy("AUTONOMOUS_CONTROL", "Configures ambient autopilot and situational modes") {
             com.jarvis.tools.AutonomousModeTool(ambientContextEngine, autonomousDaemon)
@@ -814,15 +783,39 @@ class AssistantRuntime(
         
         clearRecentlySpoken()
         val currentWorldState = worldStateService.fresh()
+        val commandUtterance = com.jarvis.ai.VoiceCommandAliases.expand(
+            utterance,
+            UiPreferencesStore(context).loadVoiceCommandAliases()
+        )
         conversationManager.addMessage("user", utterance)
         knowledgeGraphEngine?.processInteraction("user", utterance)
+
+        smartRoutineEngine.pendingDraft()?.let { draft ->
+            val normalized = utterance.lowercase().replace(Regex("[^\\p{L}\\p{N}\\s]"), " ").replace(Regex("\\s+"), " ").trim()
+            val cancel = Regex("\\b(no|nope|nah|nahi|nahin|cancel|discard|stop|do not|dont)\\b").containsMatchIn(normalized)
+            val response = when {
+                com.jarvis.agent.AgentKernel.isExplicitApprovalReply(utterance) -> {
+                    val saved = smartRoutineEngine.confirmPendingDraft()
+                    if (saved != null) "Saved daily routine '${saved.name}'." else "That routine draft expired; please create it again."
+                }
+                cancel -> {
+                    smartRoutineEngine.discardPendingDraft()
+                    "Discarded the routine draft."
+                }
+                else -> "I’m still waiting to save '${draft.name}'. Say yes to confirm or cancel to discard it."
+            }
+            conversationManager.addMessage("assistant", response)
+            onEvent(AgentEvent.Completed(response))
+            return RuntimeExecutionResult(success = true, spokenResponse = response, stepResults = emptyList(), verified = false)
+        }
 
         // 1. Check local fast-path intent resolver first for sub-millisecond offline execution.
         //    Actions with real-world side effects (or whose outcome needs verification) are
         //    NEVER fast-pathed — they must go through the closed loop so they can be verified.
-        val resolvedIntent = IntentResolver.resolve(utterance).let { intent ->
+        val resolvedIntent = (if (com.jarvis.agent.skills.RoutineSkill.isRoutineCreationRequest(commandUtterance)) null
+            else IntentResolver.resolve(commandUtterance)).let { intent ->
             if (intent?.intent == AssistantIntent.SEARCH_WEB &&
-                ForegroundAppSession.contextualSearchQuery(utterance, currentWorldState.activeAppSession) != null
+                ForegroundAppSession.contextualSearchQuery(commandUtterance, currentWorldState.activeAppSession) != null
             ) null else intent
         }
 
@@ -860,7 +853,9 @@ class AssistantRuntime(
         if (pendingClarificationTaskId != null) {
             if (pendingResumeStrikes < MAX_CLARIFICATION_RESUMES) {
                 Log.i(TAG, "Routing utterance '$utterance' to resume pending task $pendingClarificationTaskId")
-                return resumePendingTask(utterance, userApprovalGranted, onEvent)
+                val explicitConfirmation = userApprovalGranted &&
+                    com.jarvis.agent.AgentKernel.isExplicitApprovalReply(utterance)
+                return resumePendingTask(utterance, explicitConfirmation, onEvent)
             }
             val stale = pendingClarificationTaskId
             pendingClarificationTaskId = null
@@ -921,7 +916,7 @@ class AssistantRuntime(
         val historySnapshot = conversationManager.getHistory()
         val job = ensureActiveScope().async {
             kernel.run(
-                goal = utterance,
+                goal = commandUtterance,
                 userApprovalGranted = userApprovalGranted,
                 history = historySnapshot,
                 resolvedIntent = resolvedIntent?.intent,
@@ -953,7 +948,7 @@ class AssistantRuntime(
             )
         } catch (e: Exception) {
             Log.e(TAG, "AgentKernel failed, falling back to Offline Phantom Mode", e)
-            val fallbackResponse = offlinePhantomEngine.tryHandleOffline(utterance)
+            val fallbackResponse = offlinePhantomEngine.tryHandleOffline(commandUtterance)
             if (fallbackResponse != null) {
                 conversationManager.addMessage("assistant", fallbackResponse)
                 onEvent(AgentEvent.Completed(fallbackResponse))
@@ -1008,7 +1003,7 @@ class AssistantRuntime(
 
     suspend fun resumePendingTask(
         clarification: String,
-        userApprovalGranted: Boolean = true,
+        userApprovalGranted: Boolean = false,
         onEvent: (AgentEvent) -> Unit = {}
     ): RuntimeExecutionResult {
         val taskId = pendingClarificationTaskId

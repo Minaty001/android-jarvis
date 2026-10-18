@@ -123,6 +123,12 @@ class RoutinesScreen(
                 setTextColor(Ui.MUTED)
                 setPadding(0, Ui.dp(context, 4), 0, Ui.dp(context, 8))
             })
+            if (routine.lastResult.isNotBlank()) inner.addView(TextView(context).apply {
+                text = "Last result: ${routine.lastResult}"
+                textSize = 10f
+                setTextColor(if (routine.lastResult.startsWith("Executed successfully")) Ui.SUCCESS else Ui.WARNING)
+                setPadding(0, 0, 0, Ui.dp(context, 8))
+            })
 
             // Actions Row: Enable Switch + Run Now + Delete
             val ctrlRow = Ui.row(context)
@@ -140,8 +146,9 @@ class RoutinesScreen(
 
             val runBtn = Ui.button(context, "RUN NOW") {
                 CoroutineScope(Dispatchers.Main).launch {
-                    engine?.executeRoutine(routine, isManual = true)
-                    Toast.makeText(context, "Executed '${routine.name}'", Toast.LENGTH_SHORT).show()
+                    val result = engine?.executeRoutine(routine, isManual = true)
+                    renderRoutines()
+                    Toast.makeText(context, result?.reason ?: "Routine unavailable", Toast.LENGTH_SHORT).show()
                 }
             }
             ctrlRow.addView(runBtn)

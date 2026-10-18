@@ -35,14 +35,15 @@ class DailyBriefingTest {
             )
         )
 
-        val result = briefingTool.execute(emptyMap())
+        val result = briefingTool.execute(mapOf("style" to "MORNING"))
         assertTrue("Briefing execution should succeed", result.success)
         assertNotNull(result.message)
 
         val text = result.message
-        assertTrue("Briefing should contain date", text.contains("Today is") || text.contains("2026") || text.contains("September") || text.contains("Sunday") || text.contains(","))
-        assertTrue("Briefing should contain time", text.contains("time is") || text.contains("AM") || text.contains("PM"))
-        assertTrue("Briefing should contain systems operational message", text.contains("systems are operational") || text.contains("operational"))
+        assertTrue("Briefing should include its reported date", text.contains(result.data["date"]?.toString().orEmpty()))
+        assertTrue("Briefing should include its reported time", text.contains(result.data["time"]?.toString().orEmpty()))
+        assertTrue("Briefing should include the agenda", text.contains("Calendar is clear") || text.contains("scheduled"))
+        assertTrue("Briefing should include notifications", text.contains("notification"))
 
         val verify = briefingTool.verify(emptyMap(), result)
         assertTrue("Verification should pass", verify.verified)

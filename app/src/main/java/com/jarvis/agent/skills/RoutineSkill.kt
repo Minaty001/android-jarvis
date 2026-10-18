@@ -41,27 +41,14 @@ class RoutineSkill : Skill {
     override suspend fun execute(goal: String, context: SkillContext): SkillResult {
         val lower = goal.lowercase().trim()
 
-        val action = when {
-            lower.contains("create") || lower.contains("add") || lower.contains("schedule") || lower.contains("remind me") || lower.contains("remind karo") || lower.contains("task lagao") -> {
-                // Extract time if present (e.g., 10:00, 10 am, 8 pm)
-                val timeMatch = Regex("""\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b""").find(lower)
-                var timeStr = "08:00"
-                if (timeMatch != null) {
-                    val hStr = timeMatch.groupValues[1]
-                    val mStr = timeMatch.groupValues.getOrNull(2)?.ifBlank { "00" } ?: "00"
-                    val amPm = timeMatch.groupValues.getOrNull(3)?.lowercase()
-                    var hour = hStr.toIntOrNull() ?: 8
-                    if (amPm == "pm" && hour < 12) hour += 12
-                    if (amPm == "am" && hour == 12) hour = 0
-                    timeStr = String.format(java.util.Locale.US, "%02d:%02d", hour, mStr.toIntOrNull() ?: 0)
-                }
+        if (lower.contains("create") || lower.contains("add") || lower.contains("schedule") ||
+            lower.contains("remind me") || lower.contains("remind karo") || lower.contains("task lagao") ||
+            lower.contains("routine banao")) {
+            // Let the configured planner produce structured trigger/action data; the tool validates it.
+            return SkillResult(handled = false, proposedAction = null, explanation = "Routine creation needs a validated planner draft.")
+        }
 
-                val cleanGoal = goal.replace(Regex("(?i)remind me to|schedule routine|create routine|add routine|at \\d+.*", RegexOption.IGNORE_CASE), "").trim().ifBlank { "Daily Reminder" }
-                AgentAction(
-                    type = "ROUTINE_MANAGE",
-                    params = mapOf("action" to "create", "name" to cleanGoal, "time" to timeStr, "speech" to "Reminder: $cleanGoal")
-                )
-            }
+        val action = when {
             lower.contains("delete") || lower.contains("remove") || lower.contains("hatao") -> {
                 val name = goal.replace(Regex("(?i)delete routine|remove routine|hatao", RegexOption.IGNORE_CASE), "").trim()
                 AgentAction(type = "ROUTINE_MANAGE", params = mapOf("action" to "delete", "name" to name))
@@ -91,5 +78,21 @@ class RoutineSkill : Skill {
             proposedAction = action,
             explanation = "Handling contextual automation routine: $goal"
         )
+    }
+
+    companion object {
+        fun isRoutineDraftAction(action: AgentAction?): Boolean =
+            action?.type?.equals("ROUTINE_MANAGE", ignoreCase = true) == true &&
+                    action.params["action"]?.equals("prepare_create", ignoreCase = true) == true
+
+        fun isRoutineCreationRequest(goal: String): Boolean {
+            val lower = goal.lowercase().trim()
+            val creation = listOf("create", "add", "schedule", "remind me", "remind karo", "task lagao", "routine banao")
+                .any(lower::contains)
+            if (!creation) return false
+            return listOf("routine", "automation", "daily", "every day", "each day", "every time")
+                .any(lower::contains) ||
+                (lower.contains("when") && listOf("wi-fi", "wifi", "battery", "charger").any(lower::contains))
+        }
     }
 }

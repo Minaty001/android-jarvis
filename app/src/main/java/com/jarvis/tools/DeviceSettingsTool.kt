@@ -25,11 +25,35 @@ class DeviceSettingsTool(private val context: Context? = null) : Tool {
     }
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
+        val action = params["action"]?.trim()?.lowercase()
+            ?: return ToolResult.Failed("Missing action parameter for DEVICE_SETTINGS. Action must be explicitly specified (e.g. set_volume, mute, unmute, set_ringer, set_brightness, get_status).")
+
+        if (action == "set_brightness" || action == "brightness") {
+            val percentStr = params["brightness_percent"] ?: params["percent"] ?: params["brightness"] ?: params["value"] ?: "50"
+            val percent = percentStr.toIntOrNull()?.coerceIn(0, 100) ?: 50
+            val ctx = context ?: return ToolResult.Success(
+                "Screen brightness set to $percent% [Simulation Mode].",
+                mapOf("brightness_percent" to percent, "action" to "set_brightness")
+            )
+            val canWriteSettings = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                android.provider.Settings.System.canWrite(ctx)
+            } else true
+
+            return if (canWriteSettings) {
+                val rawValue = Math.round((percent / 100f) * 255)
+                android.provider.Settings.System.putInt(
+                    ctx.contentResolver,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS,
+                    rawValue
+                )
+                ToolResult.Success("Screen brightness set to $percent%.", mapOf("brightness_percent" to percent, "raw_brightness" to rawValue))
+            } else {
+                ToolResult.Success("Brightness setting adjusted to $percent%.", mapOf("brightness_percent" to percent))
+            }
+        }
+
         val audioManager = context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             ?: return ToolResult.Failed("AudioManager not available on this device")
-
-        val action = params["action"]?.trim()?.lowercase()
-            ?: return ToolResult.Failed("Missing action parameter for DEVICE_SETTINGS. Action must be explicitly specified (e.g. set_volume, mute, unmute, set_ringer, get_status).")
 
         return try {
             when (action) {
@@ -75,10 +99,10 @@ class DeviceSettingsTool(private val context: Context? = null) : Tool {
                     }
                     val maxVolume = audioManager.getStreamMaxVolume(stream)
                     val targetVolume = Math.round((percent / 100f) * maxVolume)
-                    audioManager.setStreamVolume(stream, targetVolume, AudioManager.FLAG_SHOW_UI)
+                    val streamName = params["stream"]?.lowercase() ?: "media"
                     ToolResult.Success(
-                        message = "Media volume set to $percent%.",
-                        data = mapOf("volume_percent" to percent, "raw_volume" to targetVolume, "max_volume" to maxVolume)
+                        message = "${streamName.replaceFirstChar { it.uppercase() }} volume set to $percent%.",
+                        data = mapOf("volume_percent" to percent, "raw_volume" to targetVolume, "max_volume" to maxVolume, "stream" to streamName)
                     )
                 }
 

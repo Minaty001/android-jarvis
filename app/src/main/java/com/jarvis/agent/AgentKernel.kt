@@ -15,6 +15,7 @@ import com.jarvis.tools.ToolResult
 import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Locale
 
  class AgentKernel(
     private val planner: LlmPlanner?,
@@ -158,13 +159,7 @@ import org.json.JSONObject
         val guard = AgentLoopGuard(startingIteration = restoredState.iteration)
         val stepObservations = mutableListOf<AgentObservation>()
 
-        // An affirmative reply to a confirmation question grants approval, so
-        // confirmation-gated actions (WhatsApp send, file writes) can finally
-        // execute instead of bouncing off NeedsConfirmation forever.
-        val consent = clarification.lowercase().trim().split(Regex("\\s+")).any {
-            it in setOf("yes", "yep", "yeah", "yup", "haan", "hae", "confirm", "sure",
-                "ok", "okay", "theek", "thik", "send", "bhej", "bhejo", "do", "karo", "kardo")
-        }
+        val consent = isExplicitApprovalReply(clarification)
 
         return executeLoop(
             taskId = taskId,
@@ -228,7 +223,7 @@ import org.json.JSONObject
                 onEvent(AgentEvent.Thinking)
                 val toolsDescription = executor.registry.getAvailableToolsDescription()
 
-                val decision = if (state.pendingApproval != null && userApprovalGranted) {
+                val plannedDecision = if (state.pendingApproval != null && userApprovalGranted) {
                     // The user approved the previously blocked confirmation-gated action.
                     // Replay it directly — no planner round-trip, so an affirmative reply can
                     // never bounce back into another clarification.
@@ -271,6 +266,14 @@ import org.json.JSONObject
                         local
                     }
                 }
+                val decision = if (RoutineSkill.isRoutineCreationRequest(activeGoal) &&
+                    plannedDecision.type != DecisionType.ASK_USER && !RoutineSkill.isRoutineDraftAction(plannedDecision.action)
+                ) {
+                    AgentDecision(
+                        type = DecisionType.ASK_USER,
+                        question = "I couldn't safely prepare that routine. Please describe its trigger and the ordered actions you want."
+                    )
+                } else plannedDecision
 
                 state.lastDecision = decision
                 taskState.recordDecision(
@@ -390,28 +393,30 @@ import org.json.JSONObject
                             state.status = AgentStatus.EXECUTING
                             onEvent(AgentEvent.Executing(action.type))
                             val firstAttempt = executor.execute(action.type, action.params, userApprovalGranted)
-                            if (firstAttempt is ToolResult.NeedsConfirmation) {
-                                // In 100% autonomous mode, automatically grant approval and execute immediately!
-                                Log.i(TAG, "[AUTONOMOUS] Auto-granting approval for action '${action.type}' and executing immediately.")
-                                // The unapproved attempt returned before dispatch (policy gate),
-                                // so re-assert the idempotency claim before the approved dispatch —
-                                // this is the call that actually performs the side effect, and a
-                                // lost response must never let it fire twice (duplicate WhatsApp
-                                // message / file write). Cleared only if the approved attempt fails.
-                                if (isSideEffect) {
-                                    checkpointManager?.recordActionExecution(actionHash, action.type)
-                                }
-                                val approved = executor.execute(action.type, action.params, userApprovalGranted = true)
-                                if (!approved.success && isSideEffect) {
-                                    checkpointManager?.clearActionExecution(actionHash)
-                                }
-                                approved
-                            } else {
-                                if (!firstAttempt.success && isSideEffect) {
-                                    checkpointManager?.clearActionExecution(actionHash)
-                                }
-                                firstAttempt
+                            if (!firstAttempt.success && isSideEffect) {
+                                checkpointManager?.clearActionExecution(actionHash)
                             }
+                            firstAttempt
+                        }
+
+                        if (toolResult is ToolResult.NeedsConfirmation) {
+                            if (isSideEffect) checkpointManager?.clearActionExecution(actionHash)
+                            state.pendingApproval = action
+                            state.status = AgentStatus.WAITING_FOR_USER
+                            taskState.updateTaskStatus(taskId, "WAITING_FOR_USER", toolResult.message)
+                            checkpointManager?.saveCheckpoint(
+                                taskId,
+                                state.iteration,
+                                serializeState(state, workingMemory)
+                            )
+                            onEvent(AgentEvent.WaitingForUser(toolResult.message))
+                            return AgentResult(
+                                AgentResultStatus.WAITING_FOR_USER,
+                                toolResult.message,
+                                taskId,
+                                state.iteration,
+                                stepObservations
+                            )
                         }
 
                         state.status = AgentStatus.OBSERVING
@@ -897,6 +902,22 @@ import org.json.JSONObject
 
     companion object {
         private const val TAG = "AgentKernel"
+
+        internal fun isExplicitApprovalReply(reply: String): Boolean {
+            val normalized = reply.lowercase(Locale.ROOT)
+                .replace(Regex("[^\\p{L}\\p{N}'\\s]"), " ")
+                .replace(Regex("\\s+"), " ")
+                .trim()
+            if (Regex("\\b(no|nope|nah|nahi|nahin|mat|cancel|stop|don't|dont|do not)\\b")
+                    .containsMatchIn(normalized)
+            ) return false
+
+            val affirmativePrefixes = setOf("yes", "yep", "yeah", "yup", "haan", "hae", "confirm", "sure", "ok", "okay", "theek", "thik")
+            val affirmativeReplies = setOf("send", "bhej", "bhejo", "do it", "karo", "kardo", "kar do")
+            return normalized in affirmativeReplies || affirmativePrefixes.any {
+                normalized == it || normalized.startsWith("$it ")
+            }
+        }
 
         /**
          * Deterministic fallback rule matching for common direct actions without LLM dependency.

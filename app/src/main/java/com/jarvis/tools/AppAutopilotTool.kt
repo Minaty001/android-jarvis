@@ -18,8 +18,7 @@ import org.json.JSONObject
  * Provides self-healing UI interaction, fuzzy node matching, form filling, and popup dismissal.
  */
 class AppAutopilotTool(
-    private val context: Context? = null,
-    private val coordinator: com.jarvis.autopilot.SmartAutopilotCoordinator? = null
+    private val context: Context? = null
 ) : Tool {
     private val TAG = "AppAutopilotTool"
 
@@ -40,9 +39,6 @@ class AppAutopilotTool(
     )
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
-        // Delegate to coordinator for higher‑level flows if present
-        coordinator?.let { return it.handleAutopilot(params) }
-
         val service = JarvisAccessibilityService.instance
             ?: return ToolResult(false, "Jarvis Accessibility Service is not running. Please enable it in Android Settings -> Accessibility.")
 

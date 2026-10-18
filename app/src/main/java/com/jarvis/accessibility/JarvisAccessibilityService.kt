@@ -108,6 +108,69 @@ class JarvisAccessibilityService : AccessibilityService() {
     }
 
     /**
+     * Finds the currently active/focused editable text input field.
+     */
+    fun findFocusedInputNode(): AccessibilityNodeInfo? {
+        val root = rootInActiveWindow ?: return null
+        val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        if (focused != null && (focused.isEditable || focused.isFocused)) return focused
+
+        fun searchEditable(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+            if (node.isFocused && node.isEditable) return node
+            for (i in 0 until node.childCount) {
+                val child = node.getChild(i) ?: continue
+                val res = searchEditable(child)
+                if (res != null) return res
+            }
+            return null
+        }
+        return searchEditable(root)
+    }
+
+    fun injectTextIntoFocusedInput(text: String, append: Boolean = true): Boolean {
+        val node = findFocusedInputNode() ?: return false
+        val currentText = node.text?.toString().orEmpty()
+        val newText = if (append && currentText.isNotBlank()) "$currentText $text" else text
+        return setNodeText(node, newText)
+    }
+
+    fun backspaceFocusedInput(): Boolean {
+        val node = findFocusedInputNode() ?: return false
+        val currentText = node.text?.toString().orEmpty()
+        if (currentText.isEmpty()) return true
+        val newText = if (currentText.contains(" ")) {
+            currentText.substringBeforeLast(" ").trimEnd()
+        } else {
+            ""
+        }
+        return setNodeText(node, newText)
+    }
+
+    fun clearFocusedInput(): Boolean {
+        val node = findFocusedInputNode() ?: return false
+        return setNodeText(node, "")
+    }
+
+    fun sendOrEnterFocusedInput(): Boolean {
+        val root = rootInActiveWindow
+        if (root != null) {
+            val sendKeywords = listOf("Send", "Search", "Done", "Go", "Bhejo", "Post")
+            for (keyword in sendKeywords) {
+                val nodes = root.findAccessibilityNodeInfosByText(keyword)
+                for (n in nodes) {
+                    if (n.isClickable || n.parent?.isClickable == true) {
+                        return clickNode(n)
+                    }
+                }
+            }
+        }
+        val node = findFocusedInputNode()
+        return if (node != null) {
+            node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        } else false
+    }
+
+    /**
      * Dispatches a tap gesture at (x, y) coordinates on the screen.
      */
     fun clickCoordinates(x: Float, y: Float, onComplete: ((Boolean) -> Unit)? = null): Boolean {

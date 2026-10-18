@@ -146,10 +146,9 @@ class P0HonestyRegressionTest {
 
     // ---- 5. Spec recovery strategy set is complete ----
     @Test
-    fun testRecoveryStrategyEnumContainsSpecValues() {
+    fun testRecoveryStrategiesMatchImplementedRecoveryFlow() {
         val expected = setOf(
-            "RETRY_SAME", "CORRECT_PARAMETERS", "SELECT_ALTERNATIVE", "USE_ALTERNATE_TOOL",
-            "REOPEN_APP", "RESEARCH_AGAIN", "RESET_CURRENT_STEP", "REPLAN", "ASK_USER", "ABORT"
+            "RETRY_SAME", "SELECT_ALTERNATIVE", "USE_ALTERNATE_TOOL", "REPLAN", "ASK_USER", "ABORT"
         )
         val actual = RecoveryStrategy.values().map { it.name }.toSet()
         assertEquals(expected, actual)

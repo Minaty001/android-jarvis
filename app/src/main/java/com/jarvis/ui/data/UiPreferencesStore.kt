@@ -4,6 +4,7 @@ import android.content.Context
 import com.jarvis.ui.model.ApiConfig
 import com.jarvis.ui.model.AppSettings
 import com.jarvis.ui.model.AuthMethod
+import com.jarvis.ai.VoiceCommandAliases
 import com.jarvis.wakeword.WakeWordModelMetadata
 import org.json.JSONArray
 import org.json.JSONObject
@@ -43,6 +44,7 @@ class UiPreferencesStore(context: Context) {
         val varsObj = JSONObject()
         loadCustomVariables().forEach { (k, v) -> varsObj.put(k, v) }
         root.put("customVariables", varsObj)
+        root.put("voiceCommandAliases", VoiceCommandAliases.toJson(loadVoiceCommandAliases()))
         return root.toString()
     }
 
@@ -73,8 +75,36 @@ class UiPreferencesStore(context: Context) {
             vars.forEach { (k, v) -> storedObj.put(k, v) }
             prefs.edit().putString(KEY_CUSTOM_VARIABLES, storedObj.toString()).apply()
         }
+        if (root.has("voiceCommandAliases")) {
+            val aliasesObj = root.optJSONObject("voiceCommandAliases") ?: JSONObject(root.getString("voiceCommandAliases"))
+            saveVoiceCommandAliases(VoiceCommandAliases.fromJson(aliasesObj))
+        }
         true
     }.getOrDefault(false)
+
+    fun loadVoiceCommandAliases(): Map<String, String> {
+        val raw = prefs.getString(KEY_VOICE_COMMAND_ALIASES, null) ?: return emptyMap()
+        return runCatching {
+            VoiceCommandAliases.fromJson(JSONObject(raw))
+        }.getOrDefault(emptyMap())
+    }
+
+    fun saveVoiceCommandAlias(alias: String, command: String): Boolean {
+        val key = VoiceCommandAliases.normalize(alias)
+        val value = command.trim().replace(Regex("\\s+"), " ")
+        if (key.isBlank() || value.isBlank()) return false
+        saveVoiceCommandAliases(loadVoiceCommandAliases() + (key to value))
+        return true
+    }
+
+    fun deleteVoiceCommandAlias(alias: String) {
+        val key = VoiceCommandAliases.normalize(alias)
+        saveVoiceCommandAliases(loadVoiceCommandAliases() - key)
+    }
+
+    private fun saveVoiceCommandAliases(aliases: Map<String, String>) {
+        prefs.edit().putString(KEY_VOICE_COMMAND_ALIASES, VoiceCommandAliases.toJson(aliases).toString()).apply()
+    }
 
     fun saveCustomVariable(key: String, value: String) {
         val current = loadCustomVariables().toMutableMap()
@@ -308,6 +338,7 @@ class UiPreferencesStore(context: Context) {
         private const val KEY_SETTINGS = "settings"
         private const val KEY_APIS = "apis"
         private const val KEY_CUSTOM_VARIABLES = "custom_variables"
+        private const val KEY_VOICE_COMMAND_ALIASES = "voice_command_aliases"
         private const val KEY_LOGS = "logs"
         private const val KEY_VOICE_PROFILE = "user_voice_profile"
         private const val KEY_OWNER_VOICE_PROFILE = "owner_voice_profile"

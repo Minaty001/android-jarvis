@@ -12,13 +12,16 @@ import java.util.concurrent.ConcurrentHashMap
 
 class SmartRoutineEngine(
     private val toolExecutor: ToolExecutor? = null,
-    private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val repository: CustomRoutineRepository? = null
 ) {
     private val TAG = "SmartRoutineEngine"
     private val routines = ConcurrentHashMap<String, SmartRoutine>()
+    @Volatile private var draft: Pair<SmartRoutine, Long>? = null
 
     init {
         registerDefaultRoutines()
+        repository?.load()?.forEach { routines[it.id] = it }
     }
 
     private fun registerDefaultRoutines() {
@@ -113,17 +116,45 @@ class SmartRoutineEngine(
 
     fun addCustomRoutine(routine: SmartRoutine) {
         routines[routine.id] = routine
+        persistCustomRoutines()
+    }
+
+    fun setPendingDraft(routine: SmartRoutine): Boolean {
+        if (pendingDraft() != null) return false
+        draft = routine to (System.currentTimeMillis() + DRAFT_TTL_MS)
+        return true
+    }
+
+    fun pendingDraft(): SmartRoutine? {
+        val current = draft ?: return null
+        if (System.currentTimeMillis() >= current.second) { draft = null; return null }
+        return current.first
+    }
+
+    fun confirmPendingDraft(): SmartRoutine? {
+        val routine = pendingDraft() ?: return null
+        draft = null
+        addCustomRoutine(routine)
+        return routine
+    }
+
+    fun discardPendingDraft(): Boolean {
+        val existed = pendingDraft() != null
+        draft = null
+        return existed
     }
 
     fun deleteRoutine(idOrName: String): Boolean {
         val routine = getRoutine(idOrName) ?: return false
         routines.remove(routine.id)
+        persistCustomRoutines()
         return true
     }
 
     fun enableRoutine(idOrName: String, enable: Boolean): Boolean {
         val routine = getRoutine(idOrName) ?: return false
         routine.isEnabled = enable
+        persistCustomRoutines()
         return true
     }
 
@@ -221,6 +252,11 @@ class SmartRoutineEngine(
     }
 
     suspend fun executeRoutine(routine: SmartRoutine, isManual: Boolean = false): RoutineExecutionResult {
+        if (routine.id.startsWith("routine_custom_")) {
+            runCatching { RoutineDraftValidator.validate(routine) }.onFailure {
+                return RoutineExecutionResult(routine.id, routine.name, false, "Routine validation failed: ${it.message}", errors = listOf(it.message ?: "Invalid routine"))
+            }
+        }
         val now = System.currentTimeMillis()
         if (!isManual) {
             if (!routine.isEnabled) {
@@ -239,6 +275,7 @@ class SmartRoutineEngine(
         }
 
         routine.lastTriggeredAt = now
+        persistCustomRoutines()
         val errors = mutableListOf<String>()
         var executedCount = 0
 
@@ -248,8 +285,9 @@ class SmartRoutineEngine(
                     val result = toolExecutor.execute(action.toolName, action.params, userApprovalGranted = true)
                     if (result is ToolResult.Success) {
                         executedCount++
-                    } else if (result is ToolResult.Failed) {
-                        errors.add("${action.toolName}: ${result.error}")
+                    } else {
+                        val error = (result as? ToolResult.Failed)?.error ?: result.message
+                        errors.add("${action.toolName}: $error")
                     }
                 } else {
                     executedCount++
@@ -263,11 +301,19 @@ class SmartRoutineEngine(
             Log.i(TAG, "Routine '${routine.name}' executed ($executedCount/${routine.actions.size} actions, errors=${errors.size})")
         }
 
+        val success = errors.isEmpty() && executedCount == routine.actions.size
+        val reason = when {
+            success -> "Executed successfully"
+            executedCount == 0 -> "All ${routine.actions.size} actions failed"
+            else -> "Partially executed ($executedCount/${routine.actions.size} actions succeeded)"
+        }
+        routine.lastResult = if (success) reason else "$reason: ${errors.joinToString("; ")}".take(500)
+        persistCustomRoutines()
         return RoutineExecutionResult(
             routineId = routine.id,
             routineName = routine.name,
-            executed = true,
-            reason = "Executed successfully",
+            executed = success,
+            reason = reason,
             executedActionsCount = executedCount,
             errors = errors
         )
@@ -297,9 +343,15 @@ class SmartRoutineEngine(
     fun resetToDefaults() {
         routines.clear()
         registerDefaultRoutines()
+        repository?.load()?.forEach { routines[it.id] = it }
+    }
+
+    private fun persistCustomRoutines() {
+        repository?.save(routines.values.filter { it.id.startsWith("routine_custom_") })
     }
 
     companion object {
+        private const val DRAFT_TTL_MS = 60_000L
         @Volatile
         var instance: SmartRoutineEngine? = null
     }

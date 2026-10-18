@@ -41,6 +41,9 @@ class SettingsScreen(
     private val customKey = EditText(context)
     private val customValue = EditText(context)
     private val customList = LinearLayout(context)
+    private val voiceAlias = EditText(context)
+    private val voiceCommand = EditText(context)
+    private val voiceAliasList = LinearLayout(context)
     private var dirty = false
     private var suppressDirty = true
 
@@ -898,6 +901,26 @@ class SettingsScreen(
         prefCard.addView(prefInner)
         root.addView(prefCard)
 
+        root.addView(Ui.sectionLabel(context, "Voice Command Aliases"))
+        val aliasCard = Ui.glassCard(context, Ui.BORDER)
+        val aliasInner = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
+        }
+        aliasInner.addView(TextView(context).apply {
+            text = "Map a phrase to an existing command. Example: ‘start my music’ → ‘play music’."
+            textSize = 10.5f
+            setTextColor(Ui.MUTED)
+        })
+        addField(aliasInner, "Spoken phrase (e.g. start my music)", voiceAlias, "")
+        addField(aliasInner, "Existing command (e.g. play music)", voiceCommand, "")
+        aliasInner.addView(Ui.button(context, "+ Add Voice Alias") { addVoiceCommandAlias() })
+        voiceAliasList.orientation = LinearLayout.VERTICAL
+        aliasInner.addView(voiceAliasList)
+        renderVoiceCommandAliases()
+        aliasCard.addView(aliasInner)
+        root.addView(aliasCard)
+
         // 3. Custom Environment Variables Card
         root.addView(Ui.sectionLabel(context, "Custom Environment Variables"))
         val customCard = Ui.glassCard(context, Ui.BORDER)
@@ -950,7 +973,7 @@ class SettingsScreen(
         root.addView(logCard)
         renderLogs()
 
-        val editFields = listOf(wakeWord, customKey, customValue)
+        val editFields = listOf(wakeWord, customKey, customValue, voiceAlias, voiceCommand)
         editFields.forEach { field ->
             field.addTextChangedListener(object : android.text.TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -995,6 +1018,36 @@ class SettingsScreen(
             row.addView(TextView(context).apply { text = "$key = $value"; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(0, -2, 1f))
             row.addView(Ui.button(context, "Delete") { store.deleteCustomVariable(key); renderCustomVariables(); markDirty() })
             customList.addView(row)
+        }
+    }
+
+    private fun addVoiceCommandAlias() {
+        val alias = voiceAlias.text?.toString().orEmpty()
+        val command = voiceCommand.text?.toString().orEmpty()
+        if (!store.saveVoiceCommandAlias(alias, command)) {
+            Toast.makeText(context, "Enter both a phrase and an existing command.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        voiceAlias.text?.clear()
+        voiceCommand.text?.clear()
+        renderVoiceCommandAliases()
+        markDirty()
+    }
+
+    private fun renderVoiceCommandAliases() {
+        voiceAliasList.removeAllViews()
+        store.loadVoiceCommandAliases().forEach { (alias, command) ->
+            val row = Ui.row(context)
+            row.addView(TextView(context).apply {
+                text = "$alias → $command"
+                setTextColor(Color.WHITE)
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(Ui.button(context, "Delete") {
+                store.deleteVoiceCommandAlias(alias)
+                renderVoiceCommandAliases()
+                markDirty()
+            })
+            voiceAliasList.addView(row)
         }
     }
 

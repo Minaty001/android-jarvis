@@ -53,22 +53,25 @@ class UniversalMessagingEngine(
     private val context: Context? = context?.applicationContext ?: context
 
     // Auto-reply configuration
-    var autoReplyMode: AutoReplyMode = AutoReplyMode.OFF
-    var customAutoReplyTemplate: String? = null
+    var autoReplyMode: AutoReplyMode
+        get() = AutoReplyPolicyManager.mode
+        set(value) = AutoReplyPolicyManager.setMode(value, customAutoReplyTemplate)
+    var customAutoReplyTemplate: String?
+        get() = AutoReplyPolicyManager.customTemplate
+        set(value) = AutoReplyPolicyManager.setMode(autoReplyMode, value)
 
     /**
      * Set the auto-reply mode and optional custom template.
      */
     fun setAutoReplyMode(mode: AutoReplyMode, customTemplate: String? = null) {
-        autoReplyMode = mode
-        customAutoReplyTemplate = customTemplate
+        AutoReplyPolicyManager.setMode(mode, customTemplate)
         Log.i(TAG, "Auto-reply mode set to $mode with custom template: ${customTemplate != null}")
     }
 
     /**
      * Returns true if an auto-reply mode other than OFF is active.
      */
-    fun isAutoReplyActive(): Boolean = autoReplyMode != AutoReplyMode.OFF
+    fun isAutoReplyActive(): Boolean = AutoReplyPolicyManager.isEnabled()
 
     /**
      * Reads recent WhatsApp notifications and returns a ToolResult.
@@ -547,11 +550,10 @@ fun sendDirectNotificationReplySync(recipient: String, replyText: String): Boole
         platformFilter: String? = null
     ): ToolResult {
         val targetPkg = if (platformFilter.isNullOrBlank()) null else resolveTargetPackage(platformFilter)
-        val allNotifs = NotificationStore.getRecentNotifications(limit = 25, appFilter = targetPkg)
-        if (allNotifs.isEmpty()) {
+        val platformFiltered = NotificationStore.getRecentNotifications(limit = 25, exactPackageFilter = targetPkg)
+        if (platformFiltered.isEmpty()) {
             return ToolResult(true, "You have no unread messages right now.")
         }
-        val platformFiltered = allNotifs
 
         val filtered = if (!senderFilter.isNullOrBlank()) {
             val filterLower = senderFilter.lowercase(Locale.ROOT).trim()

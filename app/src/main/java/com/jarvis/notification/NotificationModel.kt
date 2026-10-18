@@ -91,8 +91,14 @@ object NotificationStore {
     }
 
     @Synchronized
-    fun getRecentNotifications(limit: Int = 10, appFilter: String? = null): List<NotificationItem> {
-        val nonOngoing = buffer.filter { !it.isOngoing }
+    fun getRecentNotifications(
+        limit: Int = 10,
+        appFilter: String? = null,
+        exactPackageFilter: String? = null
+    ): List<NotificationItem> {
+        val nonOngoing = buffer.filter {
+            !it.isOngoing && (exactPackageFilter.isNullOrBlank() || it.packageName.equals(exactPackageFilter, ignoreCase = true))
+        }
         val filtered = if (!appFilter.isNullOrBlank()) {
             val lowerFilter = appFilter.lowercase(Locale.ROOT).trim()
             nonOngoing.filter {

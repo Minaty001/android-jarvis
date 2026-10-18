@@ -18,6 +18,7 @@ class WhatsAppBackgroundMacroTest {
 
     @Before
     fun setUp() {
+        com.jarvis.messaging.AutoReplyPolicyManager.setMode(AutoReplyMode.OFF)
         contactResolver = ContactResolver(null)
         contactResolver.addCachedContact(ContactInfo("c_rahul", "Rahul Sharma", "+919876543210", "Mobile"))
         contactResolver.addCachedContact(ContactInfo("c_alex", "Alex Mercer", "+14155552671", "Work"))

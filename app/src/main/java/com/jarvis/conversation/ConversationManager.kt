@@ -17,6 +17,7 @@ class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore
 
     private var activeSessionId = "session_${System.currentTimeMillis()}"
     private var lastMessageTime = System.currentTimeMillis()
+    private val recentMessages = mutableListOf<Message>()
 
     val currentStateValue: VoiceState
         get() = _stateFlow.value
@@ -80,12 +81,16 @@ class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore
         val now = System.currentTimeMillis()
         if (now - lastMessageTime > 2 * 60 * 60 * 1000L) {
             activeSessionId = "session_$now"
+            recentMessages.clear()
         }
         lastMessageTime = now
+        recentMessages.add(Message(role, content))
+        if (recentMessages.size > 10) recentMessages.removeAt(0)
+        val sessionId = activeSessionId
 
         kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                memoryStore.saveConversation(activeSessionId, role, content)
+                memoryStore.saveConversation(sessionId, role, content)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save conversation message", e)
             }
@@ -93,19 +98,12 @@ class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore
     }
 
     @Synchronized
-    fun getHistory(): List<Message> {
-        return try {
-            val records = memoryStore.getRecentConversation(activeSessionId, limit = 10)
-            records.reversed().map { Message(it.role, it.content) }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to load history", e)
-            emptyList()
-        }
-    }
+    fun getHistory(): List<Message> = recentMessages.toList()
 
     @Synchronized
     fun clearHistory() {
         activeSessionId = "session_${System.currentTimeMillis()}"
+        recentMessages.clear()
     }
 
     /**
@@ -124,7 +122,10 @@ class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore
             "thank you", "thanks", "thank you so much", "thanks jarvis",
             "that's all", "thats all", "that is all", "that's it", "thats it",
             "nothing", "kuch nahi", "kuch nahi chahiye", "bas", "bas itna hi",
-            "shukriya", "dhanyawad", "stop listening", "band karo sunna"
+            "shukriya", "dhanyawad", "stop listening", "band karo sunna",
+            "sleep", "go to sleep", "jarvis sleep", "jarvis go to sleep", "so jao",
+            "stop open mic", "exit open mic", "close open mic", "open mic band karo",
+            "turn off open mic", "chup ho jao"
         )
         return lower in exitPhrases || exitPhrases.any { lower == it }
     }
@@ -146,6 +147,10 @@ class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore
         return when {
             lower.contains("thank") || lower.contains("shukriya") || lower.contains("dhanyawad") ->
                 "You're welcome, boss. Let me know if you need anything else."
+            lower.contains("open mic") ->
+                "Open mic disabled. Returning to standby."
+            lower.contains("sleep") || lower.contains("so jao") ->
+                "Entering standby mode. Sleep well, boss."
             lower.contains("night") ->
                 "Good night, boss. Sleep well."
             else ->

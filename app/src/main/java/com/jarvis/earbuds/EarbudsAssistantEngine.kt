@@ -56,6 +56,9 @@ class EarbudsAssistantEngine(
                     is JarvisEvent.WhatsAppNotification -> {
                         handleIncomingWhatsApp(event)
                     }
+                    is JarvisEvent.SmsReceived -> {
+                        handleIncomingSms(event)
+                    }
                     is JarvisEvent.IncomingCall -> {
                         handleIncomingCall(event)
                     }
@@ -74,9 +77,135 @@ class EarbudsAssistantEngine(
     }
 
     private suspend fun handleIncomingWhatsApp(event: JarvisEvent.WhatsAppNotification) {
-        // Notifications are silently stored for explicit query ("read notifications")
-        val sender = event.sender.ifBlank { "Someone" }
-        Log.i(TAG, "Stored incoming WhatsApp message silently from $sender")
+        val settings = runCatching { UiPreferencesStore(context).loadSettings() }.getOrNull()
+        if (settings?.notificationsEnabled == false) {
+            Log.d(TAG, "Notification readout is disabled in settings")
+            return
+        }
+
+        if (!isProcessingNotification.compareAndSet(false, true)) return
+        try {
+            val sender = event.sender.ifBlank { "Someone" }
+            val announcement = "New message on ${event.platform} from $sender: ${event.message.take(120)}. Say reply or skip."
+            Log.i(TAG, "Announcing incoming message: $announcement")
+            ttsEngine?.speak(announcement)
+            delay(250)
+
+            if (asrEngine != null) {
+                promptForMessageReply(sender, event.platform)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error announcing WhatsApp message: ${e.message}")
+        } finally {
+            isProcessingNotification.set(false)
+        }
+    }
+
+    private suspend fun handleIncomingSms(event: JarvisEvent.SmsReceived) {
+        val settings = runCatching { UiPreferencesStore(context).loadSettings() }.getOrNull()
+        if (settings?.notificationsEnabled == false) {
+            Log.d(TAG, "Notification readout is disabled in settings")
+            return
+        }
+
+        if (!isProcessingNotification.compareAndSet(false, true)) return
+        try {
+            val sender = event.sender.ifBlank { "Unknown" }
+            val contactName = runCatching { ContactResolver(context).resolveContact(sender)?.name }.getOrNull() ?: sender
+            val announcement = if (event.detectedOtp != null) {
+                "New SMS from $contactName. One time passcode detected and copied to clipboard."
+            } else {
+                "New SMS from $contactName: ${event.body.take(120)}. Say reply or skip."
+            }
+            Log.i(TAG, "Announcing incoming SMS: $announcement")
+            ttsEngine?.speak(announcement)
+            delay(250)
+
+            if (event.detectedOtp == null && asrEngine != null) {
+                promptForMessageReply(sender, "SMS")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error announcing SMS: ${e.message}")
+        } finally {
+            isProcessingNotification.set(false)
+        }
+    }
+
+    private suspend fun promptForMessageReply(recipient: String, platform: String) {
+        var replyTranscript: String? = null
+
+        asrEngine?.startListening(
+            onSpeechStarted = { Log.d(TAG, "Speech detected during reply prompt") },
+            onPartial = {},
+            onFinal = { text ->
+                if (text.isNotBlank()) replyTranscript = text.trim()
+            },
+            onError = { _, _ -> },
+            onEmpty = {}
+        )
+
+        var waited = 0L
+        while (waited < 5000L && replyTranscript == null) {
+            delay(200)
+            waited += 200
+        }
+
+        runCatching { asrEngine?.stopListening() }
+
+        val response = replyTranscript?.trim()
+        if (!response.isNullOrBlank()) {
+            val lower = response.lowercase()
+            if (lower in listOf("skip", "cancel", "dismiss", "no", "nah", "nahi", "ignore")) {
+                Log.i(TAG, "Message reply prompt dismissed by user")
+                return
+            }
+
+            var replyText: String = response
+            val replyPrefixes = listOf("reply with", "reply that", "reply", "send", "say that", "say")
+            for (prefix in replyPrefixes) {
+                if (lower.startsWith(prefix)) {
+                    replyText = response.substring(prefix.length).trim()
+                    break
+                }
+            }
+
+            if (replyText.isBlank()) {
+                ttsEngine?.speak("What would you like to reply?")
+                delay(200)
+                var followUpTranscript: String? = null
+                asrEngine?.startListening(
+                    onSpeechStarted = {},
+                    onPartial = {},
+                    onFinal = { text -> if (text.isNotBlank()) followUpTranscript = text.trim() },
+                    onError = { _, _ -> },
+                    onEmpty = {}
+                )
+                waited = 0L
+                while (waited < 6000L && followUpTranscript == null) {
+                    delay(200)
+                    waited += 200
+                }
+                runCatching { asrEngine?.stopListening() }
+                replyText = followUpTranscript?.trim().orEmpty()
+            }
+
+            if (replyText.isNotBlank()) {
+                Log.i(TAG, "Dispatching hands-free reply to $recipient on $platform: '$replyText'")
+                if (platform.contains("WhatsApp", ignoreCase = true)) {
+                    val directSuccess = UniversalMessagingEngine.instance?.sendDirectNotificationReply(recipient, replyText) == true
+                    if (!directSuccess) {
+                        UniversalMessagingEngine.instance?.sendDirectMessage(recipient, replyText, platform)
+                    }
+                } else {
+                    runCatching {
+                        val smsManager = context.getSystemService(android.telephony.SmsManager::class.java)
+                            ?: @Suppress("DEPRECATION") android.telephony.SmsManager.getDefault()
+                        smsManager.sendTextMessage(recipient, null, replyText, null, null)
+                    }
+                }
+                ttsEngine?.speak("Reply sent.")
+            }
+        }
     }
 
     private suspend fun handleIncomingCall(event: JarvisEvent.IncomingCall) {

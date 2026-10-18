@@ -4,7 +4,9 @@ import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.util.Log
+import com.jarvis.ai.AssistantIntent
 import com.jarvis.ai.GroqLlm
+import com.jarvis.ai.IntentResolver
 import com.jarvis.ai.LlmConfig
 import com.jarvis.ai.LlmPlanner
 import com.jarvis.conversation.ConversationManager
@@ -149,6 +151,7 @@ class VoiceEngine(
     var isBargeInEnabled: Boolean = true
     var followUpTimeoutMs: Long = 6000L
     @Volatile var configuredWakeWord: String = com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE
+    @Volatile var isAmbientOpenMicActive: Boolean = false
 
     val liveConversationController = LiveConversationController(
         voiceRouter = voiceRouter,
@@ -510,8 +513,18 @@ class VoiceEngine(
                         Log.i(TAG, "Listening timeout ($delayMs ms - $reason) with captured partial: '$candidate'")
                         handleRecognizedTranscript(candidate)
                     } else {
-                        Log.i(TAG, "Listening timeout ($delayMs ms - $reason): returning to wake listening.")
-                        returnToWakeListening()
+                        if (isAmbientOpenMicActive) {
+                            Log.i(TAG, "Listening timeout ($delayMs ms - $reason) in open mic: recycling listener.")
+                            delay(250)
+                            if (isAmbientOpenMicActive) {
+                                startListeningForCommand(isFollowUp = true)
+                            } else {
+                                returnToWakeListening()
+                            }
+                        } else {
+                            Log.i(TAG, "Listening timeout ($delayMs ms - $reason): returning to wake listening.")
+                            returnToWakeListening()
+                        }
                     }
                 }
             }
@@ -559,8 +572,20 @@ class VoiceEngine(
             } else {
                 if (commandFinalizationGate.compareAndSet(false, true)) {
                     listeningTimeoutJob?.cancel()
-                    Log.d(TAG, "ASR empty/error ($code: $message) retry limit reached. Returning to wake.")
-                    ensureActiveScope().launch { returnToWakeListening() }
+                    if (isAmbientOpenMicActive) {
+                        Log.d(TAG, "ASR empty/error ($code: $message) in open-mic mode. Recycling listener...")
+                        ensureActiveScope().launch {
+                            delay(250)
+                            if (isAmbientOpenMicActive) {
+                                startListeningForCommand(isFollowUp = true)
+                            } else {
+                                returnToWakeListening()
+                            }
+                        }
+                    } else {
+                        Log.d(TAG, "ASR empty/error ($code: $message) retry limit reached. Returning to wake.")
+                        ensureActiveScope().launch { returnToWakeListening() }
+                    }
                 }
             }
         }
@@ -636,6 +661,7 @@ class VoiceEngine(
             return
         }
         if (conversationManager.isExitUtterance(transcript, configuredWakeWord)) {
+            isAmbientOpenMicActive = false
             val reply = conversationManager.getExitResponse(transcript)
             Log.i(TAG, "Exit utterance detected ('$transcript'). Replying: '$reply'")
             _status.value = _status.value.copy(lastResponse = reply, statusMessage = "Speaking")
@@ -651,6 +677,19 @@ class VoiceEngine(
             returnToWakeListening()
             return
         }
+
+        val openMicResolved = IntentResolver.resolve(transcript)
+        if (openMicResolved?.intent == AssistantIntent.AMBIENT_OPEN_MIC) {
+            val action = openMicResolved.params["action"]
+            if (action == "start") {
+                setAmbientOpenMic(true, spokenFeedback = true)
+                return
+            } else if (action == "stop") {
+                setAmbientOpenMic(false, spokenFeedback = true)
+                return
+            }
+        }
+
         executeCommandFlow(transcript)
     }
 
@@ -875,14 +914,15 @@ class VoiceEngine(
                 _status.value = _status.value.copy(lastResponse = finalResponse)
             }
 
-            // Continuous conversation mode: enter follow-up window unless an exit phrase was received
-            if (isContinuousConversationEnabled && !conversationManager.isExitUtterance(cleanCommand, configuredWakeWord)) {
-                Log.i(TAG, "Continuous conversation active — entering follow-up window")
+            // Continuous conversation / Open-Mic mode: enter follow-up window unless an exit phrase was received
+            if ((isAmbientOpenMicActive || isContinuousConversationEnabled) && !conversationManager.isExitUtterance(cleanCommand, configuredWakeWord)) {
+                Log.i(TAG, "Continuous conversation / open-mic active — entering follow-up window")
                 // Restore media volume during the follow-up silence window so background
                 // music is audible between turns. Ducking re-applies on next command.
                 mediaDuckingManager.restoreVolume()
                 startListeningForCommand(isFollowUp = true)
             } else {
+                isAmbientOpenMicActive = false
                 returnToWakeListening()
             }
         } finally {
@@ -969,6 +1009,28 @@ class VoiceEngine(
     }
 
     fun startManualListening() = triggerManualListening()
+
+    fun setAmbientOpenMic(enabled: Boolean, spokenFeedback: Boolean = true) {
+        isAmbientOpenMicActive = enabled
+        Log.i(TAG, "setAmbientOpenMic: enabled=$enabled")
+        if (enabled) {
+            _status.value = _status.value.copy(statusMessage = "Continuous Open-Mic Active")
+            if (spokenFeedback) {
+                ensureActiveScope().launch {
+                    ttsEngine.speak("Open mic mode active. I'm listening.")
+                    startListeningForCommand(isFollowUp = true)
+                }
+            }
+        } else {
+            _status.value = _status.value.copy(statusMessage = "Open-Mic Stopped")
+            if (spokenFeedback) {
+                ensureActiveScope().launch {
+                    ttsEngine.speak("Standing by.")
+                    returnToWakeListening()
+                }
+            }
+        }
+    }
 
     fun executeDirectCommand(command: String) {
         ensureActiveScope().launch {

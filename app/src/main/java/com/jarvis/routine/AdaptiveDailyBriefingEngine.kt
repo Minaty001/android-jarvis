@@ -75,7 +75,7 @@ class AdaptiveDailyBriefingEngine(private val context: Context? = null) {
             }
             BriefingStyle.MIDDAY -> {
                 buildString {
-                    append("Good afternoon sir. Midday check at $timeFmt. ")
+                    append("Good afternoon sir. It is $timeFmt on $dateFmt. ")
                     append("$agendaSummary ")
                     if (batteryText.isNotBlank()) append("$batteryText ")
                     append(notifSummary)
@@ -83,7 +83,7 @@ class AdaptiveDailyBriefingEngine(private val context: Context? = null) {
             }
             BriefingStyle.EVENING -> {
                 buildString {
-                    append("Good evening sir. It is $timeFmt. ")
+                    append("Good evening sir. It is $timeFmt on $dateFmt. ")
                     append("Evening summary: $agendaSummary ")
                     if (batteryText.isNotBlank()) append("$batteryText ")
                     append(notifSummary)
@@ -91,7 +91,7 @@ class AdaptiveDailyBriefingEngine(private val context: Context? = null) {
             }
             BriefingStyle.BEDTIME -> {
                 buildString {
-                    append("Good night sir. It is $timeFmt. ")
+                    append("Good night sir. It is $timeFmt on $dateFmt. ")
                     if (battery.percentage in 0..30 && !battery.isCharging) {
                         append("Warning: Battery is low at ${battery.percentage}%. Please plug in your charger. ")
                     } else if (batteryText.isNotBlank()) {

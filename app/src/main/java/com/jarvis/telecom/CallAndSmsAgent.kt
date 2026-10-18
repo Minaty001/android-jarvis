@@ -59,6 +59,14 @@ class CallAndSmsAgent(
     var activeCallSession: CallSession? = null
         private set
 
+    @Volatile
+    var isSpeakerphoneOnSimulation: Boolean = false
+        internal set
+
+    @Volatile
+    var isMicMutedSimulation: Boolean = false
+        internal set
+
     private val recentSmsList = CopyOnWriteArrayList<SmsItem>()
 
     fun onIncomingCallRinging(number: String, onAnnounce: ((String) -> Unit)? = null) {
@@ -212,12 +220,84 @@ class CallAndSmsAgent(
     }
 
     /**
+     * Checks if a wired or Bluetooth headset is currently connected.
+     */
+    fun isHeadsetConnected(): Boolean {
+        val ctx = context ?: return false
+        val audioManager = ctx.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager ?: return false
+        @Suppress("DEPRECATION")
+        return audioManager.isWiredHeadsetOn || audioManager.isBluetoothA2dpOn || audioManager.isBluetoothScoOn
+    }
+
+    /**
+     * Turns speakerphone on or off during active calls.
+     */
+    fun setSpeakerphone(enabled: Boolean): Boolean {
+        val ctx = context ?: run {
+            isSpeakerphoneOnSimulation = enabled
+            Log.i(TAG, "Simulated speakerphone set to: $enabled")
+            return true
+        }
+        return runCatching {
+            val audioManager = ctx.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            if (audioManager != null) {
+                if (enabled) {
+                    audioManager.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
+                    @Suppress("DEPRECATION")
+                    audioManager.isSpeakerphoneOn = true
+                } else {
+                    @Suppress("DEPRECATION")
+                    audioManager.isSpeakerphoneOn = false
+                    audioManager.mode = android.media.AudioManager.MODE_NORMAL
+                }
+                isSpeakerphoneOnSimulation = enabled
+                Log.i(TAG, "Speakerphone set to: $enabled")
+                true
+            } else false
+        }.getOrElse { e ->
+            Log.w(TAG, "Failed to toggle speakerphone: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Toggles microphone mute during active calls.
+     */
+    fun setMicrophoneMute(muted: Boolean): Boolean {
+        val ctx = context ?: run {
+            isMicMutedSimulation = muted
+            Log.i(TAG, "Simulated microphone mute set to: $muted")
+            return true
+        }
+        return runCatching {
+            val audioManager = ctx.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            if (audioManager != null) {
+                audioManager.isMicrophoneMute = muted
+                isMicMutedSimulation = muted
+                Log.i(TAG, "Microphone mute set to: $muted")
+                true
+            } else false
+        }.getOrElse { e ->
+            Log.w(TAG, "Failed to toggle mic mute: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Ends currently ringing or active phone call hands-free.
+     */
+    fun endActiveCall(): Boolean = rejectCall(null)
+
+    /**
      * Answers incoming ringing call hands-free.
      */
     fun answerCall(): Boolean {
         val ctx = context ?: run {
             Log.i(TAG, "answerCall: Context null, simulating call answer.")
             activeCallSession = activeCallSession?.copy(isRinging = false, isAnswered = true)
+            if (!isHeadsetConnected()) {
+                setSpeakerphone(true)
+            }
             return true
         }
 
@@ -238,6 +318,9 @@ class CallAndSmsAgent(
             )
             if (answered) {
                 activeCallSession = activeCallSession?.copy(isRinging = false, isAnswered = true)
+                if (!isHeadsetConnected()) {
+                    setSpeakerphone(true)
+                }
                 Log.i(TAG, "Answered call successfully")
             }
             answered

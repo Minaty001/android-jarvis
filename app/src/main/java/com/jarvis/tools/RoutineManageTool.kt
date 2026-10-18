@@ -8,7 +8,7 @@ import com.jarvis.routine.SmartRoutineEngine
 class RoutineManageTool(private val routineEngine: SmartRoutineEngine) : Tool {
     override val name: String = "ROUTINE_MANAGE"
     override val description: String =
-        "Manages context-aware automation routines. Action can be 'list' (shows all automations), 'run' (triggers a routine immediately by name/id), 'enable' or 'disable'."
+        "Manages routines using action=list|run|enable|disable|delete|prepare_create. Creation needs name, trigger_type, trigger_parameter, and actions_json (JSON array of ordered {toolName,params,description} actions). Supported daily triggers: TIME_SCHEDULE, WIFI_CONNECTED, WIFI_DISCONNECTED, BATTERY_LEVEL_DROPS_BELOW, BATTERY_FULL, CHARGER_CONNECTED, CHARGER_DISCONNECTED. Allowed actions: SPEAK text; DEVICE_SETTINGS set_volume/set_ringer; MEDIA_CONTROL action=stop; SYSTEM_SWITCHBOARD action=wifi|bt|led and target=on|off. Never create unsupported actions; user must say yes to the read-back before save."
     override val policy: ToolPolicy = ToolPolicy(idempotent = false, retryable = true, riskLevel = RiskLevel.LOW)
 
     val metadata = ToolMetadata(
@@ -56,7 +56,7 @@ class RoutineManageTool(private val routineEngine: SmartRoutineEngine) : Tool {
                         data = mapOf("routine" to routine.name, "actions_executed" to execResult.executedActionsCount)
                     )
                 } else {
-                    ToolResult.Failed("Could not execute '${routine.name}': ${execResult.reason}")
+                    ToolResult.Failed("Could not fully execute '${routine.name}': ${execResult.reason}. ${execResult.errors.joinToString("; ")}")
                 }
             }
 
@@ -80,25 +80,14 @@ class RoutineManageTool(private val routineEngine: SmartRoutineEngine) : Tool {
                 }
             }
 
-            "create", "add" -> {
-                val name = params["name"]?.ifBlank { null } ?: targetName.ifBlank { "Custom Routine" }
-                val timeStr = params["time"] ?: params["parameter"] ?: "08:00"
-                val speechText = params["speech"] ?: params["text"] ?: params["speak"] ?: "Scheduled task reminder: $name"
-                val id = "routine_custom_${System.currentTimeMillis()}"
-
-                val newRoutine = com.jarvis.routine.SmartRoutine(
-                    id = id,
-                    name = name,
-                    description = "Custom time-scheduled task at $timeStr",
-                    trigger = com.jarvis.routine.RoutineTrigger(com.jarvis.routine.TriggerType.TIME_SCHEDULE, parameter = timeStr),
-                    actions = listOf(
-                        com.jarvis.routine.RoutineAction("SPEAK", mapOf("text" to speechText), "Speak task announcement")
-                    ),
-                    isEnabled = true,
-                    cooldownMinutes = 1
-                )
-                routineEngine.addCustomRoutine(newRoutine)
-                ToolResult.Success("Successfully created scheduled routine '$name' at $timeStr")
+            "prepare_create" -> {
+                val routine = runCatching {
+                    com.jarvis.routine.RoutineDraftValidator.create(params["name"].orEmpty(), params["trigger_type"].orEmpty(), params["trigger_parameter"].orEmpty(), params["actions_json"].orEmpty())
+                }.getOrElse { return ToolResult.Failed(it.message ?: "Invalid routine draft.") }
+                if (!routineEngine.setPendingDraft(routine)) return ToolResult.Failed("A routine draft is already waiting for confirmation. Confirm or cancel it first.")
+                val trigger = "${routine.trigger.type.name.lowercase().replace('_', ' ')} ${routine.trigger.parameter}".trim()
+                val actions = routine.actions.mapIndexed { i, a -> "${i + 1}. ${a.description.ifBlank { a.toolName }} ${a.params}" }.joinToString("; ")
+                ToolResult.Success("Draft: ${routine.name}; daily trigger: $trigger; actions: $actions. Say yes to confirm and save or cancel to discard.")
             }
 
             "delete", "remove" -> {
@@ -111,7 +100,7 @@ class RoutineManageTool(private val routineEngine: SmartRoutineEngine) : Tool {
                 }
             }
 
-            else -> ToolResult.Failed("Unknown routine action: '$action'. Supported: list, run, enable, disable, create, delete.")
+            else -> ToolResult.Failed("Unknown routine action: '$action'. Supported: list, run, enable, disable, prepare_create, delete.")
         }
     }
 
@@ -131,6 +120,7 @@ class RoutineManageTool(private val routineEngine: SmartRoutineEngine) : Tool {
                 if (result.data.containsKey("count")) VerificationResult.success("Routine list generated", mapOf("outcome" to "REPORT_GENERATED"))
                 else VerificationResult.unknown("Routine list returned without a count", mapOf("outcome" to "UNPARSED"))
             "enable", "disable" -> VerificationResult.success("Routine $action confirmed by engine", mapOf("action" to action, "outcome" to "CONFIRMED"))
+            "prepare_create" -> VerificationResult.success("Routine draft awaits spoken confirmation", mapOf("outcome" to "DRAFT_PENDING"))
             else -> VerificationResult.unknown("No verifier for routine action '$action'", mapOf("outcome" to "UNKNOWN_ACTION"))
         }
     }
