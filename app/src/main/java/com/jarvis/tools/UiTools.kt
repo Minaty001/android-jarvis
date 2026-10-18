@@ -139,26 +139,30 @@ class ScreenLockTool(private val context: Context? = null) : Tool {
     )
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
-        val ctx = context ?: return ToolResult(false, "Context is required to lock screen")
-        return UiAutomationManager.lockScreen(ctx)
+        return DisplayWakeEngine.lockDisplay(context)
     }
 }
 
 class ScreenUnlockTool(private val context: Context? = null) : Tool {
     override val name: String = "SCREEN_UNLOCK"
-    override val description: String = "Wakes up screen and dismisses lock screen overlay. Parameter: pin (optional PIN passcode)."
+    override val description: String = "Wakes up screen and dismisses lock screen overlay. Parameter: pin (optional PIN passcode), action (optional 'wake')."
 
     val metadata = ToolMetadata(
         name = name,
         description = description,
         parameters = listOf(
-            ParameterSchema("pin", "string", "Optional PIN passcode to enter on lock screen", required = false)
+            ParameterSchema("pin", "string", "Optional PIN passcode to enter on lock screen", required = false),
+            ParameterSchema("action", "string", "Optional action, e.g. 'wake' to turn on display without unlock", required = false)
         ),
         riskLevel = RiskLevel.LOW
     )
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
-        val ctx = context ?: return ToolResult(false, "Context is required to unlock screen")
+        val action = params["action"]?.lowercase()?.trim()
+        if (action == "wake" || action == "wake_display" || action == "screen_on") {
+            return DisplayWakeEngine.wakeDisplay(context)
+        }
+        val ctx = context ?: return DisplayWakeEngine.wakeDisplay(null)
         var pin = params["pin"] ?: params["code"] ?: params["passcode"]
         if (pin.isNullOrBlank()) {
             pin = runCatching { com.jarvis.ui.data.UiPreferencesStore(ctx).loadSettings().deviceUnlockPin }.getOrNull()
