@@ -39,6 +39,15 @@ class SystemSwitchboardTool(private val context: Context) : Tool {
     override suspend fun execute(params: Map<String, String>): ToolResult {
         val action = params["action"]?.trim()?.lowercase() ?: "state"
         if (action == "state") return deviceState()
+        if (action == "auto_rotate" || action == "rotation" || action == "screen_rotation" || action == "rotate") {
+            val target = params["target"]?.trim()?.lowercase()
+            val on = when (target) {
+                "on", "enable", "1", "true" -> true
+                "off", "disable", "0", "false" -> false
+                else -> true
+            }
+            return toggleAutoRotate(on)
+        }
         if (action == "brightness" || action == "screen_brightness") return adjustBrightness(params)
         if (action == "ringer" || action == "sound_mode" || action == "silent" || action == "vibrate") {
             val mode = params["mode"] ?: params["target"] ?: action
@@ -201,6 +210,24 @@ class SystemSwitchboardTool(private val context: Context) : Tool {
             ToolResult.Success("Screen brightness set to $percent%.", mapOf("brightness" to brightnessValue, "percent" to percent))
         } catch (e: Exception) {
             ToolResult.Failed("Failed to set brightness: ${e.message}")
+        }
+    }
+
+    private fun toggleAutoRotate(on: Boolean): ToolResult {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.System.canWrite(context)) {
+            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            return ToolResult.Success("Permission to modify system settings required to toggle screen rotation. I've opened the settings screen.", mapOf("opened_settings" to true))
+        }
+
+        return try {
+            Settings.System.putInt(context.contentResolver, Settings.System.ACCELEROMETER_ROTATION, if (on) 1 else 0)
+            ToolResult.Success("Auto-rotate turned ${if (on) "on" else "off"}.", mapOf("auto_rotate" to on))
+        } catch (e: Exception) {
+            ToolResult.Failed("Failed to toggle auto-rotate: ${e.message}")
         }
     }
 

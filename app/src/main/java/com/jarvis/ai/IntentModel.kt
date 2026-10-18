@@ -856,6 +856,28 @@ object IntentResolver {
             )
         }
 
+        if (text in listOf("turn on do not disturb", "turn off do not disturb", "dnd on", "dnd off", "do not disturb on", "do not disturb off", "enable dnd", "disable dnd")) {
+            val off = text.contains("off") || text.contains("disable")
+            val params = mapOf("action" to "dnd", "target" to if (off) "off" else "on")
+            return ResolvedIntent(
+                intent = AssistantIntent.AUTONOMOUS_CONTROL,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan(if (off) "Turning off Do Not Disturb." else "Turning on Do Not Disturb.", listOf(ActionPlan("SYSTEM_SWITCHBOARD", params)))
+            )
+        }
+
+        if (text in listOf("turn on auto rotate", "turn off auto rotate", "auto rotate on", "auto rotate off", "enable auto rotate", "disable auto rotate", "lock screen rotation", "unlock screen rotation", "auto rotate")) {
+            val off = text.contains("off") || text.contains("disable") || text.contains("lock screen rotation")
+            val params = mapOf("action" to "auto_rotate", "target" to if (off) "off" else "on")
+            return ResolvedIntent(
+                intent = AssistantIntent.AUTONOMOUS_CONTROL,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan(if (off) "Disabling screen auto-rotation." else "Enabling screen auto-rotation.", listOf(ActionPlan("SYSTEM_SWITCHBOARD", params)))
+            )
+        }
+
         // 1. Media stop / pause
         if (text in listOf("stop", "pause", "band karo", "gaana band karo", "stop music", "pause music", "stop video")) {
             return ResolvedIntent(
@@ -1251,6 +1273,16 @@ object IntentResolver {
         }
 
         // 8. Battery Check ("battery check", "battery kitni hai", "how much battery", etc.)
+        if (text in listOf("battery health", "battery report", "check battery health", "battery diagnostics", "phone temperature")) {
+            val params = mapOf("action" to "health")
+            return ResolvedIntent(
+                intent = AssistantIntent.BATTERY_CHECK,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Checking battery health diagnostics.", listOf(ActionPlan("BATTERY_CHECK", params)))
+            )
+        }
+
         val batteryTriggers = listOf(
             "battery", "battery check", "check battery", "battery level",
             "battery percentage", "how much battery", "battery kitni hai",

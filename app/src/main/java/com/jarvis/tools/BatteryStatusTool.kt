@@ -19,7 +19,20 @@ class BatteryStatusTool(private val context: Context? = null) : Tool {
     )
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
+        val action = params["action"]?.lowercase()?.trim() ?: "check"
         val state = BatteryMonitor.getBatteryState(context)
+        if (action == "health") {
+            val summary = "Battery health is ${state.health}. Temperature is ${state.temperatureC.toInt()}°C. Level: ${state.percentage}%."
+            return ToolResult.Success(
+                message = summary,
+                data = mapOf(
+                    "action" to "health",
+                    "health" to state.health,
+                    "percentage" to state.percentage,
+                    "temperature" to state.temperatureC
+                )
+            )
+        }
         val summary = buildString {
             append(BatteryMonitor.formatSummary(state))
             append(" Temperature is ${state.temperatureC.toInt()}°C.")
@@ -27,11 +40,13 @@ class BatteryStatusTool(private val context: Context? = null) : Tool {
         return ToolResult.Success(
             message = summary,
             data = mapOf(
+                "action" to "check",
                 "percentage" to state.percentage,
                 "is_charging" to state.isCharging,
                 "is_full" to state.isFull,
                 "plugged" to state.pluggedSource,
-                "temperature" to state.temperatureC
+                "temperature" to state.temperatureC,
+                "health" to state.health
             )
         )
     }
