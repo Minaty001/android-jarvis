@@ -7,6 +7,7 @@ import com.jarvis.accessibility.ScreenVisionManager
 import com.jarvis.ai.LlmClient
 import com.jarvis.foundation.RiskLevel
 import com.jarvis.foundation.ToolMetadata
+import com.jarvis.vision.ScreenOcrParser
 
 class ScreenVisionTool(
     private val context: Context? = null,
@@ -29,6 +30,7 @@ class ScreenVisionTool(
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
         val query = params["query"]?.ifBlank { null } ?: "Describe what is currently displayed on the screen and highlight important information or text."
+        val target = params["target"]?.trim()?.ifBlank { null }
         val rawMode = params["mode"]?.trim()?.lowercase()
         val mode = when {
             !rawMode.isNullOrBlank() -> rawMode
@@ -104,10 +106,10 @@ class ScreenVisionTool(
             )
             result.getOrElse { err ->
                 Log.w(TAG, "Vision LLM failed: ${err.message}, using UI tree fallback")
-                fallbackTreeSummary(captureResult, query, mode)
+                fallbackTreeSummary(captureResult, query, mode, target)
             }
         } else {
-            fallbackTreeSummary(captureResult, query, mode)
+            fallbackTreeSummary(captureResult, query, mode, target)
         }
 
         return ToolResult.Success(
@@ -124,7 +126,7 @@ class ScreenVisionTool(
         )
     }
 
-    private fun fallbackTreeSummary(capture: ScreenCaptureResult, query: String, mode: String): String {
+    private fun fallbackTreeSummary(capture: ScreenCaptureResult, query: String, mode: String, target: String? = null): String {
         val app = formatAppName(capture.activePackage)
         val textLines = capture.uiTextTree
             .lines()
@@ -135,9 +137,12 @@ class ScreenVisionTool(
                 line.isNotBlank()
             }
             .map { line ->
-                line.substringAfter("] ", line)
-                    .replace(Regex("\\[|\\]|\\(clickable=.*?\\)|\\(editable=.*?\\)"), "")
-                    .replace(Regex("^[0-9]+\\.\\s*"), "")
+                line.replace(Regex("^[0-9]+\\.\\s*"), "")
+                    .replace(Regex("\\(clickable=.*?\\)"), "")
+                    .replace(Regex("\\(editable=.*?\\)"), "")
+                    .replace(Regex("\\(bounds=.*?\\)"), "")
+                    .replace("[", "")
+                    .replace("]", "")
                     .trim()
             }
             .filter { it.length > 1 && !it.startsWith("com.") && !it.contains(":id/") }
@@ -166,12 +171,34 @@ class ScreenVisionTool(
                 "Summary on $app: ${textLines.take(3).joinToString(". ")}."
             }
             "extract" -> {
-                val codeMatch = textLines.firstOrNull { it.matches(Regex(".*\\b([0-9]{4,8})\\b.*")) }
-                if (codeMatch != null) {
-                    val digits = Regex("\\b([0-9]{4,8})\\b").find(codeMatch)?.groupValues?.get(1)
-                    "Extracted code: $digits on $app."
+                val effectiveTarget = target ?: when {
+                    query.contains("otp", ignoreCase = true) || query.contains("code", ignoreCase = true) || query.contains("pin", ignoreCase = true) -> "otp"
+                    query.contains("total", ignoreCase = true) -> "total"
+                    query.contains("price", ignoreCase = true) || query.contains("cost", ignoreCase = true) -> "price"
+                    query.contains("order", ignoreCase = true) -> "order"
+                    query.contains("track", ignoreCase = true) -> "tracking"
+                    query.contains("email", ignoreCase = true) || query.contains("mail", ignoreCase = true) -> "email"
+                    query.contains("phone", ignoreCase = true) || query.contains("number", ignoreCase = true) -> "phone"
+                    else -> ""
+                }
+
+                val extracted = if (effectiveTarget.isNotBlank()) {
+                    ScreenOcrParser.extractTarget(capture.uiTextTree, effectiveTarget)
+                } else null
+
+                if (extracted != null) {
+                    "Extracted $effectiveTarget: $extracted on $app."
                 } else {
-                    "Found text: ${textLines.firstOrNull() ?: "none"} on $app."
+                    val data = ScreenOcrParser.parse(capture.uiTextTree)
+                    when {
+                        data.totals.isNotEmpty() -> "Found on $app: ${data.totals.first()}."
+                        data.verificationCodes.isNotEmpty() -> "Extracted code: ${data.verificationCodes.first()} on $app."
+                        data.orderIds.isNotEmpty() -> "Order ID: ${data.orderIds.first()} on $app."
+                        data.prices.isNotEmpty() -> "Price on $app: ${data.prices.first()}."
+                        data.emails.isNotEmpty() -> "Email on $app: ${data.emails.first()}."
+                        data.phoneNumbers.isNotEmpty() -> "Phone on $app: ${data.phoneNumbers.first()}."
+                        else -> "Found text: ${textLines.firstOrNull() ?: "none"} on $app."
+                    }
                 }
             }
             else -> {
