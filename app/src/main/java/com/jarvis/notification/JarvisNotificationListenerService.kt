@@ -15,6 +15,7 @@ class JarvisNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        instance = this
         Log.i(TAG, "JarvisNotificationListenerService connected and monitoring notifications")
         // Load initial active notifications
         try {
@@ -23,6 +24,59 @@ class JarvisNotificationListenerService : NotificationListenerService() {
             }
         } catch (e: Exception) {
             Log.w(TAG, "Error loading initial active notifications: ${e.message}")
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (instance == this) {
+            instance = null
+        }
+    }
+
+    fun triggerNotificationAction(index: Int, actionQuery: String? = null): Boolean {
+        try {
+            val active = activeNotifications ?: return false
+            val sbn = active.getOrNull(index - 1) ?: return false
+            val notif = sbn.notification ?: return false
+            val actions = notif.actions ?: return false
+            if (actions.isEmpty()) return false
+
+            val targetAction = if (!actionQuery.isNullOrBlank()) {
+                val query = actionQuery.trim().lowercase()
+                actions.firstOrNull { it.title?.toString()?.lowercase()?.contains(query) == true } ?: actions.firstOrNull()
+            } else {
+                actions.firstOrNull()
+            } ?: return false
+
+            targetAction.actionIntent.send()
+            return true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to trigger notification action at index $index: ${e.message}")
+            return false
+        }
+    }
+
+    fun dismissNotification(index: Int): Boolean {
+        try {
+            val active = activeNotifications ?: return false
+            val sbn = active.getOrNull(index - 1) ?: return false
+            cancelNotification(sbn.key)
+            return true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to dismiss notification at index $index: ${e.message}")
+            return false
+        }
+    }
+
+    fun dismissAllNotifications(): Boolean {
+        try {
+            cancelAllNotifications()
+            NotificationStore.clearAll()
+            return true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to dismiss all notifications: ${e.message}")
+            return false
         }
     }
 
@@ -122,6 +176,9 @@ class JarvisNotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "JarvisNotifService"
+
+        var instance: JarvisNotificationListenerService? = null
+            internal set
 
         fun isNotificationAccessGranted(context: Context): Boolean {
             return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)

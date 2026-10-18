@@ -71,7 +71,7 @@ object NotificationClassifier {
 }
 
 object NotificationStore {
-    private const val MAX_CAPACITY = 30
+    private const val MAX_CAPACITY = 20
     private val buffer = mutableListOf<NotificationItem>()
 
     @Synchronized
@@ -88,6 +88,17 @@ object NotificationStore {
     @Synchronized
     fun removeNotification(id: String) {
         buffer.removeAll { it.id == id }
+    }
+
+    @Synchronized
+    fun clearAll() {
+        buffer.clear()
+    }
+
+    @Synchronized
+    fun getItem(index: Int): NotificationItem? {
+        val nonOngoing = buffer.filter { !it.isOngoing }
+        return nonOngoing.getOrNull(index - 1)
     }
 
     @Synchronized

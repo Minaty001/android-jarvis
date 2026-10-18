@@ -70,7 +70,8 @@ enum class AssistantIntent {
     AIR_GESTURES,
     VOICE_TYPING,
     DRIVING_MODE,
-    TELEPHONY_CONTROL
+    TELEPHONY_CONTROL,
+    NOTIFICATION_INTERACTION
 }
 
 data class ResolvedIntent(
@@ -80,11 +81,18 @@ data class ResolvedIntent(
     val directPlan: ExecutionPlan? = null
 )
 
+private val COMPOUND_SPLIT_REGEX = Regex("\\s+(?:and|then|aur|fir)\\s+")
+private val NOTIF_READ_ITEM_REGEX = Regex("^(?:read|check|open)\\s+notification\\s+(\\d+)")
+private val NOTIF_REPLY_REGEX = Regex("^(?:reply|respond)\\s+to\\s+notification\\s+(\\d+)(?:\\s+(?:with|saying)\\s+(.+))?")
+private val NOTIF_ACTION_REGEX = Regex("^(?:trigger|press|click)\\s+notification\\s+(\\d+)(?:\\s+action\\s+(.+))?")
+private val NOTIF_DISMISS_ITEM_REGEX = Regex("^(?:clear|dismiss|remove)\\s+notification\\s+(\\d+)")
+private val NOTIF_DISMISS_ALL_REGEX = Regex("^(?:clear|dismiss|remove)\\s+(?:all\\s+notifications|notifications)")
+
 object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {
         val text = utterance.trim().lowercase(Locale.ROOT)
         if (text.isBlank()) return null
-        val parts = text.split(Regex("\\s+(?:and|then|aur|fir)\\s+"))
+        val parts = text.split(COMPOUND_SPLIT_REGEX)
         if (parts.size > 1) {
             // Keep explicit screen follow-ups together; leave other compound screen requests to the agent.
             val screenPart = parts.indexOfFirst { it.contains("screen") }
@@ -1177,6 +1185,72 @@ object IntentResolver {
                 confidence = 0.95f,
                 params = emptyMap(),
                 directPlan = ExecutionPlan("Preparing daily briefing.", listOf(ActionPlan("DAILY_BRIEFING", emptyMap())))
+            )
+        }
+
+        // Phase 4: Interactive Notification Actions & Dismissal
+        if (text.startsWith("clear all notifications") || text.startsWith("dismiss all notifications") ||
+            text.startsWith("clear notifications") || text.startsWith("dismiss notifications") ||
+            text == "clear notification" || text == "dismiss notification" ||
+            NOTIF_DISMISS_ALL_REGEX.matches(text)) {
+            val params = mapOf("action" to "dismiss_all")
+            return ResolvedIntent(
+                intent = AssistantIntent.NOTIFICATION_INTERACTION,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Dismissing all notifications.", listOf(ActionPlan("NOTIFICATIONS_READ", params)))
+            )
+        }
+
+        val readItemMatch = NOTIF_READ_ITEM_REGEX.find(text)
+        if (readItemMatch != null) {
+            val idx = readItemMatch.groupValues[1]
+            val params = mapOf("action" to "read_item", "index" to idx)
+            return ResolvedIntent(
+                intent = AssistantIntent.NOTIFICATION_INTERACTION,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Reading notification $idx.", listOf(ActionPlan("NOTIFICATIONS_READ", params)))
+            )
+        }
+
+        val replyMatch = NOTIF_REPLY_REGEX.find(text)
+        if (replyMatch != null) {
+            val idx = replyMatch.groupValues[1]
+            val replyText = replyMatch.groupValues.getOrNull(2).orEmpty()
+            val params = mutableMapOf("action" to "trigger_action", "index" to idx)
+            if (replyText.isNotBlank()) params["text"] = replyText
+            return ResolvedIntent(
+                intent = AssistantIntent.NOTIFICATION_INTERACTION,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Replying to notification $idx.", listOf(ActionPlan("NOTIFICATIONS_READ", params)))
+            )
+        }
+
+        val actionMatch = NOTIF_ACTION_REGEX.find(text)
+        if (actionMatch != null) {
+            val idx = actionMatch.groupValues[1]
+            val actQuery = actionMatch.groupValues.getOrNull(2).orEmpty()
+            val params = mutableMapOf("action" to "trigger_action", "index" to idx)
+            if (actQuery.isNotBlank()) params["query"] = actQuery
+            return ResolvedIntent(
+                intent = AssistantIntent.NOTIFICATION_INTERACTION,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Triggering action on notification $idx.", listOf(ActionPlan("NOTIFICATIONS_READ", params)))
+            )
+        }
+
+        val dismissItemMatch = NOTIF_DISMISS_ITEM_REGEX.find(text)
+        if (dismissItemMatch != null) {
+            val idx = dismissItemMatch.groupValues[1]
+            val params = mapOf("action" to "dismiss_item", "index" to idx)
+            return ResolvedIntent(
+                intent = AssistantIntent.NOTIFICATION_INTERACTION,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Dismissing notification $idx.", listOf(ActionPlan("NOTIFICATIONS_READ", params)))
             )
         }
 

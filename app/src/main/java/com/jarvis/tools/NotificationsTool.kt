@@ -33,8 +33,82 @@ class NotificationsTool(private val context: Context? = null) : Tool {
         val action = params["action"]?.trim()?.lowercase() ?: "read"
         val appFilter = params["app"]?.trim()?.ifBlank { null }
         val limit = params["limit"]?.toIntOrNull()?.coerceIn(1, 15) ?: 5
+        val index = params["index"]?.toIntOrNull()
+        val query = params["query"] ?: params["text"]
 
         when (action) {
+            "read_item" -> {
+                val idx = index ?: 1
+                val item = NotificationStore.getItem(idx)
+                if (item == null) {
+                    return ToolResult.Success(
+                        message = "No notification found at number $idx.",
+                        data = mapOf("action" to "read_item", "index" to idx.toString(), "found" to "false")
+                    )
+                }
+                val sender = if (item.title.isNotBlank()) "${item.title} on ${item.appName}" else item.appName
+                val body = item.text.ifBlank { "Notification posted" }
+                return ToolResult.Success(
+                    message = "Notification $idx from $sender: \"$body\"",
+                    data = mapOf(
+                        "action" to "read_item",
+                        "index" to idx.toString(),
+                        "found" to "true",
+                        "app" to item.appName,
+                        "title" to item.title,
+                        "text" to item.text
+                    )
+                )
+            }
+            "trigger_action", "reply" -> {
+                val idx = index ?: 1
+                val service = JarvisNotificationListenerService.instance
+                if (service == null) {
+                    return ToolResult.Success(
+                        message = "Notification service is not currently active to trigger actions.",
+                        data = mapOf("action" to "trigger_action", "index" to idx.toString(), "success" to "false")
+                    )
+                }
+                val success = service.triggerNotificationAction(idx, query)
+                return if (success) {
+                    ToolResult.Success(
+                        message = "Triggered action on notification $idx.",
+                        data = mapOf("action" to "trigger_action", "index" to idx.toString(), "success" to "true")
+                    )
+                } else {
+                    ToolResult.Success(
+                        message = "Unable to trigger action on notification $idx. It may not have actionable buttons.",
+                        data = mapOf("action" to "trigger_action", "index" to idx.toString(), "success" to "false")
+                    )
+                }
+            }
+            "dismiss_all", "clear_all" -> {
+                val service = JarvisNotificationListenerService.instance
+                if (service != null) {
+                    service.dismissAllNotifications()
+                } else {
+                    NotificationStore.clearAll()
+                }
+                return ToolResult.Success(
+                    message = "Cleared all notifications.",
+                    data = mapOf("action" to "dismiss_all")
+                )
+            }
+            "dismiss_item", "dismiss", "clear_item" -> {
+                val idx = index ?: 1
+                val service = JarvisNotificationListenerService.instance
+                if (service != null) {
+                    service.dismissNotification(idx)
+                }
+                val item = NotificationStore.getItem(idx)
+                if (item != null) {
+                    NotificationStore.removeNotification(item.id)
+                }
+                return ToolResult.Success(
+                    message = "Dismissed notification $idx.",
+                    data = mapOf("action" to "dismiss_item", "index" to idx.toString())
+                )
+            }
             "digest", "summary", "triage", "brief" -> {
                 val summarizer = com.jarvis.notification.SmartNotificationSummarizer()
                 val summary = summarizer.generateExecutiveDigest()
@@ -111,6 +185,10 @@ class NotificationsTool(private val context: Context? = null) : Tool {
         }
         val text = result.message
         return when {
+            result.data.containsKey("action") -> VerificationResult.success(
+                "Notification action executed (${result.data["action"]})",
+                mapOf("action" to "${result.data["action"]}", "outcome" to "SUCCESS")
+            )
             result.data.containsKey("notifications") -> VerificationResult.success(
                 "Notifications read (${result.data["count"]})",
                 mapOf("count" to "${result.data["count"]}", "outcome" to "READBACK")
