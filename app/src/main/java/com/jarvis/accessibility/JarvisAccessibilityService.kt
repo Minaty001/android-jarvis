@@ -98,6 +98,27 @@ class JarvisAccessibilityService : AccessibilityService() {
     }
 
     /**
+     * Attempts to long-click a node. Falls back to physical 800ms dwell gesture.
+     */
+    fun longClickNode(node: AccessibilityNodeInfo): Boolean {
+        var curr: AccessibilityNodeInfo? = node
+        while (curr != null) {
+            if (curr.isLongClickable) {
+                val performed = curr.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)
+                if (performed) return true
+            }
+            curr = curr.parent
+        }
+
+        val rect = Rect()
+        node.getBoundsInScreen(rect)
+        if (!rect.isEmpty) {
+            return longClickCoordinates(rect.centerX().toFloat(), rect.centerY().toFloat(), 800)
+        }
+        return false
+    }
+
+    /**
      * Sets text on an editable node or focused node.
      */
     fun setNodeText(node: AccessibilityNodeInfo, text: String): Boolean {
@@ -240,6 +261,59 @@ class JarvisAccessibilityService : AccessibilityService() {
                 continuation.resume(false)
             }
         }
+
+    /**
+     * Long clicks at coordinates with an 800ms dwell time.
+     */
+    fun longClickCoordinates(
+        x: Float,
+        y: Float,
+        durationMs: Long = 800,
+        onComplete: ((Boolean) -> Unit)? = null
+    ): Boolean {
+        val path = Path().apply {
+            moveTo(x, y)
+        }
+        val stroke = GestureDescription.StrokeDescription(path, 0, durationMs.coerceAtLeast(400))
+        val gesture = GestureDescription.Builder().addStroke(stroke).build()
+
+        return dispatchGesture(gesture, object : GestureResultCallback() {
+            override fun onCompleted(gestureDescription: GestureDescription?) {
+                Log.d(TAG, "Long click at ($x, $y) completed")
+                onComplete?.invoke(true)
+            }
+
+            override fun onCancelled(gestureDescription: GestureDescription?) {
+                Log.w(TAG, "Long click at ($x, $y) cancelled")
+                onComplete?.invoke(false)
+            }
+        }, Handler(Looper.getMainLooper()))
+    }
+
+    suspend fun longClickCoordinatesAsync(x: Float, y: Float, durationMs: Long = 800): Boolean =
+        suspendCancellableCoroutine { continuation ->
+            val dispatched = longClickCoordinates(x, y, durationMs) { success ->
+                if (continuation.isActive) continuation.resume(success)
+            }
+            if (!dispatched && continuation.isActive) {
+                continuation.resume(false)
+            }
+        }
+
+    /**
+     * Dispatches a 250ms horizontal swipe across the screen width.
+     */
+    suspend fun swipeHorizontal(direction: String): Boolean {
+        val displayMetrics = resources.displayMetrics
+        val width = displayMetrics.widthPixels.toFloat()
+        val height = displayMetrics.heightPixels.toFloat()
+        val centerY = height / 2f
+        return if (direction.equals("left", ignoreCase = true)) {
+            swipeAsync(width * 0.85f, centerY, width * 0.15f, centerY, 250)
+        } else {
+            swipeAsync(width * 0.15f, centerY, width * 0.85f, centerY, 250)
+        }
+    }
 
     /**
      * Double-taps on the specified screen coordinates.
@@ -645,12 +719,12 @@ class JarvisAccessibilityService : AccessibilityService() {
     fun dumpInteractiveTree(): List<UiNodeInfo> {
         val root = rootInActiveWindow ?: return emptyList()
         val list = mutableListOf<UiNodeInfo>()
-        dfsCollect(root, list)
+        dfsCollect(root, list, 0)
         return list
     }
 
-    private fun dfsCollect(node: AccessibilityNodeInfo?, out: MutableList<UiNodeInfo>) {
-        if (node == null) return
+    private fun dfsCollect(node: AccessibilityNodeInfo?, out: MutableList<UiNodeInfo>, depth: Int) {
+        if (node == null || depth > 10) return
         val text = node.text?.toString()
         val desc = node.contentDescription?.toString()
         val id = node.viewIdResourceName
@@ -673,15 +747,15 @@ class JarvisAccessibilityService : AccessibilityService() {
         }
 
         for (i in 0 until node.childCount) {
-            dfsCollect(node.getChild(i), out)
+            dfsCollect(node.getChild(i), out, depth + 1)
         }
     }
 
-    private fun dfsFind(node: AccessibilityNodeInfo?, predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
-        if (node == null) return null
+    private fun dfsFind(node: AccessibilityNodeInfo?, depth: Int = 0, predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
+        if (node == null || depth > 10) return null
         if (predicate(node)) return node
         for (i in 0 until node.childCount) {
-            val found = dfsFind(node.getChild(i), predicate)
+            val found = dfsFind(node.getChild(i), depth + 1, predicate)
             if (found != null) return found
         }
         return null

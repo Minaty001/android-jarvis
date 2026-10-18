@@ -652,6 +652,8 @@ class AssistantRuntime(
         val voiceTypingTool = com.jarvis.tools.VoiceTypingTool(context)
         val drivingModeEngine = com.jarvis.automotive.DrivingModeEngine(context)
         val drivingModeTool = com.jarvis.tools.DrivingModeTool(context, drivingModeEngine)
+        val uiGesture = com.jarvis.tools.UiGestureTool(context)
+        toolRegistry.register(uiGesture)
 
         airGestureEngine.onWaveDetected = {
             ensureActiveScope().launch(Dispatchers.IO) {

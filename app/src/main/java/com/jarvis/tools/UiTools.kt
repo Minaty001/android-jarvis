@@ -166,3 +166,15 @@ class ScreenUnlockTool(private val context: Context? = null) : Tool {
         return UiAutomationManager.unlockScreen(ctx, pin)
     }
 }
+
+class UiGestureTool(private val context: Context? = null) : Tool {
+    override val name: String = "UI_GESTURE"
+    override val description: String = "Performs touchless gestures like long-press (800ms dwell) or horizontal swipe (left/right)."
+
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        val action = params["action"] ?: "swipe"
+        val target = params["target"] ?: params["direction"] ?: "left"
+        return UiAutomationManager.performGestureAction(action, target)
+    }
+}
+

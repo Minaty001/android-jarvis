@@ -71,7 +71,8 @@ enum class AssistantIntent {
     VOICE_TYPING,
     DRIVING_MODE,
     TELEPHONY_CONTROL,
-    NOTIFICATION_INTERACTION
+    NOTIFICATION_INTERACTION,
+    UI_GESTURE_ACTION
 }
 
 data class ResolvedIntent(
@@ -87,6 +88,8 @@ private val NOTIF_REPLY_REGEX = Regex("^(?:reply|respond)\\s+to\\s+notification\
 private val NOTIF_ACTION_REGEX = Regex("^(?:trigger|press|click)\\s+notification\\s+(\\d+)(?:\\s+action\\s+(.+))?")
 private val NOTIF_DISMISS_ITEM_REGEX = Regex("^(?:clear|dismiss|remove)\\s+notification\\s+(\\d+)")
 private val NOTIF_DISMISS_ALL_REGEX = Regex("^(?:clear|dismiss|remove)\\s+(?:all\\s+notifications|notifications)")
+private val GESTURE_LONG_PRESS_REGEX = Regex("^(?:long\\s+press|long\\s+click|hold)\\s+(.+)$")
+private val GESTURE_SWIPE_REGEX = Regex("^(?:swipe|slide|scroll\\s+sideways)\\s+(left|right)$")
 
 object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {
@@ -448,6 +451,34 @@ object IntentResolver {
                 confidence = 0.99f,
                 params = params,
                 directPlan = ExecutionPlan("Scrolling up.", listOf(ActionPlan("UI_SCROLL", params)))
+            )
+        }
+
+        // Phase 4: Touchless Long-Press & Directional Swipes
+        val swipeDir = when {
+            text == "swipe left" || text == "next tab" || text == "slide left" -> "left"
+            text == "swipe right" || text == "previous tab" || text == "slide right" -> "right"
+            else -> GESTURE_SWIPE_REGEX.find(text)?.groupValues?.get(1)
+        }
+        if (swipeDir != null) {
+            val params = mapOf("action" to "swipe", "direction" to swipeDir)
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_GESTURE_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Swiping $swipeDir.", listOf(ActionPlan("UI_GESTURE", params)))
+            )
+        }
+
+        val longPressMatch = GESTURE_LONG_PRESS_REGEX.find(text)
+        if (longPressMatch != null) {
+            val target = longPressMatch.groupValues[1].trim()
+            val params = mapOf("action" to "long_click", "target" to target)
+            return ResolvedIntent(
+                intent = AssistantIntent.UI_GESTURE_ACTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Long pressing '$target'.", listOf(ActionPlan("UI_GESTURE", params)))
             )
         }
 

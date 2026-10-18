@@ -103,6 +103,17 @@ object VoiceAccessOverlayController {
         return service.clickCoordinatesAsync(x, y)
     }
 
+    suspend fun longClickBadge(number: Int): Boolean {
+        val bounds = badgeMap[number] ?: return false
+        hideBadges()
+
+        val service = JarvisAccessibilityService.instance ?: return false
+        val x = bounds.centerX().toFloat()
+        val y = bounds.centerY().toFloat()
+        Log.i(TAG, "Long clicking badge #$number at coordinates ($x, $y)")
+        return service.longClickCoordinatesAsync(x, y, 800)
+    }
+
     @SuppressLint("RtlHardcoded")
     private fun renderOverlay(appContext: Context, badges: Map<Int, Rect>) {
         try {

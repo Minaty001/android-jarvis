@@ -291,4 +291,48 @@ object UiAutomationManager {
         val service = JarvisAccessibilityService.instance ?: return emptyList()
         return service.dumpInteractiveTree()
     }
+
+    fun performGestureAction(action: String, targetOrDirection: String): ToolResult {
+        val service = JarvisAccessibilityService.instance
+            ?: return ToolResult(false, "Accessibility Service is not enabled. Please enable Jarvis Automation in Settings.")
+
+        return kotlinx.coroutines.runBlocking {
+            when (action.lowercase()) {
+                "long_click", "long_press" -> {
+                    val badgeNum = targetOrDirection.toIntOrNull()
+                    if (badgeNum != null && VoiceAccessOverlayController.isShowing) {
+                        val success = VoiceAccessOverlayController.longClickBadge(badgeNum)
+                        if (success) {
+                            return@runBlocking ToolResult(true, "Long-pressed item #$badgeNum")
+                        } else {
+                            return@runBlocking ToolResult(false, "Failed to long-press item #$badgeNum")
+                        }
+                    }
+
+                    val lower = targetOrDirection.lowercase().trim()
+                    val node = service.findNodeByViewId(targetOrDirection)
+                        ?: service.findNodeByContentDescription(lower, exact = false)
+                        ?: service.findNodeByText(lower, exact = false)
+
+                    if (node != null) {
+                        val success = service.longClickNode(node)
+                        if (success) {
+                            return@runBlocking ToolResult(true, "Long-pressed '$targetOrDirection'")
+                        }
+                    }
+                    ToolResult(false, "Could not find element '$targetOrDirection' to long-press")
+                }
+                "swipe" -> {
+                    val dir = targetOrDirection.lowercase().trim()
+                    val success = service.swipeHorizontal(dir)
+                    if (success) {
+                        ToolResult(true, "Swiped $dir")
+                    } else {
+                        ToolResult(false, "Failed to swipe $dir")
+                    }
+                }
+                else -> ToolResult(false, "Unknown gesture action: $action")
+            }
+        }
+    }
 }
