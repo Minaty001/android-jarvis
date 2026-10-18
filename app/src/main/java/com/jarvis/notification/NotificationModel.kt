@@ -71,7 +71,7 @@ object NotificationClassifier {
 }
 
 object NotificationStore {
-    private const val MAX_CAPACITY = 20
+    private const val MAX_CAPACITY = 30
     private val buffer = mutableListOf<NotificationItem>()
 
     @Synchronized
