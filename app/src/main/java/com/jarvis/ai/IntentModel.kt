@@ -109,11 +109,11 @@ private val PAYMENT_CHECK_REGEX = Regex("^(?:did\\s+(?:the\\s+)?payment\\s+go\\s
 private val LINK_SAFETY_REGEX = Regex("^(?:is\\s+this\\s+link\\s+safe|is\\s+this\\s+page\\s+secure|check\\s+(?:link\\s+safety|if\\s+link\\s+is\\s+safe))$", RegexOption.IGNORE_CASE)
 private val FIND_BUTTON_REGEX = Regex("^(?:find|where\\s+is)\\s+(?:the\\s+)?(.+?)\\s+button$", RegexOption.IGNORE_CASE)
 
-val SOS_TRIGGER_REGEX = Regex("^(?:send\\s+sos|emergency\\s+sos|sos|help\\s+me|bachao(?:\\s+mujhe)?|madad\\s+karo|emergency|call\\s+112|police\\s+ko\\s+call\\s+karo|send\\s+emergency\\s+alert)$", RegexOption.IGNORE_CASE)
-val SOS_CANCEL_REGEX = Regex("^(?:stop\\s+sos|cancel\\s+sos|sos\\s+band\\s+karo|stop\\s+emergency|cancel\\s+emergency|emergency\\s+band\\s+karo)$", RegexOption.IGNORE_CASE)
-val PIN_UNLOCK_REGEX = Regex("^(?:unlock\\s+(?:phone|screen|device)\\s+with\\s+pin\\s+(\\d{4,8})|enter\\s+pin\\s+(\\d{4,8})|pin\\s+dalo\\s+(\\d{4,8})|my\\s+pin\\s+is\\s+(\\d{4,8})|unlock\\s+with\\s+pin\\s+(\\d{4,8}))$", RegexOption.IGNORE_CASE)
-val WAKE_DISPLAY_REGEX = Regex("^(?:wake\\s+(?:up\\s+)?(?:screen|display|phone)|turn\\s+on\\s+(?:screen|display)|display\\s+on|screen\\s+on(?:\\s+karo)?|screen\\s+chalu\\s+karo)$", RegexOption.IGNORE_CASE)
-val LOCK_DISPLAY_REGEX = Regex("^(?:lock\\s+(?:screen|phone|device)|phone\\s+lock(?:\\s+karo)?|screen\\s+band\\s+karo|sleep\\s+(?:display|phone|screen)|turn\\s+off\\s+(?:screen|display)|sleep\\s+phone|phone\\s+band\\s+karo)$", RegexOption.IGNORE_CASE)
+val SOS_TRIGGER_REGEX = Regex("^(?:send\\s+sos|emergency\\s+sos|sos|help\\s+me|bachao(?:\\s+mujhe)?|madad\\s+karo|emergency|call\\s+112|police\\s+ko\\s+call\\s+karo|send\\s+emergency\\s+alert)[.!?,]*$", RegexOption.IGNORE_CASE)
+val SOS_CANCEL_REGEX = Regex("^(?:stop\\s+sos|cancel\\s+sos|sos\\s+band\\s+karo|stop\\s+emergency|cancel\\s+emergency|emergency\\s+band\\s+karo)[.!?,]*$", RegexOption.IGNORE_CASE)
+val PIN_UNLOCK_REGEX = Regex("^(?:unlock\\s+(?:phone|screen|device)\\s+with\\s+pin\\s+(\\S+)|enter\\s+pin\\s+(\\S+)|pin\\s+dalo\\s+(\\S+)|my\\s+pin\\s+is\\s+(\\S+)|unlock\\s+with\\s+pin\\s+(\\S+))[.!?,]*$", RegexOption.IGNORE_CASE)
+val WAKE_DISPLAY_REGEX = Regex("^(?:wake\\s+(?:up\\s+)?(?:screen|display|phone)|turn\\s+on\\s+(?:screen|display)|display\\s+on|screen\\s+on(?:\\s+karo)?|screen\\s+chalu\\s+karo)[.!?,]*$", RegexOption.IGNORE_CASE)
+val LOCK_DISPLAY_REGEX = Regex("^(?:lock\\s+(?:screen|phone|device)|phone\\s+lock(?:\\s+karo)?|screen\\s+band\\s+karo|sleep\\s+(?:display|phone|screen)|turn\\s+off\\s+(?:screen|display)|sleep\\s+phone|phone\\s+band\\s+karo)[.!?,]*$", RegexOption.IGNORE_CASE)
 
 object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {

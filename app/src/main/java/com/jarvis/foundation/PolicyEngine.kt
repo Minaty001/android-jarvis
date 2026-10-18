@@ -50,6 +50,16 @@ class PolicyEngine(
     fun evaluate(toolMetadata: ToolMetadata, params: Map<String, String>): PolicyEvaluationResult {
         autonomyEngine.autonomousFullAuto = autonomousFullAuto
 
+        // Emergency SOS is life-critical and exempt from manual approval/confirmation
+        val isEmergency = toolMetadata.name.uppercase() in setOf("EMERGENCY_SOS", "SOS", "STOP_SOS")
+        if (isEmergency) {
+            return PolicyEvaluationResult(
+                allowed = true,
+                requiresApproval = false,
+                reason = "Emergency SOS is exempt from approval"
+            )
+        }
+
         // Critical safety invariant: never permit destructive actions regardless of flags
         if (toolMetadata.riskLevel == RiskLevel.CRITICAL) {
             return PolicyEvaluationResult(
@@ -86,6 +96,16 @@ class PolicyEngine(
 
     fun evaluateAction(actionType: String, params: Map<String, String>): PolicyEvaluationResult {
         autonomyEngine.autonomousFullAuto = autonomousFullAuto
+
+        // Emergency SOS is life-critical and exempt from manual approval/confirmation
+        val isEmergency = actionType.uppercase() in setOf("EMERGENCY_SOS", "SOS", "STOP_SOS")
+        if (isEmergency) {
+            return PolicyEvaluationResult(
+                allowed = true,
+                requiresApproval = false,
+                reason = "Emergency SOS is exempt from approval"
+            )
+        }
 
         // Lock-screen security gatekeeper: gate private/sensitive actions when device is locked
         if (isDeviceLockedProvider()) {

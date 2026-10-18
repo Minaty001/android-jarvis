@@ -597,7 +597,8 @@ class ToolExecutor(
         }
 
         // V4: Biometric Step-Up Authorization
-        if (effectiveMetadata.riskLevel == com.jarvis.foundation.RiskLevel.HIGH) {
+        val isEmergency = canonicalType in setOf("EMERGENCY_SOS", "SOS", "STOP_SOS")
+        if (!isEmergency && effectiveMetadata.riskLevel == com.jarvis.foundation.RiskLevel.HIGH) {
             biometricAuthenticator?.let { authenticator ->
                 val authPassed = authenticator.verify(
                     title = "Jarvis Security",

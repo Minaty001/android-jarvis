@@ -162,12 +162,16 @@ class ScreenUnlockTool(private val context: Context? = null) : Tool {
         if (action == "wake" || action == "wake_display" || action == "screen_on") {
             return DisplayWakeEngine.wakeDisplay(context)
         }
-        val ctx = context ?: return DisplayWakeEngine.wakeDisplay(null)
+        val ctx = context
         var pin = params["pin"] ?: params["code"] ?: params["passcode"]
-        if (pin.isNullOrBlank()) {
+        if (pin.isNullOrBlank() && ctx != null) {
             pin = runCatching { com.jarvis.ui.data.UiPreferencesStore(ctx).loadSettings().deviceUnlockPin }.getOrNull()
         }
-        return UiAutomationManager.unlockScreen(ctx, pin)
+        if (!pin.isNullOrBlank()) {
+            return KeyguardUnlockTool(context).execute(mapOf("pin" to pin))
+        }
+        if (ctx == null) return DisplayWakeEngine.wakeDisplay(null)
+        return UiAutomationManager.unlockScreen(ctx, null)
     }
 }
 

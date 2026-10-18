@@ -4,6 +4,7 @@ import android.content.Context
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.os.PowerManager
 import android.util.Log
 import com.jarvis.tools.LocationTool
 import com.jarvis.tools.TelephonyTool
@@ -24,6 +25,7 @@ import kotlinx.coroutines.launch
  * 3. Real-time GPS coordinate extraction with Google Maps URL.
  * 4. Automated SMS dispatch to emergency contacts.
  * 5. Hands-free emergency call dialer with auto-speakerphone.
+ * 6. PARTIAL_WAKE_LOCK protection preventing CPU sleep during active emergency beacon.
  */
 object EmergencySosBeaconEngine {
 
@@ -47,7 +49,10 @@ object EmergencySosBeaconEngine {
         Pair(true, 150L), Pair(false, 1000L) // Word/Cycle gap
     )
 
+    @Volatile
     private var activeJob: Job? = null
+    @Volatile
+    private var sosWakeLock: PowerManager.WakeLock? = null
     private var isTorchOn: Boolean = false
     private var torchCameraId: String? = null
     private var cameraManager: CameraManager? = null
@@ -70,6 +75,8 @@ object EmergencySosBeaconEngine {
 
     /**
      * Activates SOS beacon with strobe, siren, SMS, and dialer.
+     * Launches physical strobe and siren immediately at t=0, while GPS and telecommunications
+     * dispatch concurrently in the background.
      */
     suspend fun startBeacon(
         context: Context?,
@@ -87,49 +94,17 @@ object EmergencySosBeaconEngine {
             )
         }
 
-        // 1. Extract GPS coordinates
-        var lat: Double? = null
-        var lng: Double? = null
+        // 1. Acquire PARTIAL_WAKE_LOCK to prevent CPU deep sleep while screen is off
         try {
-            val locResult = LocationTool(context).execute(mapOf("action" to "get_location"))
-            if (locResult.success) {
-                lat = locResult.data["latitude"]?.toString()?.toDoubleOrNull()
-                lng = locResult.data["longitude"]?.toString()?.toDoubleOrNull()
+            val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+            sosWakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Jarvis::EmergencySosBeacon")?.apply {
+                acquire(15 * 60 * 1000L) // 15-minute safety timeout
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to retrieve emergency GPS location: ${e.message}")
+            Log.w(TAG, "Failed to acquire PARTIAL_WAKE_LOCK: ${e.message}")
         }
 
-        // 2. Dispatch emergency SMS
-        val sosMessage = formatSosMessage(lat, lng)
-        try {
-            TelephonyTool(context).execute(
-                mapOf(
-                    "action" to "sms_send",
-                    "recipient" to targetContact,
-                    "message" to sosMessage
-                )
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to dispatch SOS SMS: ${e.message}")
-        }
-
-        // 3. Dial emergency services with speakerphone enabled
-        if (dialEmergency) {
-            try {
-                TelephonyTool(context).execute(
-                    mapOf(
-                        "action" to "call",
-                        "recipient" to targetContact,
-                        "speaker" to "true"
-                    )
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to dial emergency contact: ${e.message}")
-            }
-        }
-
-        // 4. Initialize hardware torch
+        // 2. Initialize hardware torch immediately
         cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
         torchCameraId = try {
             cameraManager?.cameraIdList?.firstOrNull { id ->
@@ -140,7 +115,7 @@ object EmergencySosBeaconEngine {
             null
         }
 
-        // 5. Launch strobe and siren loop in background
+        // 3. Launch physical strobe and siren immediately at t=0
         activeJob?.cancel()
         activeJob = CoroutineScope(Dispatchers.Default).launch {
             var toneGen: ToneGenerator? = null
@@ -178,10 +153,54 @@ object EmergencySosBeaconEngine {
             }
         }
 
+        // 4. Asynchronously extract GPS coordinates, send emergency SMS, and dial services
+        CoroutineScope(Dispatchers.IO).launch {
+            var lat: Double? = null
+            var lng: Double? = null
+            try {
+                val locResult = LocationTool(context).execute(mapOf("action" to "get_location"))
+                if (locResult.success) {
+                    lat = locResult.data["latitude"]?.toString()?.toDoubleOrNull()
+                    lng = locResult.data["longitude"]?.toString()?.toDoubleOrNull()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to retrieve emergency GPS location: ${e.message}")
+            }
+
+            // Dispatch emergency SMS
+            val sosMessage = formatSosMessage(lat, lng)
+            try {
+                TelephonyTool(context).execute(
+                    mapOf(
+                        "action" to "sms_send",
+                        "recipient" to targetContact,
+                        "message" to sosMessage
+                    )
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to dispatch SOS SMS: ${e.message}")
+            }
+
+            // Dial emergency services with speakerphone enabled
+            if (dialEmergency) {
+                try {
+                    TelephonyTool(context).execute(
+                        mapOf(
+                            "action" to "call",
+                            "recipient" to targetContact,
+                            "speaker" to "true"
+                        )
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to dial emergency contact: ${e.message}")
+                }
+            }
+        }
+
         return ToolResult(
             success = true,
             message = "Emergency SOS Beacon activated (Morse strobe, siren, location link dispatched to $targetContact).",
-            data = mapOf("active" to "true", "contact" to targetContact, "has_gps" to (lat != null).toString())
+            data = mapOf("active" to "true", "contact" to targetContact)
         )
     }
 
@@ -197,13 +216,22 @@ object EmergencySosBeaconEngine {
     }
 
     /**
-     * Immediately stops beacon, cancelling coroutines, silences siren, and shuts off torch.
+     * Immediately stops beacon, cancelling coroutines, silences siren, releases WakeLock, and shuts off torch.
      */
     fun stopBeacon(): Boolean {
         active = false
         activeJob?.cancel()
         activeJob = null
         setTorch(false)
+        try {
+            if (sosWakeLock?.isHeld == true) {
+                sosWakeLock?.release()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "WakeLock release error: ${e.message}")
+        } finally {
+            sosWakeLock = null
+        }
         return true
     }
 }
