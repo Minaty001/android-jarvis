@@ -654,6 +654,8 @@ class AssistantRuntime(
         val drivingModeTool = com.jarvis.tools.DrivingModeTool(context, drivingModeEngine)
         val uiGesture = com.jarvis.tools.UiGestureTool(context)
         toolRegistry.register(uiGesture)
+        val clipboardTool = com.jarvis.tools.ClipboardTool(context)
+        toolRegistry.register(clipboardTool, clipboardTool.metadata)
 
         airGestureEngine.onWaveDetected = {
             ensureActiveScope().launch(Dispatchers.IO) {

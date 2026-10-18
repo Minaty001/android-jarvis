@@ -72,7 +72,8 @@ enum class AssistantIntent {
     DRIVING_MODE,
     TELEPHONY_CONTROL,
     NOTIFICATION_INTERACTION,
-    UI_GESTURE_ACTION
+    UI_GESTURE_ACTION,
+    CLIPBOARD_CONTROL
 }
 
 data class ResolvedIntent(
@@ -90,6 +91,7 @@ private val NOTIF_DISMISS_ITEM_REGEX = Regex("^(?:clear|dismiss|remove)\\s+notif
 private val NOTIF_DISMISS_ALL_REGEX = Regex("^(?:clear|dismiss|remove)\\s+(?:all\\s+notifications|notifications)")
 private val GESTURE_LONG_PRESS_REGEX = Regex("^(?:long\\s+press|long\\s+click|hold)\\s+(.+)$")
 private val GESTURE_SWIPE_REGEX = Regex("^(?:swipe|slide|scroll\\s+sideways)\\s+(left|right)$")
+private val CLIPBOARD_COPY_REGEX = Regex("^(?:copy|copy to clipboard)\\s+(.+)$")
 
 object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {
@@ -479,6 +481,49 @@ object IntentResolver {
                 confidence = 0.99f,
                 params = params,
                 directPlan = ExecutionPlan("Long pressing '$target'.", listOf(ActionPlan("UI_GESTURE", params)))
+            )
+        }
+
+        // Phase 4: Hands-Free Voice Clipboard & OTP Injection
+        if (text in listOf("read clipboard", "check clipboard", "what is in clipboard", "clipboard content", "clipboard check", "clipboard padho")) {
+            val params = mapOf("action" to "read")
+            return ResolvedIntent(
+                intent = AssistantIntent.CLIPBOARD_CONTROL,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Reading clipboard contents.", listOf(ActionPlan("CLIPBOARD_MANAGE", params)))
+            )
+        }
+
+        if (text in listOf("paste clipboard", "paste text", "paste here", "paste karo", "paste")) {
+            val params = mapOf("action" to "paste")
+            return ResolvedIntent(
+                intent = AssistantIntent.CLIPBOARD_CONTROL,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Pasting clipboard text into active field.", listOf(ActionPlan("CLIPBOARD_MANAGE", params)))
+            )
+        }
+
+        if (text in listOf("paste otp", "enter otp", "inject otp", "type otp", "fill otp", "otp dalo", "otp paste karo")) {
+            val params = mapOf("action" to "paste_otp")
+            return ResolvedIntent(
+                intent = AssistantIntent.CLIPBOARD_CONTROL,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Injecting SMS OTP code.", listOf(ActionPlan("CLIPBOARD_MANAGE", params)))
+            )
+        }
+
+        val copyMatch = CLIPBOARD_COPY_REGEX.find(text)
+        if (copyMatch != null) {
+            val textToCopy = copyMatch.groupValues[1].trim()
+            val params = mapOf("action" to "copy", "text" to textToCopy)
+            return ResolvedIntent(
+                intent = AssistantIntent.CLIPBOARD_CONTROL,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Copying text to clipboard.", listOf(ActionPlan("CLIPBOARD_MANAGE", params)))
             )
         }
 
