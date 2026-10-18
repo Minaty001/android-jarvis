@@ -111,6 +111,15 @@ class AmbientSoundClassifierTest {
     }
 
     @Test
+    fun `test speech with sibilants and voice pitch rejects false glass break`() {
+        // Human speech saying "s" or "sh": 200 Hz voice pitch fundamental + 5000 Hz fricative hiss
+        val speechSibilant = generateDualTone(200.0, 5000.0, 1024, amplitude = 18000)
+        val result = classifier.classify(speechSibilant, speechSibilant.size)
+        // Must reject false glass break alarm because of low-frequency vocal presence
+        assertEquals(SoundCategory.NONE, result.category)
+    }
+
+    @Test
     fun `test reset clears internal state`() {
         val smokeAlarm = generateSineWave(3000.0, 1024, amplitude = 22000)
         classifier.classify(smokeAlarm, smokeAlarm.size)

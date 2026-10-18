@@ -34,26 +34,41 @@ class SoundDetectorTool(private val context: Context? = null) : Tool {
         riskLevel = com.jarvis.foundation.RiskLevel.LOW
     )
 
-    init {
-        AmbientSoundMonitorEngine.clearListeners()
-        AmbientSoundMonitorEngine.addListener { event ->
-            CoroutineScope(Dispatchers.Default).launch {
-                SoundAlertDispatcher.dispatchAlert(context, event)
-            }
+    private var emergencyContact: String? = null
+
+    private val detectionListener = com.jarvis.sound.SoundDetectionListener { event ->
+        CoroutineScope(Dispatchers.Default).launch {
+            val contact = emergencyContact ?: "112"
+            SoundAlertDispatcher.dispatchAlert(context, event, emergencyContact = contact)
         }
+    }
+
+    init {
+        AmbientSoundMonitorEngine.addListener(detectionListener)
     }
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
         val action = params["action"]?.trim()?.lowercase() ?: "start"
         val typeParam = params["type"]?.trim()?.lowercase() ?: "all"
+        val contactParam = params["contact"] ?: params["emergency_contact"] ?: params["number"]
+        if (!contactParam.isNullOrBlank()) {
+            emergencyContact = contactParam
+        }
 
         return when (action) {
             "start", "enable", "on", "listen" -> {
+                AmbientSoundMonitorEngine.addListener(detectionListener)
                 val categories = parseCategories(typeParam)
+                val audioStream = try {
+                    com.jarvis.service.JarvisForegroundService.instance?.voiceEngine?.continuousAudioStream
+                } catch (_: Throwable) {
+                    null
+                }
                 AmbientSoundMonitorEngine.startMonitoring(
                     context = context,
                     categories = categories,
-                    dutyCycleMode = AmbientSoundMonitorEngine.DutyCycleMode.BATTERY_SAVER
+                    dutyCycleMode = AmbientSoundMonitorEngine.DutyCycleMode.BATTERY_SAVER,
+                    audioStream = audioStream
                 )
                 val catNames = categories.joinToString(", ") { it.name }
                 ToolResult(

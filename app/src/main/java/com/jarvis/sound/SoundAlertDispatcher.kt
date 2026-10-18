@@ -57,7 +57,26 @@ object SoundAlertDispatcher {
         if (announcement.isEmpty()) return false
 
         // 1. Spoken TTS announcement
-        ttsSpeaker?.invoke(announcement)
+        try {
+            if (ttsSpeaker != null) {
+                ttsSpeaker.invoke(announcement)
+            } else if (context != null) {
+                val serviceTts = try {
+                    com.jarvis.service.JarvisForegroundService.instance?.voiceEngine?.ttsEngine
+                } catch (_: Throwable) {
+                    null
+                }
+                if (serviceTts != null) {
+                    serviceTts.speak(announcement)
+                } else {
+                    try {
+                        com.jarvis.voice.AndroidTtsEngine(context).speak(announcement)
+                    } catch (_: Throwable) {}
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Spoken TTS announcement failed: ${e.message}")
+        }
 
         if (context == null) {
             Log.i(TAG, "Dispatched alert [Simulated]: $announcement")
@@ -86,7 +105,7 @@ object SoundAlertDispatcher {
             Log.w(TAG, "Vibration failed: ${e.message}")
         }
 
-        // 3. High-Priority Heads-Up Notification
+        // 3. High-Priority Heads-Up Notification (category-specific ID avoids overwriting different alerts)
         try {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             if (nm != null) {
@@ -110,7 +129,7 @@ object SoundAlertDispatcher {
                     .setAutoCancel(true)
                     .build()
 
-                nm.notify(NOTIFICATION_ID, notification)
+                nm.notify(NOTIFICATION_ID + event.category.ordinal, notification)
             }
         } catch (e: Exception) {
             Log.w(TAG, "Notification dispatch failed: ${e.message}")

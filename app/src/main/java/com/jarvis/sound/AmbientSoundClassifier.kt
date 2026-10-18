@@ -142,6 +142,7 @@ class AmbientSoundClassifier(
      * Classifies a 16-bit PCM mono buffer.
      * Guaranteed zero heap allocation during execution.
      */
+    @Synchronized
     fun classify(samples: ShortArray, readCount: Int): SoundClassificationResult {
         if (readCount <= 0) {
             return SoundClassificationResult(SoundCategory.NONE, 0f)
@@ -232,8 +233,13 @@ class AmbientSoundClassifier(
         val speechPower = sumBandPower(speechLowBin, speechHighBin)
         val speechRatio = (speechPower / totalPower).toFloat()
 
+        val lowVoiceLowBin = freqToBin(60.0)
+        val lowVoiceHighBin = freqToBin(300.0)
+        val lowVoicePower = sumBandPower(lowVoiceLowBin, lowVoiceHighBin)
+        val lowVoiceRatio = (lowVoicePower / totalPower).toFloat()
+
         // 1. SMOKE ALARM: Pure tone ~3000 Hz, concentrated in 2800-3200 Hz
-        if (smokeRatio >= 0.45f && peakFreq in 2750f..3250f) {
+        if (smokeRatio >= 0.45f && peakFreq >= 2750f && peakFreq <= 3250f) {
             val conf = (0.60f + smokeRatio * 0.40f).coerceIn(0.70f, 0.99f)
             return SoundClassificationResult(
                 category = SoundCategory.SMOKE_ALARM,
@@ -243,8 +249,8 @@ class AmbientSoundClassifier(
             )
         }
 
-        // 2. GLASS BREAK: High-frequency transient shock energy (> 4000 Hz)
-        if (glassRatio >= 0.45f && peakFreq >= 4000f) {
+        // 2. GLASS BREAK: High-frequency transient shock energy (> 4000 Hz) with low vocal energy
+        if (glassRatio >= 0.45f && peakFreq >= 4000f && lowVoiceRatio < 0.25f) {
             val conf = (0.60f + glassRatio * 0.40f).coerceIn(0.70f, 0.99f)
             return SoundClassificationResult(
                 category = SoundCategory.GLASS_BREAK,
@@ -254,9 +260,9 @@ class AmbientSoundClassifier(
             )
         }
 
-        // 3. DOORBELL: Chime dual tone around 500 Hz and 700 Hz
+        // 3. DOORBELL: Chime dual tone around 500 Hz and 700 Hz (or prominent single chime resonance)
         val chimeRatio = ((chime1Power + chime2Power) / totalPower).toFloat()
-        if (chimeRatio >= 0.45f && chime1Power > 0.05 * totalPower && chime2Power > 0.05 * totalPower) {
+        if (chimeRatio >= 0.45f && ((chime1Power > 0.05 * totalPower && chime2Power > 0.05 * totalPower) || (peakFreq >= 480f && peakFreq <= 760f && chimeRatio >= 0.60f))) {
             val conf = (0.60f + chimeRatio * 0.35f).coerceIn(0.65f, 0.95f)
             return SoundClassificationResult(
                 category = SoundCategory.DOORBELL,
@@ -268,7 +274,7 @@ class AmbientSoundClassifier(
 
         // 4. BABY CRYING: 350-650 Hz fundamental + 750-1300 Hz harmonic resonance
         val cryCombinedRatio = ((cryFundPower + cryHarmPower) / totalPower).toFloat()
-        if (cryCombinedRatio >= 0.45f && cryHarmPower >= 0.12 * cryFundPower && peakFreq in 350f..650f) {
+        if (cryCombinedRatio >= 0.45f && cryHarmPower >= 0.12 * cryFundPower && peakFreq >= 350f && peakFreq <= 650f) {
             val conf = (0.55f + cryCombinedRatio * 0.40f).coerceIn(0.65f, 0.95f)
             return SoundClassificationResult(
                 category = SoundCategory.BABY_CRYING,
@@ -278,8 +284,8 @@ class AmbientSoundClassifier(
             )
         }
 
-        // 5. CAR HONK: Dual-tone sustained horn in 380-600 Hz
-        if (hornRatio >= 0.45f && peakFreq in 380f..600f) {
+        // 5. CAR HONK: Dual-tone sustained horn in 380-600 Hz with low voice-pitch energy
+        if (hornRatio >= 0.45f && peakFreq >= 380f && peakFreq <= 600f && lowVoiceRatio < 0.30f) {
             val conf = (0.60f + hornRatio * 0.38f).coerceIn(0.70f, 0.98f)
             return SoundClassificationResult(
                 category = SoundCategory.CAR_HONK,

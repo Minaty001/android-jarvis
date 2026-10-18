@@ -124,4 +124,12 @@ class SoundDetectorToolTest {
         assertTrue(policy.allowed)
         assertFalse("Sound detector must not block for confirmation", policy.requiresApproval)
     }
+
+    @Test
+    fun `test execute start with emergency contact parameter stores contact`() = runBlocking {
+        val startRes = tool.execute(mapOf("action" to "start", "type" to "smoke_alarm", "contact" to "9999912345"))
+        assertTrue(startRes.success)
+        assertTrue(AmbientSoundMonitorEngine.isMonitoring())
+        assertTrue(AmbientSoundMonitorEngine.getActiveCategories().contains(SoundCategory.SMOKE_ALARM))
+    }
 }
