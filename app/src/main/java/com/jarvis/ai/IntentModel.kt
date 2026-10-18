@@ -93,6 +93,9 @@ private val GESTURE_LONG_PRESS_REGEX = Regex("^(?:long\\s+press|long\\s+click|ho
 private val GESTURE_SWIPE_REGEX = Regex("^(?:swipe|slide|scroll\\s+sideways)\\s+(left|right)$")
 private val CLIPBOARD_COPY_REGEX = Regex("^(?:copy|copy to clipboard)\\s+(.+)$")
 private val DEEP_APP_SEARCH_REGEX = Regex("^search\\s+(.+?)\\s+on\\s+(youtube|chrome|spotify)$")
+private val SCREEN_TRANSLATE_REGEX = Regex("^(?:translate\\s+(?:this\\s+)?(?:screen|page)|screen\\s+translate)\\s*(?:to|in|into)?\\s*([a-zA-Z]+)?$", RegexOption.IGNORE_CASE)
+private val SCREEN_TRANSLATE_HINGLISH_REGEX = Regex("^(?:(?:is|ye)\\s+)?screen\\s+(?:ko\\s+)?(?:([a-zA-Z]+)\\s+me\\s+)?(?:translate|anuvad)\\s*(?:karo|kar\\s+do)?$", RegexOption.IGNORE_CASE)
+private val SCREEN_WHAT_SAYS_REGEX = Regex("^what\\s+does\\s+(?:this\\s+)?(?:screen|page)\\s+say\\s+(?:in|into)?\\s*([a-zA-Z]+)?$", RegexOption.IGNORE_CASE)
 
 object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {
@@ -1214,6 +1217,30 @@ object IntentResolver {
                     directPlan = ExecutionPlan("Searching for $query.", listOf(ActionPlan("SEARCH_WEB", mapOf("query" to query))))
                 )
             }
+        }
+
+        // 6c. Screen Translation Fast Path ("translate screen to hindi", "translate this page to english", etc.)
+        val screenTranslateMatch = SCREEN_TRANSLATE_REGEX.find(text)
+            ?: SCREEN_TRANSLATE_HINGLISH_REGEX.find(text)
+            ?: SCREEN_WHAT_SAYS_REGEX.find(text)
+        if (screenTranslateMatch != null) {
+            val rawLang = screenTranslateMatch.groupValues.getOrNull(1)?.ifBlank { null } ?: "en"
+            val targetLang = when {
+                rawLang.startsWith("hi") || rawLang.contains("hindi") -> "hi"
+                rawLang.startsWith("en") || rawLang.contains("english") -> "en"
+                rawLang.startsWith("es") || rawLang.contains("spanish") -> "es"
+                rawLang.startsWith("fr") || rawLang.contains("french") -> "fr"
+                rawLang.startsWith("de") || rawLang.contains("german") -> "de"
+                rawLang.startsWith("ja") || rawLang.contains("japanese") -> "ja"
+                else -> rawLang
+            }
+            val params = mapOf("query" to utterance, "mode" to "translate", "target_lang" to targetLang)
+            return ResolvedIntent(
+                intent = AssistantIntent.SCREEN_VISION,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Translating active screen content to $targetLang.", listOf(ActionPlan("SCREEN_VISION", params)))
+            )
         }
 
         // 7. Screen Vision intent ("what is on my screen", "is screen pe kya hai", "read this", etc.)

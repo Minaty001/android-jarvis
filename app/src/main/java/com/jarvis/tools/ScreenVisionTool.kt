@@ -12,7 +12,8 @@ import com.jarvis.vision.ScreenOcrParser
 class ScreenVisionTool(
     private val context: Context? = null,
     private val llmClient: LlmClient? = null,
-    private val captureScreen: suspend () -> ScreenCaptureResult = { ScreenVisionManager.captureScreen() }
+    private val captureScreen: suspend () -> ScreenCaptureResult = { ScreenVisionManager.captureScreen() },
+    private val translatorTool: Tool? = if (context != null) TranslatorTool(context) else null
 ) : Tool {
 
     override val name: String = "SCREEN_VISION"
@@ -31,9 +32,18 @@ class ScreenVisionTool(
     override suspend fun execute(params: Map<String, String>): ToolResult {
         val query = params["query"]?.ifBlank { null } ?: "Describe what is currently displayed on the screen and highlight important information or text."
         val target = params["target"]?.trim()?.ifBlank { null }
+        val targetLang = params["target_lang"] ?: params["to"] ?: when {
+            query.contains("hindi", ignoreCase = true) -> "hi"
+            query.contains("spanish", ignoreCase = true) -> "es"
+            query.contains("french", ignoreCase = true) -> "fr"
+            query.contains("german", ignoreCase = true) -> "de"
+            query.contains("english", ignoreCase = true) -> "en"
+            else -> "en"
+        }
         val rawMode = params["mode"]?.trim()?.lowercase()
         val mode = when {
             !rawMode.isNullOrBlank() -> rawMode
+            query.contains("translate", ignoreCase = true) || query.contains("anuvad", ignoreCase = true) -> "translate"
             query.contains("read", ignoreCase = true) || query.contains("aloud", ignoreCase = true) -> "read_aloud"
             query.contains("summariz", ignoreCase = true) || query.contains("short", ignoreCase = true) -> "summarize"
             query.contains("error", ignoreCase = true) || query.contains("crash", ignoreCase = true) || query.contains("fail", ignoreCase = true) -> "error_check"
@@ -53,6 +63,84 @@ class ScreenVisionTool(
         }
 
         Log.i(TAG, "Screen captured: mode=$mode, isVisual=${captureResult.isVisualAvailable}, activeApp=${captureResult.activePackage}")
+
+        // Fast path: Hands-free Screen Translation
+        if (mode == "translate") {
+            val app = formatAppName(captureResult.activePackage)
+            val textLines = captureResult.uiTextTree
+                .lines()
+                .filter { line ->
+                    !line.startsWith("Foreground App:") &&
+                    !line.startsWith("Visible UI Elements") &&
+                    !line.contains("No interactive UI text") &&
+                    line.isNotBlank()
+                }
+                .map { line ->
+                    line.replace(Regex("^[0-9]+\\.\\s*"), "")
+                        .replace(Regex("\\(clickable=.*?\\)"), "")
+                        .replace(Regex("\\(editable=.*?\\)"), "")
+                        .replace(Regex("\\(bounds=.*?\\)"), "")
+                        .replace("[", "")
+                        .replace("]", "")
+                        .trim()
+                }
+                .filter { it.length > 1 && !it.startsWith("com.") && !it.contains(":id/") }
+                .distinct()
+                .take(10)
+
+            if (textLines.isEmpty()) {
+                return ToolResult.Success(
+                    "You are on $app. No prominent text was found to translate on this screen.",
+                    mapOf("mode" to "translate", "active_package" to (captureResult.activePackage ?: "Unknown"))
+                )
+            }
+
+            var combinedText = textLines.joinToString(". ")
+            if (combinedText.length > 800) {
+                combinedText = combinedText.substring(0, 800)
+                val lastDot = combinedText.lastIndexOf(". ")
+                if (lastDot > 100) {
+                    combinedText = combinedText.substring(0, lastDot) + "."
+                }
+            }
+
+            val langCode = normalizeLangCode(targetLang)
+            val langName = getLanguageDisplayName(langCode)
+
+            val translationResult = if (translatorTool != null) {
+                try {
+                    val res = translatorTool.execute(mapOf("text" to combinedText, "target_lang" to langCode))
+                    if (res is ToolResult.Success && res.data.containsKey("translation")) {
+                        res.data["translation"] as String
+                    } else if (res is ToolResult.Success) {
+                        val m = res.message
+                        if (m.contains(": \"") && m.endsWith("\"")) {
+                            m.substringAfter(": \"").substringBeforeLast("\"")
+                        } else m
+                    } else null
+                } catch (e: Exception) {
+                    Log.w(TAG, "Screen translation error: ${e.message}")
+                    null
+                }
+            } else null
+
+            val spokenText = if (!translationResult.isNullOrBlank()) {
+                "Screen translation in $langName: \"$translationResult\""
+            } else {
+                "Screen text on $app in $langName: \"$combinedText\""
+            }
+
+            return ToolResult.Success(
+                message = spokenText,
+                data = mapOf(
+                    "mode" to "translate",
+                    "target_lang" to langCode,
+                    "original" to combinedText,
+                    "translation" to (translationResult ?: combinedText),
+                    "active_package" to (captureResult.activePackage ?: "Unknown")
+                )
+            )
+        }
 
         // 2. Multimodal LLM Reasoning
         val analysis = if (llmClient != null) {
@@ -223,6 +311,42 @@ class ScreenVisionTool(
             pkg.contains("spotify", ignoreCase = true) -> "Spotify"
             pkg.contains("jarvis", ignoreCase = true) -> "JARVIS"
             else -> pkg.substringAfterLast(".").replaceFirstChar { it.uppercase() }
+        }
+    }
+
+    private fun normalizeLangCode(raw: String): String {
+        val l = raw.lowercase(java.util.Locale.ROOT).trim()
+        return when {
+            l.startsWith("hi") || l.contains("hindi") -> "hi"
+            l.startsWith("en") || l.contains("english") -> "en"
+            l.startsWith("es") || l.contains("spanish") -> "es"
+            l.startsWith("fr") || l.contains("french") -> "fr"
+            l.startsWith("de") || l.contains("german") -> "de"
+            l.startsWith("ja") || l.contains("japanese") -> "ja"
+            l.startsWith("ru") || l.contains("russian") -> "ru"
+            l.startsWith("ar") || l.contains("arabic") -> "ar"
+            l.startsWith("it") || l.contains("italian") -> "it"
+            l.startsWith("pt") || l.contains("portuguese") -> "pt"
+            l.startsWith("zh") || l.contains("chinese") -> "zh"
+            l.startsWith("ko") || l.contains("korean") -> "ko"
+            else -> if (l.length == 2) l else "en"
+        }
+    }
+
+    private fun getLanguageDisplayName(code: String): String {
+        return when (code) {
+            "hi" -> "Hindi"
+            "es" -> "Spanish"
+            "fr" -> "French"
+            "de" -> "German"
+            "ja" -> "Japanese"
+            "ru" -> "Russian"
+            "ar" -> "Arabic"
+            "it" -> "Italian"
+            "pt" -> "Portuguese"
+            "zh" -> "Chinese"
+            "ko" -> "Korean"
+            else -> "English"
         }
     }
 
