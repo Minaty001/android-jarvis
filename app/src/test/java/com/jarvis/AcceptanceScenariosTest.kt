@@ -159,4 +159,65 @@ class AcceptanceScenariosTest {
         val step2Eval = evaluator.evaluate(goal, step2State, step2Obs, step2Verif)
         assertTrue("Goal satisfied when both app open and playback are verified", step2Eval.satisfied)
     }
+
+    /**
+     * Test Case 4: Ambient Sound Detection & Safety Alert Flow
+     * -> User says "detect smoke alarm"
+     * -> Fast-path Intent resolves to SOUND_DETECTION (tool: SOUND_DETECTOR, action: start, type: smoke_alarm)
+     * -> Monitor engine begins listening
+     * -> Acoustic pure-tone at 3000 Hz is classified as SMOKE_ALARM
+     * -> Safety alert is dispatched with urgent announcement & haptic pulse
+     * -> User says "stop sound detection" -> monitoring terminates cleanly
+     */
+    @Test
+    fun testScenario4_AmbientSoundDetectionAndSafetyAlertFlow() = runBlocking {
+        val intentModel = com.jarvis.ai.IntentModel()
+
+        // 1. Resolve voice trigger
+        val startIntent = intentModel.classify("detect smoke alarm")
+        assertNotNull(startIntent)
+        assertEquals(com.jarvis.ai.AssistantIntent.SOUND_DETECTION, startIntent?.intent)
+        assertEquals("start", startIntent?.params?.get("action"))
+        assertEquals("smoke_alarm", startIntent?.params?.get("type"))
+
+        // 2. Execute SoundDetectorTool
+        val tool = com.jarvis.tools.SoundDetectorTool(context = null)
+        val startResult = tool.execute(startIntent!!.params)
+        assertTrue(startResult.success)
+        assertTrue(com.jarvis.sound.AmbientSoundMonitorEngine.isMonitoring())
+        assertTrue(com.jarvis.sound.AmbientSoundMonitorEngine.getActiveCategories().contains(com.jarvis.sound.SoundCategory.SMOKE_ALARM))
+
+        // 3. Classify synthetic 3000 Hz smoke alarm acoustic audio frame
+        val classifier = com.jarvis.sound.AmbientSoundClassifier(sampleRate = 16000, windowSize = 1024)
+        val audioSamples = ShortArray(1024)
+        for (i in 0 until 1024) {
+            val angle = 2.0 * Math.PI * 3000.0 * i / 16000.0
+            audioSamples[i] = (22000 * Math.sin(angle)).toInt().toShort()
+        }
+        val classification = classifier.classify(audioSamples, 1024)
+        assertEquals(com.jarvis.sound.SoundCategory.SMOKE_ALARM, classification.category)
+        assertTrue(classification.confidence >= 0.70f)
+
+        // 4. Dispatch safety alert
+        var announcedText = ""
+        val alertEvent = com.jarvis.sound.SoundDetectionEvent(
+            category = classification.category,
+            confidence = classification.confidence,
+            dominantFrequencyHz = classification.dominantFrequencyHz
+        )
+        val dispatched = com.jarvis.sound.SoundAlertDispatcher.dispatchAlert(
+            context = null,
+            event = alertEvent,
+            ttsSpeaker = { announcedText = it }
+        )
+        assertTrue(dispatched)
+        assertTrue(announcedText.contains("Smoke alarm", ignoreCase = true))
+
+        // 5. User stops sound detection
+        val stopIntent = intentModel.classify("stop sound detection")
+        assertNotNull(stopIntent)
+        val stopResult = tool.execute(stopIntent!!.params)
+        assertTrue(stopResult.success)
+        assertFalse(com.jarvis.sound.AmbientSoundMonitorEngine.isMonitoring())
+    }
 }
