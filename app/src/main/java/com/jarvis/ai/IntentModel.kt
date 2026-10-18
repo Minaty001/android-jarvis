@@ -100,6 +100,9 @@ private val LENS_PRESCRIPTION_REGEX = Regex("^(?:read|check|scan)\\s+(?:the\\s+)
 private val LENS_DOCUMENT_REGEX = Regex("^(?:read|scan)\\s+(?:this\\s+)?(?:document|page|letter|paper|book)$", RegexOption.IGNORE_CASE)
 private val LENS_NUTRITION_REGEX = Regex("^(?:read|check|scan)\\s+(?:the\\s+)?(?:nutrition\\s+label|nutritional\\s+facts|calories|nutrition)$", RegexOption.IGNORE_CASE)
 private val LENS_BARCODE_REGEX = Regex("^(?:scan|read)\\s+(?:the\\s+)?(?:barcode|qr\\s+code|product\\s+label|barcode\\s+label)$", RegexOption.IGNORE_CASE)
+private val PAYMENT_CHECK_REGEX = Regex("^(?:did\\s+(?:the\\s+)?payment\\s+go\\s+through|is\\s+(?:the\\s+)?payment\\s+successful|check\\s+payment\\s+status|(?:kya\\s+)?payment\\s+(?:ho\\s+gaya|hua|ho\\s+chuka)(?:\\s+kya)?|payment\\s+check)$", RegexOption.IGNORE_CASE)
+private val LINK_SAFETY_REGEX = Regex("^(?:is\\s+this\\s+link\\s+safe|is\\s+this\\s+page\\s+secure|check\\s+(?:link\\s+safety|if\\s+link\\s+is\\s+safe))$", RegexOption.IGNORE_CASE)
+private val FIND_BUTTON_REGEX = Regex("^(?:find|where\\s+is)\\s+(?:the\\s+)?(.+?)\\s+button$", RegexOption.IGNORE_CASE)
 
 object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {
@@ -1267,6 +1270,39 @@ object IntentResolver {
                 confidence = 0.98f,
                 params = params,
                 directPlan = ExecutionPlan("Reading $mode through camera lens.", listOf(ActionPlan("CAMERA_VISION", params)))
+            )
+        }
+
+        // 6e. Conversational Visual Q&A Fast Paths (Payment Status, Link Safety, Button Finder)
+        if (PAYMENT_CHECK_REGEX.containsMatchIn(text)) {
+            val params = mapOf("query" to utterance, "mode" to "payment_check")
+            return ResolvedIntent(
+                intent = AssistantIntent.SCREEN_VISION,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Checking payment status on active screen.", listOf(ActionPlan("SCREEN_VISION", params)))
+            )
+        }
+
+        if (LINK_SAFETY_REGEX.containsMatchIn(text)) {
+            val params = mapOf("query" to utterance, "mode" to "link_check")
+            return ResolvedIntent(
+                intent = AssistantIntent.SCREEN_VISION,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Checking website and link safety on active screen.", listOf(ActionPlan("SCREEN_VISION", params)))
+            )
+        }
+
+        val buttonMatch = FIND_BUTTON_REGEX.find(text)
+        if (buttonMatch != null) {
+            val targetBtn = buttonMatch.groupValues.getOrNull(1)?.trim() ?: "button"
+            val params = mapOf("query" to utterance, "mode" to "find_button", "target" to targetBtn)
+            return ResolvedIntent(
+                intent = AssistantIntent.SCREEN_VISION,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Finding $targetBtn button on screen.", listOf(ActionPlan("SCREEN_VISION", params)))
             )
         }
 

@@ -43,6 +43,9 @@ class ScreenVisionTool(
         val rawMode = params["mode"]?.trim()?.lowercase()
         val mode = when {
             !rawMode.isNullOrBlank() -> rawMode
+            query.contains("payment", ignoreCase = true) || query.contains("paid", ignoreCase = true) -> "payment_check"
+            query.contains("link safe", ignoreCase = true) || query.contains("secure", ignoreCase = true) -> "link_check"
+            query.contains("find button", ignoreCase = true) || (query.contains("where is the", ignoreCase = true) && query.contains("button", ignoreCase = true)) -> "find_button"
             query.contains("translate", ignoreCase = true) || query.contains("anuvad", ignoreCase = true) -> "translate"
             query.contains("read", ignoreCase = true) || query.contains("aloud", ignoreCase = true) -> "read_aloud"
             query.contains("summariz", ignoreCase = true) || query.contains("short", ignoreCase = true) -> "summarize"
@@ -137,6 +140,75 @@ class ScreenVisionTool(
                     "target_lang" to langCode,
                     "original" to combinedText,
                     "translation" to (translationResult ?: combinedText),
+                    "active_package" to (captureResult.activePackage ?: "Unknown")
+                )
+            )
+        }
+
+        // Fast path: Payment Status Check
+        if (mode == "payment_check") {
+            val paymentResult = com.jarvis.vision.VisualQnaEngine.checkPaymentStatus(
+                uiTree = captureResult.uiTextTree,
+                elements = captureResult.elements,
+                activePackage = captureResult.activePackage
+            )
+            return ToolResult.Success(
+                message = paymentResult.explanation,
+                data = mapOf(
+                    "mode" to "payment_check",
+                    "status" to paymentResult.status.name,
+                    "transaction_id" to (paymentResult.transactionId ?: ""),
+                    "amount" to (paymentResult.amount ?: ""),
+                    "active_package" to (captureResult.activePackage ?: "Unknown")
+                )
+            )
+        }
+
+        // Fast path: Link Safety & Phishing Check
+        if (mode == "link_check") {
+            val linkResult = com.jarvis.vision.VisualQnaEngine.checkLinkSafety(
+                uiTree = captureResult.uiTextTree,
+                elements = captureResult.elements
+            )
+            return ToolResult.Success(
+                message = linkResult.reason,
+                data = mapOf(
+                    "mode" to "link_check",
+                    "status" to linkResult.status.name,
+                    "url" to (linkResult.url ?: ""),
+                    "active_package" to (captureResult.activePackage ?: "Unknown")
+                )
+            )
+        }
+
+        // Fast path: Button Locator
+        if (mode == "find_button") {
+            val targetButton = target ?: query.substringAfter("find the ", "")
+                .substringAfter("where is the ", "")
+                .substringBefore(" button")
+                .trim()
+                .ifBlank { "button" }
+
+            val buttonResult = com.jarvis.vision.VisualQnaEngine.findButton(
+                target = targetButton,
+                elements = captureResult.elements
+            )
+
+            val spoken = if (buttonResult.found) {
+                "Found '${buttonResult.label ?: targetButton}' button at item #${buttonResult.index} (${if (buttonResult.isClickable) "clickable" else "not clickable"})."
+            } else {
+                "Could not find a '$targetButton' button on the active screen."
+            }
+
+            return ToolResult.Success(
+                message = spoken,
+                data = mapOf(
+                    "mode" to "find_button",
+                    "target" to targetButton,
+                    "found" to buttonResult.found,
+                    "index" to (buttonResult.index ?: -1),
+                    "bounds" to (buttonResult.boundsDescription ?: ""),
+                    "is_clickable" to buttonResult.isClickable,
                     "active_package" to (captureResult.activePackage ?: "Unknown")
                 )
             )
