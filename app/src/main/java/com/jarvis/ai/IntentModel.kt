@@ -73,7 +73,8 @@ enum class AssistantIntent {
     TELEPHONY_CONTROL,
     NOTIFICATION_INTERACTION,
     UI_GESTURE_ACTION,
-    CLIPBOARD_CONTROL
+    CLIPBOARD_CONTROL,
+    EMERGENCY_SOS
 }
 
 data class ResolvedIntent(
@@ -82,6 +83,10 @@ data class ResolvedIntent(
     val params: Map<String, String>,
     val directPlan: ExecutionPlan? = null
 )
+
+class IntentModel {
+    fun classify(utterance: String): ResolvedIntent? = IntentResolver.resolve(utterance)
+}
 
 private val COMPOUND_SPLIT_REGEX = Regex("\\s+(?:and|then|aur|fir)\\s+")
 private val NOTIF_READ_ITEM_REGEX = Regex("^(?:read|check|open)\\s+notification\\s+(\\d+)")
@@ -103,6 +108,12 @@ private val LENS_BARCODE_REGEX = Regex("^(?:scan|read)\\s+(?:the\\s+)?(?:barcode
 private val PAYMENT_CHECK_REGEX = Regex("^(?:did\\s+(?:the\\s+)?payment\\s+go\\s+through|is\\s+(?:the\\s+)?payment\\s+successful|check\\s+payment\\s+status|(?:kya\\s+)?payment\\s+(?:ho\\s+gaya|hua|ho\\s+chuka)(?:\\s+kya)?|payment\\s+check)$", RegexOption.IGNORE_CASE)
 private val LINK_SAFETY_REGEX = Regex("^(?:is\\s+this\\s+link\\s+safe|is\\s+this\\s+page\\s+secure|check\\s+(?:link\\s+safety|if\\s+link\\s+is\\s+safe))$", RegexOption.IGNORE_CASE)
 private val FIND_BUTTON_REGEX = Regex("^(?:find|where\\s+is)\\s+(?:the\\s+)?(.+?)\\s+button$", RegexOption.IGNORE_CASE)
+
+val SOS_TRIGGER_REGEX = Regex("^(?:send\\s+sos|emergency\\s+sos|sos|help\\s+me|bachao(?:\\s+mujhe)?|madad\\s+karo|emergency|call\\s+112|police\\s+ko\\s+call\\s+karo|send\\s+emergency\\s+alert)$", RegexOption.IGNORE_CASE)
+val SOS_CANCEL_REGEX = Regex("^(?:stop\\s+sos|cancel\\s+sos|sos\\s+band\\s+karo|stop\\s+emergency|cancel\\s+emergency|emergency\\s+band\\s+karo)$", RegexOption.IGNORE_CASE)
+val PIN_UNLOCK_REGEX = Regex("^(?:unlock\\s+(?:phone|screen|device)\\s+with\\s+pin\\s+(\\d{4,8})|enter\\s+pin\\s+(\\d{4,8})|pin\\s+dalo\\s+(\\d{4,8})|my\\s+pin\\s+is\\s+(\\d{4,8})|unlock\\s+with\\s+pin\\s+(\\d{4,8}))$", RegexOption.IGNORE_CASE)
+val WAKE_DISPLAY_REGEX = Regex("^(?:wake\\s+(?:up\\s+)?(?:screen|display|phone)|turn\\s+on\\s+(?:screen|display)|display\\s+on|screen\\s+on(?:\\s+karo)?|screen\\s+chalu\\s+karo)$", RegexOption.IGNORE_CASE)
+val LOCK_DISPLAY_REGEX = Regex("^(?:lock\\s+(?:screen|phone|device)|phone\\s+lock(?:\\s+karo)?|screen\\s+band\\s+karo|sleep\\s+(?:display|phone|screen)|turn\\s+off\\s+(?:screen|display)|sleep\\s+phone|phone\\s+band\\s+karo)$", RegexOption.IGNORE_CASE)
 
 object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {
@@ -133,6 +144,61 @@ object IntentResolver {
     fun resolveSingle(utterance: String): ResolvedIntent? {
         val text = utterance.trim().lowercase(Locale.ROOT)
         if (text.isBlank()) return null
+
+        // 0.0 Emergency SOS Triggers & Cancellations (Life-Critical Fast-Path)
+        if (SOS_CANCEL_REGEX.matches(text)) {
+            val params = mapOf("action" to "stop")
+            return ResolvedIntent(
+                intent = AssistantIntent.EMERGENCY_SOS,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Stopping Emergency SOS beacon.", listOf(ActionPlan("EMERGENCY_SOS", params)))
+            )
+        }
+        if (SOS_TRIGGER_REGEX.matches(text)) {
+            val params = mapOf("action" to "start")
+            return ResolvedIntent(
+                intent = AssistantIntent.EMERGENCY_SOS,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Activating Emergency SOS beacon.", listOf(ActionPlan("EMERGENCY_SOS", params)))
+            )
+        }
+
+        // 0.01 Voice PIN Unlock
+        val pinMatch = PIN_UNLOCK_REGEX.find(text)
+        if (pinMatch != null) {
+            val pin = pinMatch.groupValues.drop(1).firstOrNull { it.isNotBlank() } ?: ""
+            val params = mapOf("action" to "unlock", "pin" to pin)
+            return ResolvedIntent(
+                intent = AssistantIntent.SCREEN_UNLOCK,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Unlocking screen with PIN.", listOf(ActionPlan("KEYGUARD_UNLOCK", params)))
+            )
+        }
+
+        // 0.02 Wake Display
+        if (WAKE_DISPLAY_REGEX.matches(text)) {
+            val params = mapOf("action" to "wake")
+            return ResolvedIntent(
+                intent = AssistantIntent.SCREEN_UNLOCK,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Waking display screen.", listOf(ActionPlan("SCREEN_UNLOCK", params)))
+            )
+        }
+
+        // 0.03 Lock Display
+        if (LOCK_DISPLAY_REGEX.matches(text)) {
+            val params = mapOf("action" to "lock")
+            return ResolvedIntent(
+                intent = AssistantIntent.SCREEN_LOCK,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Locking device screen.", listOf(ActionPlan("SCREEN_LOCK", params)))
+            )
+        }
         
         // Smart Home: Lock/Unlock Door
         if (text.contains("door") && (text.contains("unlock") || text.contains("kholo") || text.contains("khol do"))) {

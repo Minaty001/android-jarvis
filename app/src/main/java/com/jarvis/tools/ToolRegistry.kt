@@ -14,8 +14,10 @@ import kotlinx.coroutines.withTimeout
 class ToolRegistry {
     private val tools = java.util.concurrent.ConcurrentHashMap<String, Tool>()
     private val metadataMap = java.util.concurrent.ConcurrentHashMap<String, ToolMetadata>()
-    private val aliases = java.util.concurrent.ConcurrentHashMap<String, String>(mapOf(
-        // WhatsApp & Messaging
+
+    companion object {
+        val aliases = java.util.concurrent.ConcurrentHashMap<String, String>(mapOf(
+            // WhatsApp & Messaging
         "WHATSAPP_SEND" to "WHATSAPP",
         "SEND_WHATSAPP" to "WHATSAPP",
         "SEND_MESSAGE" to "WHATSAPP",
@@ -400,8 +402,16 @@ class ToolRegistry {
         "DESCRIBE_SCENE" to "CAMERA_VISION",
         "READ_OBJECT" to "CAMERA_VISION",
         "SEE_OBJECT" to "CAMERA_VISION",
-        "OPTICAL_PERCEPTION" to "CAMERA_VISION"
+        "OPTICAL_PERCEPTION" to "CAMERA_VISION",
+        // Phase 6: Emergency SOS & Keyguard Unlock
+        "EMERGENCY_SOS" to "EMERGENCY_SOS",
+        "SOS" to "EMERGENCY_SOS",
+        "BEACON" to "EMERGENCY_SOS",
+        "STOP_SOS" to "EMERGENCY_SOS",
+        "KEYGUARD_UNLOCK" to "KEYGUARD_UNLOCK",
+        "DISMISS_KEYGUARD" to "KEYGUARD_UNLOCK"
     ))
+}
 
     fun register(tool: Tool) {
         val key = tool.name.uppercase()

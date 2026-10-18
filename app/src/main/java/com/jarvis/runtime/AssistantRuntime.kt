@@ -686,6 +686,11 @@ class AssistantRuntime(
         toolRegistry.register(battery, battery.metadata)
         toolRegistry.register(briefing, briefing.metadata)
 
+        val keyguardUnlock = com.jarvis.tools.KeyguardUnlockTool(context)
+        val emergencySos = com.jarvis.tools.EmergencySosTool(context)
+        toolRegistry.register(keyguardUnlock, keyguardUnlock.metadata)
+        toolRegistry.register(emergencySos, emergencySos.metadata)
+
         // Lazy automation and knowledge tools
         val deviceSettings = com.jarvis.tools.DeviceSettingsTool(context)
         toolRegistry.register(deviceSettings, deviceSettings.metadata)
