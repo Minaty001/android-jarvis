@@ -27,7 +27,11 @@ object LockScreenSecurityPolicy {
         "SCREEN_LOCK",
         "LOCK_SCREEN",
         "SCREEN_UNLOCK",
-        "UNLOCK_SCREEN"
+        "UNLOCK_SCREEN",
+        "KEYGUARD_UNLOCK",
+        "EMERGENCY_SOS",
+        "STOP_SOS",
+        "SOS"
     )
 
     private val SAFE_SWITCHBOARD_ACTIONS = setOf(
@@ -48,12 +52,18 @@ object LockScreenSecurityPolicy {
         params: Map<String, String>,
         riskLevel: RiskLevel = RiskLevel.LOW
     ): Boolean {
+        val upper = actionType.trim().uppercase()
+
+        // Emergency SOS is life-critical and always allowed on lock screen
+        if (upper in setOf("EMERGENCY_SOS", "SOS", "STOP_SOS")) {
+            return true
+        }
+
         // High or critical risk actions are never allowed on the lock screen
         if (riskLevel == RiskLevel.HIGH || riskLevel == RiskLevel.CRITICAL) {
             return false
         }
 
-        val upper = actionType.trim().uppercase()
         if (upper in SAFE_ACTIONS) {
             return true
         }
