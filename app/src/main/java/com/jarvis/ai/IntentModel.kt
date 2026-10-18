@@ -74,7 +74,8 @@ enum class AssistantIntent {
     NOTIFICATION_INTERACTION,
     UI_GESTURE_ACTION,
     CLIPBOARD_CONTROL,
-    EMERGENCY_SOS
+    EMERGENCY_SOS,
+    SOUND_DETECTION
 }
 
 data class ResolvedIntent(
@@ -114,6 +115,15 @@ val SOS_CANCEL_REGEX = Regex("^(?:stop\\s+sos|cancel\\s+sos|sos\\s+band\\s+karo|
 val PIN_UNLOCK_REGEX = Regex("^(?:unlock\\s+(?:phone|screen|device)\\s+with\\s+pin\\s+(\\S+)|enter\\s+pin\\s+(\\S+)|pin\\s+dalo\\s+(\\S+)|my\\s+pin\\s+is\\s+(\\S+)|unlock\\s+with\\s+pin\\s+(\\S+))[.!?,]*$", RegexOption.IGNORE_CASE)
 val WAKE_DISPLAY_REGEX = Regex("^(?:wake\\s+(?:up\\s+)?(?:screen|display|phone)|turn\\s+on\\s+(?:screen|display)|display\\s+on|screen\\s+on(?:\\s+karo)?|screen\\s+chalu\\s+karo)[.!?,]*$", RegexOption.IGNORE_CASE)
 val LOCK_DISPLAY_REGEX = Regex("^(?:lock\\s+(?:screen|phone|device)|phone\\s+lock(?:\\s+karo)?|screen\\s+band\\s+karo|sleep\\s+(?:display|phone|screen)|turn\\s+off\\s+(?:screen|display)|sleep\\s+phone|phone\\s+band\\s+karo)[.!?,]*$", RegexOption.IGNORE_CASE)
+
+val SOUND_STOP_REGEX = Regex("^(?:stop|turn off|disable|exit|close)\\s+(?:sound|ambient sound|audio)?\\s*(?:monitoring|detection|detector)[.!?,]*$|^(?:sound\\s+detector|sound\\s+detection)\\s+(?:band\\s+karo|off\\s+karo)[.!?,]*$", RegexOption.IGNORE_CASE)
+val SOUND_STATUS_REGEX = Regex("^(?:sound\\s+detector|sound\\s+detection)\\s+(?:status|status\\s+batao)[.!?,]*$|^(?:is\\s+sound\\s+detector\\s+running|sound\\s+monitoring\\s+status)[.!?,]*$", RegexOption.IGNORE_CASE)
+val SOUND_BABY_REGEX = Regex("^(?:listen\\s+for\\s+baby(?:\\s+crying)?|detect\\s+baby\\s+crying|monitor\\s+baby|baby\\s+crying(?:\\s+detect\\s+karo)?|bacha\\s+ro\\s+raha\\s+hai\\s+suno|bacha\\s+roye\\s+toh\\s+batana)[.!?,]*$", RegexOption.IGNORE_CASE)
+val SOUND_SMOKE_REGEX = Regex("^(?:detect\\s+smoke\\s+alarm|listen\\s+for\\s+smoke\\s+alarm|smoke\\s+detector\\s+on|fire\\s+alarm\\s+alert|smoke\\s+alarm\\s+suno|alarm\\s+detection\\s+on\\s+karo|aag\\s+ka\\s+alarm\\s+suno|detect\\s+fire\\s+alarm)[.!?,]*$", RegexOption.IGNORE_CASE)
+val SOUND_DOORBELL_REGEX = Regex("^(?:listen\\s+for\\s+doorbell|detect\\s+doorbell|doorbell\\s+suno|ghanti\\s+suno|detect\\s+chime|listen\\s+for\\s+chime)[.!?,]*$", RegexOption.IGNORE_CASE)
+val SOUND_GLASS_REGEX = Regex("^(?:detect\\s+glass\\s+break(?:ing)?|listen\\s+for\\s+glass\\s+break(?:ing)?|sheesha\\s+tootna\\s+suno|glass\\s+break\\s+detection)[.!?,]*$", RegexOption.IGNORE_CASE)
+val SOUND_HONK_REGEX = Regex("^(?:detect\\s+car\\s+honk|listen\\s+for\\s+car\\s+honk|car\\s+honk\\s+detection|detect\\s+(?:car\\s+)?horn|listen\\s+for\\s+(?:car\\s+)?horn)[.!?,]*$", RegexOption.IGNORE_CASE)
+val SOUND_START_ALL_REGEX = Regex("^(?:start\\s+sound\\s+monitoring|enable\\s+sound\\s+detection|detect\\s+ambient\\s+sounds|listen\\s+for\\s+(?:ambient\\s+)?sounds|monitor\\s+sounds|sound\\s+detector\\s+chalu\\s+karo|ambient\\s+sounds\\s+suno|sound\\s+detection\\s+on\\s+karo|sound\\s+detector\\s+on)[.!?,]*$", RegexOption.IGNORE_CASE)
 
 object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {
@@ -197,6 +207,80 @@ object IntentResolver {
                 confidence = 0.98f,
                 params = params,
                 directPlan = ExecutionPlan("Locking device screen.", listOf(ActionPlan("SCREEN_LOCK", params)))
+            )
+        }
+
+        // 0.04 Ambient Sound Detection & Safety Alerts Fast-Paths
+        if (SOUND_STOP_REGEX.matches(text)) {
+            val params = mapOf("action" to "stop")
+            return ResolvedIntent(
+                intent = AssistantIntent.SOUND_DETECTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Stopping ambient sound detection.", listOf(ActionPlan("SOUND_DETECTOR", params)))
+            )
+        }
+        if (SOUND_STATUS_REGEX.matches(text)) {
+            val params = mapOf("action" to "status")
+            return ResolvedIntent(
+                intent = AssistantIntent.SOUND_DETECTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Checking ambient sound detection status.", listOf(ActionPlan("SOUND_DETECTOR", params)))
+            )
+        }
+        if (SOUND_BABY_REGEX.matches(text)) {
+            val params = mapOf("action" to "start", "type" to "baby_crying")
+            return ResolvedIntent(
+                intent = AssistantIntent.SOUND_DETECTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Starting ambient sound monitoring for baby crying.", listOf(ActionPlan("SOUND_DETECTOR", params)))
+            )
+        }
+        if (SOUND_SMOKE_REGEX.matches(text)) {
+            val params = mapOf("action" to "start", "type" to "smoke_alarm")
+            return ResolvedIntent(
+                intent = AssistantIntent.SOUND_DETECTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Starting ambient sound monitoring for smoke alarm.", listOf(ActionPlan("SOUND_DETECTOR", params)))
+            )
+        }
+        if (SOUND_DOORBELL_REGEX.matches(text)) {
+            val params = mapOf("action" to "start", "type" to "doorbell")
+            return ResolvedIntent(
+                intent = AssistantIntent.SOUND_DETECTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Starting ambient sound monitoring for doorbell chime.", listOf(ActionPlan("SOUND_DETECTOR", params)))
+            )
+        }
+        if (SOUND_GLASS_REGEX.matches(text)) {
+            val params = mapOf("action" to "start", "type" to "glass_break")
+            return ResolvedIntent(
+                intent = AssistantIntent.SOUND_DETECTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Starting ambient sound monitoring for glass breaking.", listOf(ActionPlan("SOUND_DETECTOR", params)))
+            )
+        }
+        if (SOUND_HONK_REGEX.matches(text)) {
+            val params = mapOf("action" to "start", "type" to "car_honk")
+            return ResolvedIntent(
+                intent = AssistantIntent.SOUND_DETECTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Starting ambient sound monitoring for car honk.", listOf(ActionPlan("SOUND_DETECTOR", params)))
+            )
+        }
+        if (SOUND_START_ALL_REGEX.matches(text)) {
+            val params = mapOf("action" to "start", "type" to "all")
+            return ResolvedIntent(
+                intent = AssistantIntent.SOUND_DETECTION,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan("Starting ambient sound monitoring for all safety categories.", listOf(ActionPlan("SOUND_DETECTOR", params)))
             )
         }
         

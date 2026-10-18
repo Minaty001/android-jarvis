@@ -21,6 +21,18 @@ import kotlinx.coroutines.launch
 class SoundDetectorTool(private val context: Context? = null) : Tool {
 
     override val name: String = "SOUND_DETECTOR"
+    override val description: String =
+        "Monitors ambient sounds (baby crying, smoke alarm, doorbell, glass break, car honk) and dispatches safety alerts. Actions: 'start', 'stop', 'status', 'simulate'."
+
+    val metadata = com.jarvis.foundation.ToolMetadata(
+        name = name,
+        description = description,
+        parameters = listOf(
+            com.jarvis.foundation.ParameterSchema("action", "string", "Action: start, stop, status, simulate", required = false),
+            com.jarvis.foundation.ParameterSchema("type", "string", "Sound type: all, baby_crying, smoke_alarm, doorbell, glass_break, car_honk", required = false)
+        ),
+        riskLevel = com.jarvis.foundation.RiskLevel.LOW
+    )
 
     init {
         AmbientSoundMonitorEngine.clearListeners()

@@ -688,8 +688,10 @@ class AssistantRuntime(
 
         val keyguardUnlock = com.jarvis.tools.KeyguardUnlockTool(context)
         val emergencySos = com.jarvis.tools.EmergencySosTool(context)
+        val soundDetector = com.jarvis.tools.SoundDetectorTool(context)
         toolRegistry.register(keyguardUnlock, keyguardUnlock.metadata)
         toolRegistry.register(emergencySos, emergencySos.metadata)
+        toolRegistry.register(soundDetector, soundDetector.metadata)
 
         // Lazy automation and knowledge tools
         val deviceSettings = com.jarvis.tools.DeviceSettingsTool(context)

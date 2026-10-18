@@ -409,7 +409,14 @@ class ToolRegistry {
         "BEACON" to "EMERGENCY_SOS",
         "STOP_SOS" to "EMERGENCY_SOS",
         "KEYGUARD_UNLOCK" to "KEYGUARD_UNLOCK",
-        "DISMISS_KEYGUARD" to "KEYGUARD_UNLOCK"
+        "DISMISS_KEYGUARD" to "KEYGUARD_UNLOCK",
+        // Phase 7: Ambient Sound Detection & Safety Alerts
+        "SOUND_DETECTOR" to "SOUND_DETECTOR",
+        "SOUND_MONITOR" to "SOUND_DETECTOR",
+        "START_SOUND_DETECTION" to "SOUND_DETECTOR",
+        "STOP_SOUND_DETECTION" to "SOUND_DETECTOR",
+        "DETECT_SOUND" to "SOUND_DETECTOR",
+        "LISTEN_SOUNDS" to "SOUND_DETECTOR"
     ))
 }
 
@@ -469,6 +476,11 @@ class ToolRegistry {
         val upper = name.uppercase()
         val canonical = aliases[upper] ?: upper
         return if (tools.containsKey(canonical)) canonical else null
+    }
+
+    fun resolveCanonicalType(name: String): String {
+        val upper = name.uppercase()
+        return aliases[upper] ?: resolveCanonicalToolName(name) ?: upper
     }
 
     fun getMetadata(name: String): ToolMetadata? {
@@ -597,7 +609,10 @@ class ToolExecutor(
         }
 
         // V4: Biometric Step-Up Authorization
-        val isEmergency = canonicalType in setOf("EMERGENCY_SOS", "SOS", "STOP_SOS")
+        val isEmergency = canonicalType in setOf(
+            "EMERGENCY_SOS", "SOS", "STOP_SOS",
+            "SOUND_DETECTOR", "SOUND_MONITOR", "START_SOUND_DETECTION", "STOP_SOUND_DETECTION"
+        )
         if (!isEmergency && effectiveMetadata.riskLevel == com.jarvis.foundation.RiskLevel.HIGH) {
             biometricAuthenticator?.let { authenticator ->
                 val authPassed = authenticator.verify(
