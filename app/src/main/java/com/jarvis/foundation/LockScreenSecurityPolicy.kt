@@ -31,7 +31,11 @@ object LockScreenSecurityPolicy {
         "KEYGUARD_UNLOCK",
         "EMERGENCY_SOS",
         "STOP_SOS",
-        "SOS"
+        "SOS",
+        "SOUND_DETECTOR",
+        "SOUND_MONITOR",
+        "START_SOUND_DETECTION",
+        "STOP_SOUND_DETECTION"
     )
 
     private val SAFE_SWITCHBOARD_ACTIONS = setOf(
@@ -54,8 +58,8 @@ object LockScreenSecurityPolicy {
     ): Boolean {
         val upper = actionType.trim().uppercase()
 
-        // Emergency SOS is life-critical and always allowed on lock screen
-        if (upper in setOf("EMERGENCY_SOS", "SOS", "STOP_SOS")) {
+        // Emergency SOS and safety sound monitoring are life-critical and always allowed on lock screen
+        if (upper in setOf("EMERGENCY_SOS", "SOS", "STOP_SOS", "SOUND_DETECTOR", "SOUND_MONITOR", "START_SOUND_DETECTION", "STOP_SOUND_DETECTION")) {
             return true
         }
 

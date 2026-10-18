@@ -50,13 +50,16 @@ class PolicyEngine(
     fun evaluate(toolMetadata: ToolMetadata, params: Map<String, String>): PolicyEvaluationResult {
         autonomyEngine.autonomousFullAuto = autonomousFullAuto
 
-        // Emergency SOS is life-critical and exempt from manual approval/confirmation
-        val isEmergency = toolMetadata.name.uppercase() in setOf("EMERGENCY_SOS", "SOS", "STOP_SOS")
+        // Emergency SOS and safety monitoring are life-critical and exempt from manual approval/confirmation
+        val isEmergency = toolMetadata.name.uppercase() in setOf(
+            "EMERGENCY_SOS", "SOS", "STOP_SOS",
+            "SOUND_DETECTOR", "SOUND_MONITOR", "START_SOUND_DETECTION", "STOP_SOUND_DETECTION"
+        )
         if (isEmergency) {
             return PolicyEvaluationResult(
                 allowed = true,
                 requiresApproval = false,
-                reason = "Emergency SOS is exempt from approval"
+                reason = "Safety and emergency tools are exempt from approval"
             )
         }
 
@@ -97,13 +100,16 @@ class PolicyEngine(
     fun evaluateAction(actionType: String, params: Map<String, String>): PolicyEvaluationResult {
         autonomyEngine.autonomousFullAuto = autonomousFullAuto
 
-        // Emergency SOS is life-critical and exempt from manual approval/confirmation
-        val isEmergency = actionType.uppercase() in setOf("EMERGENCY_SOS", "SOS", "STOP_SOS")
+        // Emergency SOS and safety monitoring are life-critical and exempt from manual approval/confirmation
+        val isEmergency = actionType.uppercase() in setOf(
+            "EMERGENCY_SOS", "SOS", "STOP_SOS",
+            "SOUND_DETECTOR", "SOUND_MONITOR", "START_SOUND_DETECTION", "STOP_SOUND_DETECTION"
+        )
         if (isEmergency) {
             return PolicyEvaluationResult(
                 allowed = true,
                 requiresApproval = false,
-                reason = "Emergency SOS is exempt from approval"
+                reason = "Safety and emergency tools are exempt from approval"
             )
         }
 
@@ -121,5 +127,13 @@ class PolicyEngine(
         }
 
         return autonomyEngine.evaluate(actionType, params)
+    }
+
+    companion object {
+        private val defaultEngine = PolicyEngine()
+
+        fun evaluateAction(actionType: String, params: Map<String, String> = emptyMap()): PolicyEvaluationResult {
+            return defaultEngine.evaluateAction(actionType, params)
+        }
     }
 }
