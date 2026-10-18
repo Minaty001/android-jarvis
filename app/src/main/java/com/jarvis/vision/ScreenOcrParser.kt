@@ -15,7 +15,7 @@ object ScreenOcrParser {
     private val ORDER_ID_REGEX = Regex("(?:order(?:\\s*id|\\s*#)?|ord)[:\\s]*#?([a-z0-9_-]{5,30})", RegexOption.IGNORE_CASE)
     private val TRACKING_REGEX = Regex("(?:tracking(?:\\s*id|\\s*#)?|track(?:\\s*#)?|awb)[:\\s]*#?([a-z0-9_-]{5,30})", RegexOption.IGNORE_CASE)
     private val EMAIL_REGEX = Regex("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}")
-    private val PHONE_REGEX = Regex("(?:\\+?\\d{1,3}[-.\\s]?)?\\(?\\d{3}\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}")
+    private val PHONE_REGEX = Regex("(?:\\+?\\d{1,3}[-.\\s]?)?(?:\\(?\\d{3}\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}|\\d{5}[-.\\s]?\\d{5}|\\b\\d{10}\\b)")
 
     data class ExtractedData(
         val totals: List<String> = emptyList(),

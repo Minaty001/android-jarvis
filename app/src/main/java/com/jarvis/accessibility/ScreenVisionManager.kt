@@ -116,22 +116,20 @@ object ScreenVisionManager {
         )
     }
 
-    fun downscaleBitmap(source: Bitmap, maxDim: Int = MAX_DIMENSION): Bitmap {
-        val width = source.width
-        val height = source.height
-        if (width <= maxDim && height <= maxDim) return source
+    fun calculateScaledDimensions(width: Int, height: Int, maxDim: Int = MAX_DIMENSION): Pair<Int, Int> {
+        if (width <= maxDim && height <= maxDim) return Pair(width, height)
 
         val ratio = width.toFloat() / height.toFloat()
-        val targetWidth: Int
-        val targetHeight: Int
-
-        if (width > height) {
-            targetWidth = maxDim
-            targetHeight = (maxDim / ratio).roundToInt().coerceAtLeast(1)
+        return if (width > height) {
+            Pair(maxDim, (maxDim / ratio).roundToInt().coerceAtLeast(1))
         } else {
-            targetHeight = maxDim
-            targetWidth = (maxDim * ratio).roundToInt().coerceAtLeast(1)
+            Pair((maxDim * ratio).roundToInt().coerceAtLeast(1), maxDim)
         }
+    }
+
+    fun downscaleBitmap(source: Bitmap, maxDim: Int = MAX_DIMENSION): Bitmap {
+        val (targetWidth, targetHeight) = calculateScaledDimensions(source.width, source.height, maxDim)
+        if (targetWidth == source.width && targetHeight == source.height) return source
 
         return Bitmap.createScaledBitmap(source, targetWidth, targetHeight, true)
     }
