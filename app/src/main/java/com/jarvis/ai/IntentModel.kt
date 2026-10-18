@@ -96,6 +96,10 @@ private val DEEP_APP_SEARCH_REGEX = Regex("^search\\s+(.+?)\\s+on\\s+(youtube|ch
 private val SCREEN_TRANSLATE_REGEX = Regex("^(?:translate\\s+(?:this\\s+)?(?:screen|page)|screen\\s+translate)\\s*(?:to|in|into)?\\s*([a-zA-Z]+)?$", RegexOption.IGNORE_CASE)
 private val SCREEN_TRANSLATE_HINGLISH_REGEX = Regex("^(?:(?:is|ye)\\s+)?screen\\s+(?:ko\\s+)?(?:([a-zA-Z]+)\\s+me\\s+)?(?:translate|anuvad)\\s*(?:karo|kar\\s+do)?$", RegexOption.IGNORE_CASE)
 private val SCREEN_WHAT_SAYS_REGEX = Regex("^what\\s+does\\s+(?:this\\s+)?(?:screen|page)\\s+say\\s+(?:in|into)?\\s*([a-zA-Z]+)?$", RegexOption.IGNORE_CASE)
+private val LENS_PRESCRIPTION_REGEX = Regex("^(?:read|check|scan)\\s+(?:the\\s+)?(?:prescription|medicine\\s+label|medicine|pill\\s+bottle)|^(?:dawa|medicine)\\s+(?:padho|check\\s+karo)$", RegexOption.IGNORE_CASE)
+private val LENS_DOCUMENT_REGEX = Regex("^(?:read|scan)\\s+(?:this\\s+)?(?:document|page|letter|paper|book)$", RegexOption.IGNORE_CASE)
+private val LENS_NUTRITION_REGEX = Regex("^(?:read|check|scan)\\s+(?:the\\s+)?(?:nutrition\\s+label|nutritional\\s+facts|calories|nutrition)$", RegexOption.IGNORE_CASE)
+private val LENS_BARCODE_REGEX = Regex("^(?:scan|read)\\s+(?:the\\s+)?(?:barcode|qr\\s+code|product\\s+label|barcode\\s+label)$", RegexOption.IGNORE_CASE)
 
 object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {
@@ -1240,6 +1244,29 @@ object IntentResolver {
                 confidence = 0.98f,
                 params = params,
                 directPlan = ExecutionPlan("Translating active screen content to $targetLang.", listOf(ActionPlan("SCREEN_VISION", params)))
+            )
+        }
+
+        // 6d. Camera Lens Reader Fast Paths (Prescription, Document, Nutrition, Barcode)
+        val lensPrescriptionMatch = LENS_PRESCRIPTION_REGEX.find(text)
+        val lensDocMatch = LENS_DOCUMENT_REGEX.find(text)
+        val lensNutritionMatch = LENS_NUTRITION_REGEX.find(text)
+        val lensBarcodeMatch = LENS_BARCODE_REGEX.find(text)
+
+        if (lensPrescriptionMatch != null || lensDocMatch != null || lensNutritionMatch != null || lensBarcodeMatch != null) {
+            val mode = when {
+                lensPrescriptionMatch != null -> "prescription"
+                lensDocMatch != null -> "document"
+                lensNutritionMatch != null -> "nutrition"
+                else -> "barcode"
+            }
+            val facing = if (text.contains("selfie") || text.contains("front")) "front" else "back"
+            val params = mapOf("query" to utterance, "mode" to mode, "facing" to facing)
+            return ResolvedIntent(
+                intent = AssistantIntent.CAMERA_VISION,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Reading $mode through camera lens.", listOf(ActionPlan("CAMERA_VISION", params)))
             )
         }
 

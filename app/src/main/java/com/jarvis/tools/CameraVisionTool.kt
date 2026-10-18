@@ -46,7 +46,10 @@ class CameraVisionTool(
 
         val flashEnabled = params["flash"]?.equals("on", ignoreCase = true) == true
 
-        Log.i(TAG, "Executing CAMERA_VISION: query=\"$query\", facing=$facing, flash=$flashEnabled")
+        val modeParam = params["mode"]?.trim()?.lowercase()
+        val lensMode = com.jarvis.camera.CameraLensReader.resolveMode(query, modeParam)
+
+        Log.i(TAG, "Executing CAMERA_VISION: query=\"$query\", mode=$lensMode, facing=$facing, flash=$flashEnabled")
 
         // 1. Capture snapshot frame
         val captureResult: CameraCaptureResult = try {
@@ -69,20 +72,13 @@ class CameraVisionTool(
 
         // 3. Reason via Multimodal Cloud Vision LLM
         if (llmClient != null && !base64.isNullOrBlank()) {
-            val prompt = """
-                You are JARVIS Physical World Optical Perception Assistant.
-                The user has pointed their device camera ($facing lens) at an object, document, or scene.
-                
-                User Query: "$query"
-                Edge Sensor Cues: ${sceneAnalysis.summary}
-                Lighting: ${sceneAnalysis.lightingCondition}
-                
-                Instructions:
-                - Directly identify the focal object or answer the user's question.
-                - If reading text (signs, book, label, screen), clearly transcribe and summarize the key information.
-                - Keep the response concise, clear, and direct (2 to 3 sentences max) tailored for voice speech synthesis.
-                - Do not mention technical camera parameters unless poor lighting affects visibility.
-            """.trimIndent()
+            val prompt = com.jarvis.camera.CameraLensReader.buildSystemPrompt(
+                mode = lensMode,
+                query = query,
+                facing = facing,
+                sceneSummary = sceneAnalysis.summary,
+                lighting = sceneAnalysis.lightingCondition
+            )
 
             val visionResult = llmClient.chatVision(
                 prompt = prompt,
@@ -98,8 +94,7 @@ class CameraVisionTool(
         }
 
         // 4. Edge fallback response
-        val fallbackResponse = "I see ${sceneAnalysis.primaryCategory.lowercase()} in front of the camera (${sceneAnalysis.lightingCondition}). " +
-                "Detected: ${sceneAnalysis.detections.joinToString { it.label }}."
+        val fallbackResponse = com.jarvis.camera.CameraLensReader.analyzeOffline(lensMode, sceneAnalysis)
         return ToolResult.Success(fallbackResponse)
     }
 }
