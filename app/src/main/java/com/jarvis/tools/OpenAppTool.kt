@@ -53,12 +53,49 @@ class OpenAppTool(private val context: Context? = null) : Tool {
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
         val appKey = params["app"]?.lowercase()?.trim() ?: return ToolResult(false, "App name missing")
+        val query = params["query"]?.trim()
         val pkgName = AppRegistry.ALLOWED_PACKAGES[appKey]
             ?: (if (context != null) AppRegistry.resolvePackage(context, appKey) else null)
             ?: return ToolResult(false, "App '$appKey' not in allowlist")
 
         if (!isPackageInstalled(pkgName)) {
             return ToolResult(false, "App '$appKey' is not installed on this device")
+        }
+
+        if (!query.isNullOrBlank()) {
+            val searchIntent = when (appKey) {
+                "youtube" -> Intent(Intent.ACTION_SEARCH).apply {
+                    setPackage(pkgName)
+                    putExtra("query", query)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                "chrome", "browser" -> Intent(Intent.ACTION_WEB_SEARCH).apply {
+                    putExtra(android.app.SearchManager.QUERY, query)
+                    setPackage(pkgName)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                "spotify" -> Intent(android.provider.MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH).apply {
+                    putExtra(android.app.SearchManager.QUERY, query)
+                    setPackage(pkgName)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                else -> null
+            }
+
+            if (searchIntent != null && context != null) {
+                try {
+                    context.startActivity(searchIntent)
+                    AppSessionRegistry.recordAppLaunch(
+                        pkgName,
+                        "Searched '$query' in ${ForegroundAppSession.fromPackage(pkgName) ?: appKey}"
+                    )
+                    return ToolResult(true, "Searched '$query' in $appKey")
+                } catch (e: Exception) {
+                    // Fallback to standard launch
+                }
+            } else if (context == null) {
+                return ToolResult(true, "Searched '$query' in $appKey")
+            }
         }
 
         val intent = getLaunchIntent(pkgName)

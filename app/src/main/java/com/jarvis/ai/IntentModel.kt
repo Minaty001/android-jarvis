@@ -92,6 +92,7 @@ private val NOTIF_DISMISS_ALL_REGEX = Regex("^(?:clear|dismiss|remove)\\s+(?:all
 private val GESTURE_LONG_PRESS_REGEX = Regex("^(?:long\\s+press|long\\s+click|hold)\\s+(.+)$")
 private val GESTURE_SWIPE_REGEX = Regex("^(?:swipe|slide|scroll\\s+sideways)\\s+(left|right)$")
 private val CLIPBOARD_COPY_REGEX = Regex("^(?:copy|copy to clipboard)\\s+(.+)$")
+private val DEEP_APP_SEARCH_REGEX = Regex("^search\\s+(.+?)\\s+on\\s+(youtube|chrome|spotify)$")
 
 object IntentResolver {
     fun resolve(utterance: String): ResolvedIntent? {
@@ -917,6 +918,20 @@ object IntentResolver {
         val isCreationQuery = text.contains("banao") || text.contains("bana") || text.contains("website") ||
                 text.contains("webapp") || text.contains("web app") || text.contains("create") ||
                 text.contains("build") || text.contains("make") || text.contains("code") || text.contains("develop") || text.contains("design")
+
+        // Phase 4: Deep App Search & Intent Shortcuts
+        val deepSearchMatch = DEEP_APP_SEARCH_REGEX.find(text)
+        if (deepSearchMatch != null) {
+            val query = deepSearchMatch.groupValues[1].trim()
+            val app = deepSearchMatch.groupValues[2].trim()
+            val params = mapOf("app" to app, "query" to query, "action" to "search_in_app")
+            return ResolvedIntent(
+                intent = AssistantIntent.APP_OPEN,
+                confidence = 0.98f,
+                params = params,
+                directPlan = ExecutionPlan("Searching '$query' on $app.", listOf(ActionPlan("OPEN_APP", params)))
+            )
+        }
 
         // 2. Open App ("open youtube", "youtube kholo", "launch whatsapp", "open settings")
         val openAppPatterns = listOf(
