@@ -814,6 +814,28 @@ class JarvisFloatingOverlayService : Service() {
                     continue
                 }
 
+                val runtime = engine.assistantRuntime
+                val emotionJob = serviceScope.launch(Dispatchers.Main) {
+                    val prefs = runtime.emotionalController.preferences
+                    orbView?.setReducedMotion(prefs.reducedMotionEnabled)
+
+                    runtime.emotionalController.snapshot.collect { snapshot ->
+                        val state = snapshot.current.state
+                        orbView?.setAssistantEmotion(state)
+                        val profile = com.jarvis.emotion.UiEmotionProfile.forState(state)
+                        orbView?.setEmotionProfile(profile)
+
+                        if (state == com.jarvis.emotion.AssistantState.PANIC) {
+                            statusBadge?.text = "CRITICAL ALERT"
+                            statusBadge?.setTextColor(profile.primaryColor)
+                            responsePreviewText?.text = snapshot.current.reason
+                            if (!isExpanded && !isDragging) {
+                                expandToMiniHud()
+                            }
+                        }
+                    }
+                }
+
                 try {
                     engine.status.collect { engineStatus ->
                         val state = engineStatus.voiceState
@@ -870,6 +892,8 @@ class JarvisFloatingOverlayService : Service() {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     Log.d(TAG, "StateFlow collection exception: ${e.message}")
                     delay(300)
+                } finally {
+                    emotionJob.cancel()
                 }
             }
         }

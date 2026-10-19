@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.jarvis.agent.*
 import com.jarvis.ai.*
+import com.jarvis.emotion.*
 import com.jarvis.conversation.ConversationManager
 import com.jarvis.execution.VerificationEngine
 import com.jarvis.foundation.*
@@ -58,6 +59,33 @@ class AssistantRuntime(
         set(value) { subsystems.asrEngine = value }
     val ttsEngine get() = subsystems.ttsEngine
     val offlinePhantomEngine = com.jarvis.voice.OfflinePhantomEngine(context)
+
+    // Emotional Intelligence Subsystem
+    val emotionalController: EmotionalLifecycleController by lazy {
+        val store = UiPreferencesStore(context)
+        val settings = store.loadSettings()
+        val prefs = EmotionalPreferences(
+            emotionalPresentationEnabled = settings.emotionalPresentationEnabled,
+            humorEnabled = settings.humorEnabled,
+            voiceExpressionEnabled = settings.voiceExpressionEnabled,
+            uiEmotionAnimationsEnabled = settings.uiEmotionAnimationsEnabled,
+            sentimentConfidenceThreshold = settings.sentimentConfidenceThreshold,
+            reducedMotionEnabled = settings.reducedMotionEnabled
+        )
+        EmotionalLifecycleController(
+            scope = ensureActiveScope(),
+            initialPreferences = prefs
+        )
+    }
+
+    val emotionalAdapter: EmotionalIntegrationAdapter by lazy {
+        EmotionalIntegrationAdapter(controller = emotionalController).also {
+            it.startEventBusSubscription(ensureActiveScope())
+        }
+    }
+
+    val voiceProfileAdapter = VoiceProfileAdapter()
+    val responseStylePolicyEngine = ResponseStylePolicyEngine()
 
     // Execution & Verification
     val policyEngine: PolicyEngine get() = subsystems.policyEngine
@@ -800,6 +828,7 @@ class AssistantRuntime(
         )
         conversationManager.addMessage("user", utterance)
         knowledgeGraphEngine?.processInteraction("user", utterance)
+        emotionalAdapter.onUserInput(utterance)
 
         smartRoutineEngine.pendingDraft()?.let { draft ->
             val normalized = utterance.lowercase().replace(Regex("[^\\p{L}\\p{N}\\s]"), " ").replace(Regex("\\s+"), " ").trim()
@@ -837,6 +866,7 @@ class AssistantRuntime(
             Log.i(TAG, "Cancel intent detected; cancelling active task")
             cancelCurrentTask()
             val spoken = "Task cancelled."
+            emotionalAdapter.onTaskCancelled(activeTaskId?.toString() ?: "cancel", spoken)
             conversationManager.addMessage("assistant", spoken)
             onEvent(AgentEvent.Cancelled(spoken))
             return RuntimeExecutionResult(
@@ -902,11 +932,14 @@ class AssistantRuntime(
             onEvent(AgentEvent.Completed(directPlan.response))
 
             if (overallSuccess) {
+                emotionalAdapter.onTaskCompleted("fast_path_$now", verified = false, message = directPlan.response)
                 when (resolvedIntent.intent) {
                     AssistantIntent.APP_OPEN -> habitManager.recordAppUsage(resolvedIntent.params["app"].orEmpty())
                     AssistantIntent.PLAY_MEDIA -> habitManager.recordMediaPlayback(resolvedIntent.params["query"].orEmpty())
                     else -> Unit
                 }
+            } else {
+                emotionalAdapter.onTaskFailed("fast_path_$now", reason = directPlan.response)
             }
 
             return RuntimeExecutionResult(
@@ -937,6 +970,20 @@ class AssistantRuntime(
                             activeTaskId = event.taskId
                             pendingClarificationTaskId = null
                             pendingResumeStrikes = 0
+                            emotionalAdapter.onTaskStarted(event.taskId.toString(), commandUtterance)
+                            onEvent(event)
+                        }
+                        is AgentEvent.Executing -> {
+                            emotionalAdapter.onToolStarted(activeTaskId?.toString() ?: "active", event.action)
+                            onEvent(event)
+                        }
+                        is AgentEvent.Failed -> {
+                            emotionalAdapter.onTaskFailed(activeTaskId?.toString() ?: "active", event.message)
+                            onEvent(event)
+                        }
+                        is AgentEvent.Cancelled -> {
+                            emotionalAdapter.onTaskCancelled(activeTaskId?.toString() ?: "active", event.message)
+                            onEvent(event)
                         }
                         else -> onEvent(event)
                     }
@@ -949,6 +996,7 @@ class AssistantRuntime(
             job.await()
         } catch (e: kotlinx.coroutines.CancellationException) {
             Log.i(TAG, "Task cancelled: ${e.message}")
+            emotionalAdapter.onTaskCancelled(activeTaskId?.toString() ?: "cancel", "Task cancelled by user")
             taskStateManager.updateTaskStatus(activeTaskId ?: -1L, "CANCELLED", "Task cancelled by user")
             onEvent(AgentEvent.Cancelled("Task cancelled by user"))
             return RuntimeExecutionResult(
@@ -959,6 +1007,7 @@ class AssistantRuntime(
             )
         } catch (e: Exception) {
             Log.e(TAG, "AgentKernel failed, falling back to Offline Phantom Mode", e)
+            emotionalAdapter.onTaskFailed(activeTaskId?.toString() ?: "failed", e.message ?: "AgentKernel failed")
             val fallbackResponse = offlinePhantomEngine.tryHandleOffline(commandUtterance)
             if (fallbackResponse != null) {
                 conversationManager.addMessage("assistant", fallbackResponse)
@@ -980,6 +1029,14 @@ class AssistantRuntime(
         } finally {
             activeTaskJob = null
             activeTaskId = null
+        }
+
+        val completedTaskId = agentResult.taskId.toString()
+        if (agentResult.success) {
+            val isVerified = agentResult.verifiedActions.isNotEmpty() || agentResult.verified
+            emotionalAdapter.onTaskCompleted(completedTaskId, verified = isVerified, message = agentResult.response)
+        } else {
+            emotionalAdapter.onTaskFailed(completedTaskId, reason = agentResult.response)
         }
 
         if (agentResult.response.isNotBlank()) {

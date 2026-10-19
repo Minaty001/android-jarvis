@@ -168,6 +168,16 @@ class VoiceEngine(
         }
         startStateCollection()
 
+        ensureActiveScope().launch {
+            assistantRuntime.emotionalController.snapshot.collect { snapshot ->
+                if (snapshot.current.state == com.jarvis.emotion.AssistantState.PANIC) {
+                    if (ttsEngine.isSpeaking()) {
+                        ttsEngine.cancel()
+                    }
+                }
+            }
+        }
+
         // Wire full-duplex speech interruption into VoiceRouter
         voiceRouter.onBargeInDetected = { reason ->
             if (liveConversationController.isSessionActive()) {
@@ -211,6 +221,15 @@ class VoiceEngine(
         acousticFeedbackEngine.isBluetoothScoActive = scoActive
         continuousAudioStream.setBluetoothScoActive(scoActive)
         continuousAudioStream.updatePreferredDevice()
+    }
+
+    private suspend fun speakUtterance(text: String): Boolean {
+        assistantRuntime.voiceProfileAdapter.applyProfile(
+            ttsEngine,
+            assistantRuntime.emotionalController.snapshot.value,
+            assistantRuntime.emotionalController.preferences
+        )
+        return ttsEngine.speak(text)
     }
 
     private fun loadPreferences() {
@@ -471,14 +490,14 @@ class VoiceEngine(
                 "VOICE" -> {
                     _status.value = _status.value.copy(statusMessage = "Yes boss")
                     voiceRouter.mute()
-                    ttsEngine.speak("Yes boss")
+                    speakUtterance("Yes boss")
                     routeToAppropriateAsr(16000 * 1)
                 }
                 "BOTH" -> {
                     acousticFeedbackEngine.playWakeTone()
                     _status.value = _status.value.copy(statusMessage = "Yes boss")
                     voiceRouter.mute()
-                    ttsEngine.speak("Yes boss")
+                    speakUtterance("Yes boss")
                     routeToAppropriateAsr(16000 * 1)
                 }
                 "SILENT" -> {
@@ -669,7 +688,7 @@ class VoiceEngine(
             val isHeadset = (ttsEngine as? AndroidTtsEngine)?.isHeadsetConnected() == true
             voiceRouter.bargeInDetector.isSpeakerBleedGated = !isHeadset
             try {
-                ttsEngine.speak(reply)
+                speakUtterance(reply)
             } finally {
                 voiceRouter.bargeInDetector.isSpeakerBleedGated = false
                 conversationManager.transitionTo(VoiceState.COMPLETED)
@@ -903,7 +922,7 @@ class VoiceEngine(
                     voiceRouter.mute()
                 }
                 try {
-                    ttsEngine.speak(finalResponse)
+                    speakUtterance(finalResponse)
                 } finally {
                     voiceRouter.bargeInDetector.isSpeakerBleedGated = false
                     conversationManager.transitionTo(VoiceState.COMPLETED)
@@ -1017,7 +1036,7 @@ class VoiceEngine(
             _status.value = _status.value.copy(statusMessage = "Continuous Open-Mic Active")
             if (spokenFeedback) {
                 ensureActiveScope().launch {
-                    ttsEngine.speak("Open mic mode active. I'm listening.")
+                    speakUtterance("Open mic mode active. I'm listening.")
                     startListeningForCommand(isFollowUp = true)
                 }
             }
@@ -1025,7 +1044,7 @@ class VoiceEngine(
             _status.value = _status.value.copy(statusMessage = "Open-Mic Stopped")
             if (spokenFeedback) {
                 ensureActiveScope().launch {
-                    ttsEngine.speak("Standing by.")
+                    speakUtterance("Standing by.")
                     returnToWakeListening()
                 }
             }
@@ -1095,7 +1114,7 @@ class VoiceEngine(
                 }
 
                 try {
-                    ttsEngine.speak(message)
+                    speakUtterance(message)
                 } finally {
                     voiceRouter.bargeInDetector.isSpeakerBleedGated = false
                     conversationManager.transitionTo(VoiceState.COMPLETED)
