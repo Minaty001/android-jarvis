@@ -64,7 +64,13 @@ data class AppSettings(
     val deviceUnlockPin: String = "",
     val autoLearnEnabled: Boolean = true,
     val autopilotEnabled: Boolean = false,
-    val autopilotTimeoutMs: Long = 30_000L
+    val autopilotTimeoutMs: Long = 30_000L,
+    val emotionalPresentationEnabled: Boolean = true,
+    val humorEnabled: Boolean = true,
+    val voiceExpressionEnabled: Boolean = true,
+    val uiEmotionAnimationsEnabled: Boolean = true,
+    val sentimentConfidenceThreshold: Float = 0.65f,
+    val reducedMotionEnabled: Boolean = false
 )
 
 fun String.safeDisplay(): String = replace(Regex("[\\r\\n\\t]"), " ").trim()

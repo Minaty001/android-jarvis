@@ -10,4 +10,5 @@ interface TtsEngine {
     fun cancel()
     fun isSpeaking(): Boolean = false
     fun updateBluetoothScoState(scoActive: Boolean) {}
+    fun applyVoiceProfile(rate: Float, pitch: Float) {}
 }

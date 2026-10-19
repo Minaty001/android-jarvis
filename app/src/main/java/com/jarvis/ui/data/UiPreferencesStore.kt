@@ -195,6 +195,12 @@ class UiPreferencesStore(context: Context) {
         put("clipboardIntelligenceEnabled", clipboardIntelligenceEnabled)
         put("deviceUnlockPin", deviceUnlockPin)
         put("autoLearnEnabled", autoLearnEnabled)
+        put("emotionalPresentationEnabled", emotionalPresentationEnabled)
+        put("humorEnabled", humorEnabled)
+        put("voiceExpressionEnabled", voiceExpressionEnabled)
+        put("uiEmotionAnimationsEnabled", uiEmotionAnimationsEnabled)
+        put("sentimentConfidenceThreshold", sentimentConfidenceThreshold.toDouble())
+        put("reducedMotionEnabled", reducedMotionEnabled)
     }
 
     private fun jsonToAppSettings(json: JSONObject): AppSettings {
@@ -240,7 +246,13 @@ class UiPreferencesStore(context: Context) {
             callScreeningEnabled = json.optBoolean("callScreeningEnabled", d.callScreeningEnabled),
             clipboardIntelligenceEnabled = json.optBoolean("clipboardIntelligenceEnabled", d.clipboardIntelligenceEnabled),
             deviceUnlockPin = json.optString("deviceUnlockPin", d.deviceUnlockPin),
-            autoLearnEnabled = json.optBoolean("autoLearnEnabled", d.autoLearnEnabled)
+            autoLearnEnabled = json.optBoolean("autoLearnEnabled", d.autoLearnEnabled),
+            emotionalPresentationEnabled = json.optBoolean("emotionalPresentationEnabled", d.emotionalPresentationEnabled),
+            humorEnabled = json.optBoolean("humorEnabled", d.humorEnabled),
+            voiceExpressionEnabled = json.optBoolean("voiceExpressionEnabled", d.voiceExpressionEnabled),
+            uiEmotionAnimationsEnabled = json.optBoolean("uiEmotionAnimationsEnabled", d.uiEmotionAnimationsEnabled),
+            sentimentConfidenceThreshold = json.optDouble("sentimentConfidenceThreshold", d.sentimentConfidenceThreshold.toDouble()).toFloat(),
+            reducedMotionEnabled = json.optBoolean("reducedMotionEnabled", d.reducedMotionEnabled)
         )
     }
 

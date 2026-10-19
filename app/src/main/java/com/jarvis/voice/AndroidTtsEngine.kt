@@ -29,8 +29,18 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
     @Volatile var isBluetoothScoActive: Boolean = false
 
     @Volatile private var isInitializing = false
+    @Volatile private var currentSpeechRate: Float = 1.05f
+    @Volatile private var currentPitch: Float = 1.0f
 
     override fun isSpeaking(): Boolean = isSpeakingActive
+
+    override fun applyVoiceProfile(rate: Float, pitch: Float) {
+        currentSpeechRate = rate
+        currentPitch = pitch
+        tts?.setSpeechRate(rate)
+        tts?.setPitch(pitch)
+        Log.d(TAG, "Applied voice profile: rate=$rate, pitch=$pitch")
+    }
 
     fun isHeadsetConnected(): Boolean {
         return try {
@@ -74,8 +84,8 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
             isInitializing = false
             if (status == TextToSpeech.SUCCESS) {
                 tts?.language = Locale.US
-                tts?.setSpeechRate(1.05f)
-                tts?.setPitch(1.0f)
+                tts?.setSpeechRate(currentSpeechRate)
+                tts?.setPitch(currentPitch)
 
                 applyAudioAttributes()
 
@@ -181,6 +191,8 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         
         val utteranceId = UUID.randomUUID().toString()
         audioFocus.requestDuckFocus()
+        tts?.setSpeechRate(currentSpeechRate)
+        tts?.setPitch(currentPitch)
         tts?.speak(adaptedText, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
         onAudio(ShortArray(0))
     }
@@ -219,6 +231,8 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         pendingUtterances[utteranceId] = deferred
         audioFocus.requestDuckFocus()
 
+        tts?.setSpeechRate(currentSpeechRate)
+        tts?.setPitch(currentPitch)
         var res = tts?.speak(adaptedText, TextToSpeech.QUEUE_FLUSH, createSpeechParams(), utteranceId)
 
         // Self-healing recovery if engine binding died

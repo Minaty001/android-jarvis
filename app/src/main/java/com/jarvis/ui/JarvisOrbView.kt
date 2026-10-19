@@ -285,53 +285,107 @@ class JarvisOrbView @JvmOverloads constructor(
     }
 
     var emotion: com.jarvis.voice.emotion.EmotionState = com.jarvis.voice.emotion.EmotionState.NEUTRAL
+    var assistantEmotion: com.jarvis.emotion.AssistantState? = null
+        private set
+    var emotionProfile: com.jarvis.emotion.UiEmotionProfile? = null
+        private set
+    var reducedMotionEnabled: Boolean = false
+
+    fun setAssistantEmotion(state: com.jarvis.emotion.AssistantState) {
+        val profile = com.jarvis.emotion.UiEmotionProfile.forState(state)
+        setEmotionProfile(profile)
+    }
+
+    fun setEmotionProfile(profile: com.jarvis.emotion.UiEmotionProfile) {
+        emotionProfile = profile
+        assistantEmotion = profile.state
+        contentDescription = profile.accessibleLabel
+        if (!reducedMotionEnabled) {
+            pulseAnimator?.duration = profile.pulseDurationMs
+        }
+        invalidate()
+    }
+
+    fun setReducedMotion(reduced: Boolean) {
+        reducedMotionEnabled = reduced
+        if (reduced) {
+            rotationAnimator?.cancel()
+            rotationAnimator = null
+            pulseAnimator?.duration = 4000L
+            animationIntensity = 0.2f
+        } else {
+            animationIntensity = 1.0f
+            val profile = emotionProfile
+            if (profile != null) {
+                pulseAnimator?.duration = profile.pulseDurationMs
+            }
+        }
+        invalidate()
+    }
 
     private fun getPrimaryColor(): Int {
+        val profile = emotionProfile
+        if (profile != null) return profile.primaryColor
+        val state = assistantEmotion
+        if (state != null) return com.jarvis.emotion.UiEmotionProfile.forState(state).primaryColor
+
         if (emotion == com.jarvis.voice.emotion.EmotionState.FRUSTRATED) return 0xFFFF5C7A.toInt() // Red
         if (emotion == com.jarvis.voice.emotion.EmotionState.EXCITED) return 0xFFFFCF5C.toInt() // Amber
         return when (currentState) {
-        VoiceState.IDLE -> 0xFF39E0A0.toInt() // jarvis-pc good / arc green
-        VoiceState.WAITING_FOR_WAKE -> 0xFF39E0A0.toInt()
-        VoiceState.WAKE_DETECTED -> 0xFF3FD0FF.toInt()
-        VoiceState.LISTENING -> 0xFF3FD0FF.toInt() // jarvis-pc accent cyan
-        VoiceState.UNDERSTANDING, VoiceState.CHECKING_MEMORY, VoiceState.RESEARCHING -> 0xFFFFCF5C.toInt()
-        VoiceState.THINKING -> 0xFFFFCF5C.toInt() // jarvis-pc warn amber
-        VoiceState.EXECUTING, VoiceState.VERIFYING, VoiceState.RECOVERING -> 0xFF3FD0FF.toInt()
-        VoiceState.WAITING_FOR_USER -> 0xFFFFCF5C.toInt()
-        VoiceState.SPEAKING -> 0xFF7C9BFF.toInt() // jarvis-pc speaking periwinkle
-        VoiceState.COMPLETED -> 0xFF39E0A0.toInt()
-        VoiceState.CANCELLED, VoiceState.INTERRUPTED -> 0xFFFFAB00.toInt()
-        VoiceState.OFFLINE -> 0xFF8FA3C4.toInt() // jarvis-pc text_dim
-        VoiceState.ERROR -> 0xFFFF5C7A.toInt() // jarvis-pc bad red
-    }
+            VoiceState.IDLE -> 0xFF39E0A0.toInt() // jarvis-pc good / arc green
+            VoiceState.WAITING_FOR_WAKE -> 0xFF39E0A0.toInt()
+            VoiceState.WAKE_DETECTED -> 0xFF3FD0FF.toInt()
+            VoiceState.LISTENING -> 0xFF3FD0FF.toInt() // jarvis-pc accent cyan
+            VoiceState.UNDERSTANDING, VoiceState.CHECKING_MEMORY, VoiceState.RESEARCHING -> 0xFFFFCF5C.toInt()
+            VoiceState.THINKING -> 0xFFFFCF5C.toInt() // jarvis-pc warn amber
+            VoiceState.EXECUTING, VoiceState.VERIFYING, VoiceState.RECOVERING -> 0xFF3FD0FF.toInt()
+            VoiceState.WAITING_FOR_USER -> 0xFFFFCF5C.toInt()
+            VoiceState.SPEAKING -> 0xFF7C9BFF.toInt() // jarvis-pc speaking periwinkle
+            VoiceState.COMPLETED -> 0xFF39E0A0.toInt()
+            VoiceState.CANCELLED, VoiceState.INTERRUPTED -> 0xFFFFAB00.toInt()
+            VoiceState.OFFLINE -> 0xFF8FA3C4.toInt() // jarvis-pc text_dim
+            VoiceState.ERROR -> 0xFFFF5C7A.toInt() // jarvis-pc bad red
+        }
     }
 
     private fun getSecondaryColor(): Int {
+        val profile = emotionProfile
+        if (profile != null) return profile.secondaryColor
+        val state = assistantEmotion
+        if (state != null) return com.jarvis.emotion.UiEmotionProfile.forState(state).secondaryColor
+
         if (emotion == com.jarvis.voice.emotion.EmotionState.FRUSTRATED) return 0xFFD32F2F.toInt()
         if (emotion == com.jarvis.voice.emotion.EmotionState.EXCITED) return 0xFFF57F17.toInt()
         return when (currentState) {
-        VoiceState.IDLE -> 0xFF1FA670.toInt()
-        VoiceState.WAITING_FOR_WAKE -> 0xFF1FA670.toInt()
-        VoiceState.WAKE_DETECTED -> 0xFF0091EA.toInt()
-        VoiceState.LISTENING -> 0xFF0091EA.toInt()
-        VoiceState.UNDERSTANDING, VoiceState.CHECKING_MEMORY, VoiceState.RESEARCHING -> 0xFFF57F17.toInt()
-        VoiceState.THINKING -> 0xFFF57F17.toInt()
-        VoiceState.EXECUTING, VoiceState.VERIFYING, VoiceState.RECOVERING -> 0xFF0091EA.toInt()
-        VoiceState.WAITING_FOR_USER -> 0xFFFFA000.toInt()
-        VoiceState.SPEAKING -> 0xFF3D5AFE.toInt()
-        VoiceState.COMPLETED -> 0xFF1FA670.toInt()
-        VoiceState.CANCELLED, VoiceState.INTERRUPTED -> 0xFFFF8F00.toInt()
-        VoiceState.OFFLINE -> 0xFF546E7A.toInt()
-        VoiceState.ERROR -> 0xFFD32F2F.toInt()
-    }
+            VoiceState.IDLE -> 0xFF1FA670.toInt()
+            VoiceState.WAITING_FOR_WAKE -> 0xFF1FA670.toInt()
+            VoiceState.WAKE_DETECTED -> 0xFF0091EA.toInt()
+            VoiceState.LISTENING -> 0xFF0091EA.toInt()
+            VoiceState.UNDERSTANDING, VoiceState.CHECKING_MEMORY, VoiceState.RESEARCHING -> 0xFFF57F17.toInt()
+            VoiceState.THINKING -> 0xFFF57F17.toInt()
+            VoiceState.EXECUTING, VoiceState.VERIFYING, VoiceState.RECOVERING -> 0xFF0091EA.toInt()
+            VoiceState.WAITING_FOR_USER -> 0xFFFFA000.toInt()
+            VoiceState.SPEAKING -> 0xFF3D5AFE.toInt()
+            VoiceState.COMPLETED -> 0xFF1FA670.toInt()
+            VoiceState.CANCELLED, VoiceState.INTERRUPTED -> 0xFFFF8F00.toInt()
+            VoiceState.OFFLINE -> 0xFF546E7A.toInt()
+            VoiceState.ERROR -> 0xFFD32F2F.toInt()
+        }
     }
 
-    private fun getDarkColor(): Int = when (currentState) {
-        VoiceState.SPEAKING -> 0xFF1A237E.toInt()
-        VoiceState.COMPLETED, VoiceState.IDLE -> 0xFF0A3D28.toInt()
-        VoiceState.THINKING, VoiceState.UNDERSTANDING -> 0xFF3E2723.toInt()
-        VoiceState.ERROR -> 0xFFB71C1C.toInt()
-        else -> 0xFF00363A.toInt()
+    private fun getDarkColor(): Int {
+        val emotionState = emotionProfile?.state ?: assistantEmotion
+        if (emotionState == com.jarvis.emotion.AssistantState.PANIC) return 0xFFB71C1C.toInt()
+        if (emotionState == com.jarvis.emotion.AssistantState.HAPPY) return 0xFF0A3D28.toInt()
+        if (emotionState == com.jarvis.emotion.AssistantState.SAD) return 0xFF1C2B36.toInt()
+        if (emotionState == com.jarvis.emotion.AssistantState.KIDDING) return 0xFF281B4B.toInt()
+        return when (currentState) {
+            VoiceState.SPEAKING -> 0xFF1A237E.toInt()
+            VoiceState.COMPLETED, VoiceState.IDLE -> 0xFF0A3D28.toInt()
+            VoiceState.THINKING, VoiceState.UNDERSTANDING -> 0xFF3E2723.toInt()
+            VoiceState.ERROR -> 0xFFB71C1C.toInt()
+            else -> 0xFF00363A.toInt()
+        }
     }
 
     override fun onDetachedFromWindow() {
