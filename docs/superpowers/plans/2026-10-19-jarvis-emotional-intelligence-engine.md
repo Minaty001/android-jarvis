@@ -218,15 +218,15 @@ Implements the exact JSON Schema v1 contract specified in Section 8:
 - Consumes: Standard Kotlin/Java standard library, `org.json.JSONObject`.
 - Produces: `AssistantState`, `TaskPhase`, `Sentiment`, `SignalSource`, `EmotionalEvent`, `EmotionalSnapshot`, `VoiceProfile`, `UiEmotionProfile`, `ResponseStyle`, `EmotionalPreferences`, `EmotionalJsonContract`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
   Create `EmotionalJsonContractTest.kt` testing serialization of all 6 states (`HAPPY`, `SAD`, `KIDDING`, `PANIC`, `THINKING`, `FOCUSED`), verifying schemaVersion=1, operationId preservation, nullability handling, and JSON round-trip deserialization.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.EmotionalJsonContractTest`
-- [ ] **Step 3: Implement `EmotionalModels.kt` and `EmotionalJsonContract.kt`**
+- [x] **Step 3: Implement `EmotionalModels.kt` and `EmotionalJsonContract.kt`**
   Implement typed data classes and JSON contract.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.EmotionalJsonContractTest`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(emotion): implement emotional models and JSON state contract v1"`
 
 ---
@@ -243,7 +243,7 @@ Implements the exact JSON Schema v1 contract specified in Section 8:
 - Consumes: `EmotionalModels.kt`
 - Produces: `EmotionalStateReducer.reduce(...)`, `DeterministicSentimentAnalyzer.analyze(...)`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
   Create `EmotionalStateReducerTest.kt` covering all 20 state-machine unit test requirements from Section 17.A:
   - Initial state is FOCUSED
   - Task start -> THINKING; pending -> remains THINKING
@@ -253,13 +253,13 @@ Implements the exact JSON Schema v1 contract specified in Section 8:
   - Critical risk -> PANIC; unrelated events cannot clear PANIC; validated recovery clears PANIC
   - Expiry returns to underlying state (THINKING if active task, FOCUSED otherwise)
   - Stale expiry callback rejection
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.EmotionalStateReducerTest`
-- [ ] **Step 3: Implement `DeterministicSentimentAnalyzer.kt` and `EmotionalStateReducer.kt`**
+- [x] **Step 3: Implement `DeterministicSentimentAnalyzer.kt` and `EmotionalStateReducer.kt`**
   Implement pure deterministic reducer and rule-based sentiment classifier.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.*`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(emotion): implement pure deterministic state reducer and sentiment analyzer"`
 
 ---
@@ -276,15 +276,15 @@ Implements the exact JSON Schema v1 contract specified in Section 8:
 - Consumes: `EmotionalModels.kt`, `EmotionalStateReducer.kt`, `CoroutineScope`
 - Produces: `EmotionalLifecycleController`, `ResponseStylePolicyEngine`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
   Test coroutine-based expiry scheduling, generation increments, stale callback rejection, and style policy translation.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.EmotionalLifecycleControllerTest`
-- [ ] **Step 3: Implement controller and policy engine**
+- [x] **Step 3: Implement controller and policy engine**
   Implement `EmotionalLifecycleController` with `StateFlow<EmotionalSnapshot>` and `ResponseStylePolicyEngine`.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.EmotionalLifecycleControllerTest --tests com.jarvis.emotion.ResponseStylePolicyEngineTest`
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   `git commit -m "feat(emotion): implement lifecycle controller and response style policy engine"`
 
 ---
@@ -299,22 +299,22 @@ Implements the exact JSON Schema v1 contract specified in Section 8:
 - Modify: `app/src/main/java/com/jarvis/ui/model/UiModels.kt`
 - Modify: `app/src/main/java/com/jarvis/ui/data/UiPreferencesStore.kt`
 - Test: `app/src/test/java/com/jarvis/emotion/VoiceProfileAdapterTest.kt`
-- Test: `app/src/test/java/com/jarvis/emotion/EmotionalPreferencesTest.kt`
+- Test: `app/src/test/java/com/jarvis/emotion/OrbViewAdaptationTest.kt`
 
 **Interfaces:**
 - Consumes: `EmotionalModels.kt`, `TtsEngine`, `JarvisOrbView`
 - Produces: `VoiceProfileAdapter`, `applyVoiceProfile`, UI emotion profiles.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
   Test voice profile pitch/rate mappings, preference serialization/deserialization, and reduced motion toggles.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.VoiceProfileAdapterTest`
-- [ ] **Step 3: Implement changes**
+- [x] **Step 3: Implement changes**
   Update `TtsEngine`, `AndroidTtsEngine`, `JarvisOrbView`, `UiModels`, and `UiPreferencesStore`.
-- [ ] **Step 4: Run test to verify it passes**
-  `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.VoiceProfileAdapterTest --tests com.jarvis.emotion.EmotionalPreferencesTest`
-- [ ] **Step 5: Commit**
-  `git commit -m "feat(emotion): implement TTS voice profile adapter and UI orb emotion styling"`
+- [x] **Step 4: Run test to verify it passes**
+  `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.VoiceProfileAdapterTest --tests com.jarvis.emotion.OrbViewAdaptationTest`
+- [x] **Step 5: Commit**
+  `git commit -m "feat(emotion): implement voice profile adapter and orb UI adaptation with reduced-motion support"`
 
 ---
 
@@ -325,47 +325,47 @@ Implements the exact JSON Schema v1 contract specified in Section 8:
 - Modify: `app/src/main/java/com/jarvis/runtime/AssistantRuntime.kt`
 - Modify: `app/src/main/java/com/jarvis/voice/VoiceEngine.kt`
 - Modify: `app/src/main/java/com/jarvis/overlay/JarvisFloatingOverlayService.kt`
-- Test: `app/src/test/java/com/jarvis/emotion/EmotionalIntegrationTest.kt`
+- Test: `app/src/test/java/com/jarvis/emotion/EmotionalIntegrationAdapterTest.kt`
 
 **Interfaces:**
 - Consumes: `AssistantRuntime`, `AgentKernel`, `VoiceEngine`, `JarvisEventBus`, `EmotionalLifecycleController`
 - Produces: End-to-end event routing from tasks, system alerts, user speech, into emotional state and presentation.
 
-- [ ] **Step 1: Write failing integration test**
+- [x] **Step 1: Write failing integration test**
   Test end-to-end sequences:
   - FOCUSED -> TaskStarted -> THINKING -> Verified Success -> HAPPY -> Expiry -> FOCUSED
   - FOCUSED -> Critical Alert -> PANIC -> Unrelated event (remains PANIC) -> Validated Recovery -> FOCUSED
   - Interruption of speech on PANIC
   - Rejection of stale child task events
-- [ ] **Step 2: Run test to verify it fails**
-  `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.EmotionalIntegrationTest`
-- [ ] **Step 3: Implement integration wiring**
+- [x] **Step 2: Run test to verify it fails**
+  `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.EmotionalIntegrationAdapterTest`
+- [x] **Step 3: Implement integration wiring**
   Connect `AssistantRuntime`, `VoiceEngine`, and `JarvisFloatingOverlayService` to `EmotionalLifecycleController`.
-- [ ] **Step 4: Run test to verify it passes**
-  `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.EmotionalIntegrationTest`
-- [ ] **Step 5: Commit**
-  `git commit -m "feat(emotion): wire emotional engine into AssistantRuntime, VoiceEngine, and FloatingOverlay"`
+- [x] **Step 4: Run test to verify it passes**
+  `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests com.jarvis.emotion.EmotionalIntegrationAdapterTest`
+- [x] **Step 5: Commit**
+  `git commit -m "feat(emotion): integrate emotional engine with assistant runtime, voice engine, and floating overlay"`
 
 ---
 
 ### Task 6: Full Regression Verification, Benchmark Measurements & Documentation
 
 **Files:**
-- Modify: `app/src/test/java/com/jarvis/AcceptanceScenariosTest.kt`
-- Create: `docs/superpowers/specs/2026-10-19-emotional-intelligence-engine.md`
-- Create/Update: `walkthrough.md`
+- Create: `app/src/test/java/com/jarvis/emotion/AcceptanceScenariosTest.kt`
+- Create: `app/src/test/java/com/jarvis/emotion/EmotionalEngineBenchmarkTest.kt`
+- Create: `docs/EMOTIONAL_INTELLIGENCE_ENGINE.md`
 
-- [ ] **Step 1: Add acceptance scenario in `AcceptanceScenariosTest.kt`**
+- [x] **Step 1: Add acceptance scenario in `AcceptanceScenariosTest.kt`**
   Verify the complete user journey: voice command -> THINKING -> verified completion -> HAPPY announcement -> FOCUSED return.
-- [ ] **Step 2: Run the full test suite**
+- [x] **Step 2: Run the full test suite**
   `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest`
   Expected: 100% pass across all 725+ existing and new unit tests.
-- [ ] **Step 3: Measure execution benchmarks**
+- [x] **Step 3: Measure execution benchmarks**
   Measure P95 reducer execution latency (< 10ms) and state publication latency (< 50ms) via dedicated microbenchmark test.
-- [ ] **Step 4: Author architectural documentation**
-  Write comprehensive documentation in `docs/superpowers/specs/2026-10-19-emotional-intelligence-engine.md` covering architecture, state descriptions, JSON schema, and transition examples.
-- [ ] **Step 5: Commit**
-  `git commit -m "test(acceptance): add emotional engine acceptance scenarios and architecture docs"`
+- [x] **Step 4: Author architectural documentation**
+  Write comprehensive documentation in `docs/EMOTIONAL_INTELLIGENCE_ENGINE.md` covering architecture, state descriptions, JSON schema, and transition examples.
+- [x] **Step 5: Commit**
+  `git commit -m "feat(emotion): add end-to-end acceptance tests, benchmarks, and architecture documentation"`
 
 ---
 
