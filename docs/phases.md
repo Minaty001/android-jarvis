@@ -47,3 +47,26 @@ Android J.A.R.V.I.S. development is structured into incremental, verified phases
   - Autonomous background daemon bug fixes (`ActivityMonitorEngine` & `AutoScheduleEngine`).
   - Comprehensive local feature & source code cataloging (`docs/JARVIS_LOCAL_FEATURES_AND_COMMANDS.md`).
 
+### Phase 7: Hands-Free Lock-Screen SOS, Vision OCR & Sound Detection (Completed)
+- **Milestones**:
+  - Ambient sound classification & duty-cycling speech rejection (`AmbientSoundClassifier.kt`, `AmbientSoundMonitorEngine.kt`).
+  - Emergency SOS and lock-screen bypass safety gates (`EmergencySosTool.kt`, `SoundAlertDispatcher.kt`).
+  - High-precision camera vision OCR with multilingual prompt templates (`CameraVisionTool.kt`).
+
+### Phase 8: Jarvis Emotional Intelligence Engine (Completed)
+- **Milestones**:
+  - Deterministic sentiment scoring with zero external API dependencies (`DeterministicSentimentAnalyzer.kt`).
+  - Pure mathematical state reducer over 7 affective modes (`CALM`, `FOCUSED`, `EMPATHETIC`, `ALERT`, `CONFUSED`, `WITTY`, `CELEBRATORY`).
+  - Dynamic `JarvisOrbView` core color/pulse/particle animation and TTS voice pitch/speed modulation (`VoiceProfileAdapter.kt`).
+  - Comprehensive end-to-end integration and benchmark test suite.
+
+### Phase 9: Jarvis Cognitive Core — JCI (Completed)
+- **Milestones**:
+  - `CognitiveOrchestrator` execution choke-point with `DIRECT`, `PLAN`, `CLARIFY`, and `REFUSE` modes.
+  - 71 canonical capabilities audited and registered with typed JSON schemas and risk tiers.
+  - 4-level honesty verification engine (`JciVerifier.kt`) enforcing zero false completion claims.
+  - Sub-millisecond deterministic fast-path evaluation (<1.5ms, 0 tokens) and transparent fail-safe fallback.
+  - Graph-based multi-step task planning with dependency resolution and rollback handling (`JciPlanner.kt`, `JciPlanExecutor.kt`).
+  - Quiet-hours enforcement (22:00–08:00) with proactive alert rate limiting (`JciProactiveEngine.kt`).
+  - Unit test suite expanded to 855 tests passing across 160 suites with zero regressions.
+

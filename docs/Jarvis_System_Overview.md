@@ -85,16 +85,43 @@ Users can customize Jarvis heavily via the `UiPreferencesStore` and Settings Scr
     *   `offlineAsrPreferred`: Forces on-device speech recognition for privacy.
 *   **Behavioral Toggles:**
     *   `mediaDuckingEnabled`, `continuousConversation`, `bargeInEnabled`, `wearableSyncEnabled`.
+*   **Emotional Intelligence Settings:**
+    *   `voiceExpressionEnabled`: Enables affective pitch and inflection modulation in speech output.
+    *   `uiEmotionAnimationsEnabled`: Dynamically shifts the Orb color and pulse frequency based on emotional state.
+    *   `sentimentConfidenceThreshold`: Minimum confidence (default 0.65) required before triggering emotional adaptation.
+    *   `reducedMotionEnabled`: Restricts dynamic pulse frequencies for accessibility compliance.
+*   **Jarvis Cognitive Interface (JCI) Settings:**
+    *   `jciEnabled`: Master feature flag for Cognitive Core orchestration (default false).
+    *   `jciShadow`: Evaluates cognitive modes in background without altering execution (default true).
+    *   `jciProactive`: Toggles proactive alerts and quiet hours evaluation.
 *   **Developer & Debug:**
     *   `developerMode`: Enables deep logging and raw LLM prompt visibility.
     *   `logVerbosity`: Controls the amount of debug output.
 
 ---
 
-## 4. Newly Integrated Autonomous Subsystems (Recent Updates)
+## 5. Newly Integrated Autonomous Subsystems (Recent Updates)
 
+*   **Emotional Intelligence Engine (`com.jarvis.emotion`)**:
+    *   `DeterministicSentimentAnalyzer`: Real-time on-device sentiment scoring.
+    *   `EmotionalStateReducer`: Pure 7-state affective state reducer (`CALM`, `FOCUSED`, `EMPATHETIC`, `ALERT`, `CONFUSED`, `WITTY`, `CELEBRATORY`) with temporal decay.
+    *   `ResponseStylePolicyEngine`: Conversational demeanor regulation.
+    *   `VoiceProfileAdapter`: TTS pitch and rate adaptation based on affective mood.
+*   **Jarvis Cognitive Core — JCI (`com.jarvis.cognitive`)**:
+    *   `CognitiveOrchestrator`: Master execution interceptor at `AssistantRuntime.executeCommand`.
+    *   `JciCapabilityRegistry`: 71 canonical audited capabilities with typed parameter schemas and risk tiers.
+    *   `JciPolicyEngine` & `JciVerifier`: 4-tier honesty verification (`L1_LOCAL_READ`, `L2_OS_CONFIRMED`, `L3_SYNTHETIC_OBSERVED`, `L4_DISPATCHED_ONLY`).
+    *   `JciPlanner` & `JciPlanExecutor`: Multi-step dependency planner with automatic rollback.
+    *   `JciProactiveEngine`: Quiet-hours suppression (22:00–08:00) with rate-limited alerts.
 *   **FinancialTrackerEngine & Room Database**: Processes SMS events locally via Regex to track banking income and expenditure without external API calls.
 *   **ProactiveMessagingEngine & ConversationManager**: Enables continuous, multi-turn background SMS interaction where Jarvis waits for human replies before sending follow-ups.
 *   **JarvisSecurityManager**: An overarching security auditor that masks PII locally before sending prompts to the cloud and enforces strict consent for destructive commands.
 *   **PassiveMemoryEngine & ScreenContextAnalyzer**: Autonomously parses foreground app text and user habits to log a passive context trail in the secure SQLite backend.
 *   **Comprehensive Permissions Manager**: Integrated directly into `SettingsScreen.kt`, offering a 1-tap Hub to manage all 11+ standard and special OS permissions.
+
+---
+
+## 6. Build, Verification & Production Packaging
+
+*   **Release Export Script**: `./export_release.sh` auto-detects Java 17 and Android SDK environments, builds release with R8 code and resource shrinking, and exports to `dist/jarvis-v1.1-release.apk` (~12.2 MB) and `release/jarvis-v1.1-release.apk` alongside SHA-256 checksums.
+*   **Test Suite Verification**: Verified with **855 tests passing across 160 test suites, 0 failures, 0 errors** (`./gradlew testDebugUnitTest`).

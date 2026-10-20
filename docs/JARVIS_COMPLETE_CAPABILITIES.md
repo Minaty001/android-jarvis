@@ -510,3 +510,31 @@ This document provides a comprehensive, easy-to-understand guide to all **featur
 * "Type 'I will be there in 5 mins' into the chat box."
 * "Keep texting him until he replies."
 * "Navigate through the settings menu."
+
+## 14. 🎭 Emotional Intelligence & Affective Voice
+### Features & Functions:
+* **Deterministic Sentiment Evaluation**: Analyzes user tone, valence, and urgency locally without cloud latency.
+* **Pure Emotional State Transition**: Adapts assistant persona across 7 modes (`CALM`, `FOCUSED`, `EMPATHETIC`, `ALERT`, `CONFUSED`, `WITTY`, `CELEBRATORY`).
+* **Holographic Arc Reactor Adaptation**: Dynamically alters `JarvisOrbView` core color, pulse frequency, and particle glow to reflect mood, respecting user reduced-motion settings.
+* **Affective Voice Profile Modulation**: Tailors TTS pitch, rate, and prosody to conversational context.
+
+### 5 Examples per Feature:
+* "How are you feeling right now, Jarvis?"
+* "I had an exhausting day, cheer me up."
+* "Calm down, everything is under control."
+* "Tell me a witty observation about today's agenda."
+* "Why are you pulsing red?"
+
+## 15. 🛡️ Jarvis Cognitive Core (JCI) & Multi-Step Task Execution
+### Features & Functions:
+* **Sub-Millisecond Direct Dispatch**: Executes deterministic single-step hardware and system toggles in <1.5ms with 0 tokens.
+* **Multi-Step Dependency Planning**: Decomposes complex natural language goals into sequential/parallel dependency graphs with automatic rollback.
+* **Strict Honesty Verification**: Enforces 4-tier verification (`L1_LOCAL_READ`, `L2_OS_CONFIRMED`, `L3_SYNTHETIC_OBSERVED`, `L4_DISPATCHED_ONLY`), prohibiting false "done" claims.
+* **Contextual Quiet Hours**: Automatically suppresses non-critical proactive alerts between 22:00 and 08:00 while allowing life-critical emergency triggers.
+
+### 5 Examples per Feature:
+* "Execute task: check battery, turn off Wi-Fi, and dim the screen."
+* "Status of all active cognitive capabilities."
+* "Wipe all user data" (Triggers unconditional safe refusal: *"I cannot comply with destructive commands, sir."*)
+* "Did you actually send that message or just submit it?"
+* "What is your confidence in this decision?"

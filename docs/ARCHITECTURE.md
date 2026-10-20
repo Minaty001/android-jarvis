@@ -26,7 +26,12 @@ flowchart TD
 
     subgraph Runtime & Control Plane Layer
         AR[AssistantRuntime]
-        AK[AgentKernel]
+        CO[CognitiveOrchestrator JCI]
+        CR[JciCapabilityRegistry 71 Tools]
+        CPE[JciPolicyEngine]
+        CV[JciVerifier Honesty L1-L4]
+        EIE[Emotional Intelligence Engine]
+        AK[AgentKernel Legacy Fallback]
         WS[AndroidStateProvider]
         PE[PolicyEngine]
         VE[VerificationEngine]
@@ -54,7 +59,12 @@ flowchart TD
     AME --> ASE
     ASE --> SRE
     VR --> ASR
-    AR --> AK
+    AR --> CO
+    CO --> CR
+    CO --> CPE
+    CO --> CV
+    CO --> EIE
+    CO -->|legacy fallback or disabled| AK
     AR --> WS
     AR --> TE
     NLS --> WS
@@ -104,3 +114,23 @@ flowchart TD
 ### 7. LAN and wearable entry points
 - **`JarvisLanServer`**: Serves packaged web assets as raw bytes and accepts UTF-8 API bodies using byte-based content lengths, with API authentication and a bounded request size.
 - **`WearableCompanionReceiver`**: Wake and command broadcasts preserve their action when starting a cold foreground service; stop is handled only when the service is already active.
+
+### 8. Emotional Intelligence Engine (`com.jarvis.emotion`)
+- **`DeterministicSentimentAnalyzer`**: Pure, deterministic lexical analysis evaluating incoming utterance valence, arousal, and sentiment polarity without remote API dependence.
+- **`EmotionalStateReducer`**: Finite state reducer managing seven distinct emotional modes (`CALM`, `FOCUSED`, `EMPATHETIC`, `ALERT`, `CONFUSED`, `WITTY`, `CELEBRATORY`) with temporal decay dynamics and user feedback updates.
+- **`ResponseStylePolicyEngine`**: Dynamically maps affective state into conversational tone, prompt instructions, and conciseness guidelines.
+- **`VoiceProfileAdapter` & `JarvisOrbView`**: Modulates speech synthesizer parameters (pitch, speed, volume inflection) and transitions holographic Orb core color, pulsing frequency, and particle dispersion with reduced-motion accessibility options.
+- **`EmotionalJsonContract`**: Validated JSON serialization/deserialization for persisting affective state across process lifecycles.
+
+### 9. Jarvis Cognitive Core — JCI (`com.jarvis.cognitive`)
+- **`CognitiveOrchestrator`**: Master choke-point interceptor at `AssistantRuntime.executeCommand`. Operates across four cognitive modes:
+  - `DIRECT`: Sub-millisecond deterministic execution for single-step device controls.
+  - `PLAN`: Multi-step dependency graph planning and phased execution.
+  - `CLARIFY`: Structured ambiguity resolution and confirmation requests.
+  - `REFUSE`: Immediate, polite rejection for destructive, unsafe, or policy-violating commands.
+  - Supports non-intrusive shadow mode (`JCI_SHADOW`) and transparent fail-safe fallback to legacy pipelines.
+- **`JciCapabilityRegistry`**: Strongly typed catalog of 71 audited canonical capabilities complete with input/output JSON schemas, risk tiers (`READ_ONLY`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), and multilingual aliases.
+- **`JciPolicyEngine` & `JciVerifier`**: Zero-trust execution gate enforcing safety constraints. Features four-tier honesty verification (`L1_LOCAL_READ`, `L2_OS_CONFIRMED`, `L3_SYNTHETIC_OBSERVED`, `L4_DISPATCHED_ONLY`) forbidding unverified completion claims.
+- **`JciPlanner` & `JciPlanExecutor`**: Graph-based task planner managing sequential dependencies, parallel operations, intermediate verification checkpoints, and automatic rollbacks on failures.
+- **`JciMemoryManager`**: Local multi-tier memory maintaining session working context, epistemic capability state, and episodic execution logs with PII redaction.
+- **`JciStyleFormatter` & `JciProactiveEngine`**: Dry, concise MCU-Jarvis persona generation and scheduled proactive triggers enforcing quiet-hours suppression (22:00–08:00) with rate-limiting.
