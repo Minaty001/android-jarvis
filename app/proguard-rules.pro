@@ -50,3 +50,8 @@
 # 8. Emotional Intelligence Engine Models
 # ---------------------------------------------------------------------------
 -keep class com.jarvis.emotion.** { *; }
+
+# ---------------------------------------------------------------------------
+# 9. Jarvis Cognitive Core (JCI) Models & Registry
+# ---------------------------------------------------------------------------
+-keep class com.jarvis.cognitive.** { *; }

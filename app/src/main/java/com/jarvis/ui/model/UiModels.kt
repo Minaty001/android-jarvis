@@ -70,7 +70,10 @@ data class AppSettings(
     val voiceExpressionEnabled: Boolean = true,
     val uiEmotionAnimationsEnabled: Boolean = true,
     val sentimentConfidenceThreshold: Float = 0.65f,
-    val reducedMotionEnabled: Boolean = false
+    val reducedMotionEnabled: Boolean = false,
+    val jciEnabled: Boolean = false,
+    val jciShadow: Boolean = true,
+    val jciProactive: Boolean = false
 )
 
 fun String.safeDisplay(): String = replace(Regex("[\\r\\n\\t]"), " ").trim()

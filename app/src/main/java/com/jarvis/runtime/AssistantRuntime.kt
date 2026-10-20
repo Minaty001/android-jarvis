@@ -96,6 +96,18 @@ class AssistantRuntime(
         policyEngine,
         verificationEngine
     )
+
+    // Cognitive Core (JCI)
+    val cognitiveOrchestrator: com.jarvis.cognitive.CognitiveOrchestrator by lazy {
+        val store = UiPreferencesStore(context)
+        val settings = store.loadSettings()
+        val config = com.jarvis.cognitive.CognitiveConfig(
+            enabled = settings.jciEnabled,
+            shadowMode = settings.jciShadow,
+            proactive = settings.jciProactive
+        )
+        com.jarvis.cognitive.CognitiveOrchestrator(initialConfig = config)
+    }
     
     // Control Layer (Smart Home & Flight)
     val permissionGate = com.jarvis.control.PermissionGate(
@@ -800,8 +812,14 @@ class AssistantRuntime(
         userApprovalGranted: Boolean = false,   // SECURITY: fail-closed — callers must explicitly grant approval
         onEvent: (AgentEvent) -> Unit = {}
     ): RuntimeExecutionResult = commandMutex.withLock {
-        val result = executeCommandInternal(utterance, userApprovalGranted, onEvent)
-        result
+        cognitiveOrchestrator.execute(
+            utterance = utterance,
+            userApprovalGranted = userApprovalGranted,
+            onEvent = onEvent,
+            legacyFallback = {
+                executeCommandInternal(utterance, userApprovalGranted, onEvent)
+            }
+        )
     }
 
     private suspend fun executeCommandInternal(

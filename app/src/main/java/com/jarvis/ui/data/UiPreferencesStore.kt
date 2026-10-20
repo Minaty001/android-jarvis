@@ -201,6 +201,9 @@ class UiPreferencesStore(context: Context) {
         put("uiEmotionAnimationsEnabled", uiEmotionAnimationsEnabled)
         put("sentimentConfidenceThreshold", sentimentConfidenceThreshold.toDouble())
         put("reducedMotionEnabled", reducedMotionEnabled)
+        put("jciEnabled", jciEnabled)
+        put("jciShadow", jciShadow)
+        put("jciProactive", jciProactive)
     }
 
     private fun jsonToAppSettings(json: JSONObject): AppSettings {
@@ -252,7 +255,10 @@ class UiPreferencesStore(context: Context) {
             voiceExpressionEnabled = json.optBoolean("voiceExpressionEnabled", d.voiceExpressionEnabled),
             uiEmotionAnimationsEnabled = json.optBoolean("uiEmotionAnimationsEnabled", d.uiEmotionAnimationsEnabled),
             sentimentConfidenceThreshold = json.optDouble("sentimentConfidenceThreshold", d.sentimentConfidenceThreshold.toDouble()).toFloat(),
-            reducedMotionEnabled = json.optBoolean("reducedMotionEnabled", d.reducedMotionEnabled)
+            reducedMotionEnabled = json.optBoolean("reducedMotionEnabled", d.reducedMotionEnabled),
+            jciEnabled = json.optBoolean("jciEnabled", d.jciEnabled),
+            jciShadow = json.optBoolean("jciShadow", d.jciShadow),
+            jciProactive = json.optBoolean("jciProactive", d.jciProactive)
         )
     }
 

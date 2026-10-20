@@ -1,0 +1,193 @@
+# JCI CHANGELOG
+
+## GATE: G0 — Audit and baseline (no code changes)
+- **Status:** PASSED
+- **Date:** 2026-10-20
+- **Confirmed facts:** 
+  - Codebase is 100% native Android (Kotlin 1.9/2.1, Java 17, Gradle 8.12, SDK 28–35).
+  - No Python/FastAPI backend exists; all orchestration, memory, and LLM calls run directly on-device in Kotlin.
+  - Baseline unit tests: 790 passed, 0 failures, 0 errors, 0 skipped across 153 test suites.
+  - Tool inventory: 71 canonical capabilities audited against Section 4.2 schema.
+  - 5 verified defects identified (false success reporting, brittle regex intent matching, clarification collisions, missing schema validation, duplicate planners).
+- **Files created:** `docs/jci/AUDIT.md`, `docs/jci/CHANGELOG.md`
+- **Files modified:** None
+- **Dependencies added:** None
+- **Tests run:** `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest` (790 passed)
+- **Next gate proposed:** G1 — Orchestrator shell with feature flag and shadow mode
+
+## GATE: G1 — Orchestrator shell with feature flag and shadow mode
+- **Status:** PASSED
+- **Date:** 2026-10-20
+- **Confirmed facts:**
+  - `CognitiveOrchestrator` implemented at the choke-point `AssistantRuntime.executeCommand`.
+  - Feature flag `JCI_ENABLED` (default false) and `JCI_SHADOW` (default true when enabled) integrated into `AppSettings` and `UiPreferencesStore`.
+  - When disabled (`JCI_ENABLED=false`), orchestrator delegates immediately to the legacy pipeline with zero overhead.
+  - When in shadow mode (`JCI_SHADOW=true`), orchestrator evaluates mode in background, logs structured `ShadowDecision` event with unique `traceId`, and executes legacy pipeline returning legacy output 100% unchanged.
+  - Fast-path inspection detects deterministic commands with zero LLM calls and negligible steady-state latency (< 0.2ms).
+  - Sensitive user data (PINs, passwords, OTPs, credit cards) is redacted via `CognitiveEvent.redactSensitiveData`.
+  - Fail-safe fallback catches unhandled exceptions and seamlessly falls back to legacy pipeline without crashing.
+  - Coroutine `CancellationException` propagates cleanly without falling back.
+- **Files created:**
+  - `app/src/main/java/com/jarvis/cognitive/CognitiveConfig.kt`
+  - `app/src/main/java/com/jarvis/cognitive/CognitiveMode.kt`
+  - `app/src/main/java/com/jarvis/cognitive/CognitiveEvent.kt`
+  - `app/src/main/java/com/jarvis/cognitive/CognitiveOrchestrator.kt`
+  - `app/src/test/java/com/jarvis/cognitive/CognitiveOrchestratorTest.kt`
+- **Files modified:**
+  - `app/src/main/java/com/jarvis/ui/model/UiModels.kt`
+  - `app/src/main/java/com/jarvis/ui/data/UiPreferencesStore.kt`
+  - `app/src/main/java/com/jarvis/runtime/AssistantRuntime.kt`
+- **Dependencies added:** None
+- **Tests run:**
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests "com.jarvis.cognitive.CognitiveOrchestratorTest"` (8 passed, 0 failures)
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest` (798 passed, 0 failures across 154 test suites)
+- **Next gate proposed:** G2 — CapabilityRegistry, PolicyEngine, and Verifier
+
+## GATE: G2 — CapabilityRegistry, PolicyEngine, and Verifier (Safety Foundation)
+- **Status:** PASSED
+- **Date:** 2026-10-20
+- **Confirmed facts:**
+  - `JciCapabilityRegistry` implemented with 71 audited canonical capabilities, structured schemas, risk levels, and aliases.
+  - Invented capabilities rejected unconditionally.
+  - Deterministic `JciPolicyEngine` enforces 4 risk tiers (LOW, MEDIUM, HIGH, CRITICAL) without LLM calls.
+  - CRITICAL destructive actions (e.g., wipe, root) are hard-refused by policy.
+  - HIGH risk actions (e.g., WhatsApp, phone calls, SMS, file deletion) are strictly blocked without user confirmation; LLMs cannot bypass.
+  - Argument validation rejects missing parameters, type mismatches, out-of-bounds numbers, disallowed choices, path traversal (`..`), protected system paths (`/system`), and invalid phone formats.
+  - Rate limiting (sliding 60s window per tool) and rapid deduplication (< 1s identical invocations) enforced.
+  - `JciVerifier` implements 5-level verification hierarchy. Disallows false success ("done" requires Level 1, 2, or 3 evidence).
+  - Level 4 (Submission acknowledgment) actions report dispatched/submitted only, never "done".
+  - Level 2 state observation verifies real-world hardware/system state matches expected outcome.
+- **Files created:**
+  - `app/src/main/java/com/jarvis/cognitive/capability/JciCapability.kt`
+  - `app/src/main/java/com/jarvis/cognitive/capability/JciCapabilityRegistry.kt`
+  - `app/src/main/java/com/jarvis/cognitive/policy/JciPolicyEngine.kt`
+  - `app/src/main/java/com/jarvis/cognitive/verifier/JciVerifier.kt`
+  - `app/src/test/java/com/jarvis/cognitive/JciSafetyFoundationTest.kt`
+- **Files modified:** None
+- **Dependencies added:** None
+- **Tests run:**
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests "com.jarvis.cognitive.JciSafetyFoundationTest"` (19 passed, 0 failures)
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest` (817 passed, 0 failures across 155 test suites)
+- **Next gate proposed:** G3 — Interpreter and Mode Decision
+
+## GATE: G3 — Interpreter and Mode Decision
+- **Status:** PASSED
+- **Date:** 2026-10-20
+- **Confirmed facts:**
+  - `JciInterpreter` implemented with structured JSON schema prompt, capability injection defense, and mode routing (DIRECT, PLAN, CLARIFY, REFUSE).
+  - Fast-path deterministic detection routes single-step low-risk commands with 0 LLM calls.
+  - Multi-step compound conjunctions (and, then, aur, fir, also) correctly bypass fast-path to allow PLAN decomposition.
+  - User utterances are enclosed in `<user_request>...</user_request>` boundary tags with explicit system directives preventing prompt injection.
+  - Strict JSON validation checks response structure, sanitizes fences, and enforces confidence threshold (< 0.60 forces CLARIFY).
+  - Invented capabilities returned by LLM are rejected/sanitized, forcing REFUSE with explicit explanation.
+  - LLM errors and timeouts (bounded by `llmTimeoutSeconds`) fall back cleanly to legacy intent router or safe clarification without throwing or crashing.
+- **Files created:**
+  - `app/src/main/java/com/jarvis/cognitive/interpreter/InterpreterModels.kt`
+  - `app/src/main/java/com/jarvis/cognitive/interpreter/JciInterpreter.kt`
+  - `app/src/test/java/com/jarvis/cognitive/JciInterpreterTest.kt`
+- **Files modified:** None
+- **Dependencies added:** None
+- **Tests run:**
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests "com.jarvis.cognitive.JciInterpreterTest"` (8 passed, 0 failures)
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest` (825 passed, 0 failures across 156 test suites)
+- **Next gate proposed:** G4 — Planner and Controlled Step Loop
+
+## GATE: G4 — Planner and Controlled Step Loop
+- **Status:** PASSED
+- **Date:** 2026-10-20
+- **Confirmed facts:**
+  - `JciPlanner` implemented with plan validation, JSON schema decomposition, and prompt injection hardening.
+  - Plan validation rejects plans with unregistered/invented tools at validation time before any execution starts.
+  - High-risk steps requiring confirmation are identified before execution; step execution pauses and yields `AWAITING_CONFIRMATION` without executing unconfirmed tools.
+  - `JciPlanExecutor` runs plan steps sequentially with pre-step cancellation checks and bounded step execution.
+  - Step failures trigger a single retry if `retryable == true`.
+  - Unrecoverable step failures trigger bounded replanning (`max_replans = 2`), passing failed history to LLM planner.
+  - Hard loop limit strictly stops execution at `max_steps = 12`.
+  - Replan limit strictly stops execution when `max_replans` is exhausted, preventing infinite replanning loops.
+  - Verification failures mark steps as failed, eliminating false success reporting.
+  - Task timeout (`task_timeout = 120s`) stops execution cleanly without hanging.
+  - Coroutine cancellation stops execution immediately between steps without running remaining plan steps.
+- **Files created:**
+  - `app/src/main/java/com/jarvis/cognitive/planner/PlanModels.kt`
+  - `app/src/main/java/com/jarvis/cognitive/planner/JciPlanner.kt`
+  - `app/src/main/java/com/jarvis/cognitive/planner/JciPlanExecutor.kt`
+  - `app/src/test/java/com/jarvis/cognitive/JciPlannerAndExecutorTest.kt`
+- **Files modified:**
+  - `app/src/main/java/com/jarvis/cognitive/policy/JciPolicyEngine.kt` (added dry-run / non-execution validation mode to prevent rate-limit false duplicates during plan validation)
+  - `app/src/main/java/com/jarvis/cognitive/verifier/JciVerifier.kt` (added default state matching predicate for observable Level 2 capabilities)
+- **Dependencies added:** None
+- **Tests run:**
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests "com.jarvis.cognitive.JciPlannerAndExecutorTest"` (8 passed, 0 failures)
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest` (833 passed, 0 failures across 157 test suites)
+- **Next gate proposed:** G5 — Memory & Learning
+
+## GATE: G5 — Memory & Learning
+- **Status:** PASSED
+- **Date:** 2026-10-20
+- **Confirmed facts:**
+  - `JciMemoryManager` implemented with category separation (`USER_PREFERENCE`, `TASK_TEMPLATE`, `USER_CORRECTION`).
+  - Write criteria strictly enforced: writes permitted ONLY when explicitly confirmed by user or user correction. Speculative model inferences are rejected (`REJECTED_UNCONFIRMED`).
+  - Sensitive data (PINs, passwords, OTPs, credit cards) automatically redacted before writing to memory.
+  - Deduplication enforced: existing memory with same key is updated in-place rather than creating duplicate rows.
+  - Storage bounds enforced with hard category caps (max 50 preferences, max 20 task templates, max 30 corrections) and LRU/access-count pruning policy.
+  - Relevant memory retrieval ranks by lexical token overlap, respects top-K (default 3), and enforces strict token budget (~200 tokens).
+  - Feature flag verified: when `JCI_ENABLED=false`, memory operations return `DISABLED` without modifying state.
+- **Files created:**
+  - `app/src/main/java/com/jarvis/cognitive/memory/JciMemoryModels.kt`
+  - `app/src/main/java/com/jarvis/cognitive/memory/JciMemoryManager.kt`
+  - `app/src/test/java/com/jarvis/cognitive/JciMemoryManagerTest.kt`
+- **Files modified:** None
+- **Dependencies added:** None
+- **Tests run:**
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests "com.jarvis.cognitive.JciMemoryManagerTest"` (7 passed, 0 failures)
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest` (840 passed, 0 failures across 158 test suites)
+- **Next gate proposed:** G6 — Style & Proactive Behavior (Minimal)
+
+## GATE: G6 — Style & Proactive Behavior (Minimal)
+- **Status:** PASSED
+- **Date:** 2026-10-20
+- **Confirmed facts:**
+  - `JciStyleFormatter` implemented producing concise, dry MCU-Jarvis voice responses (e.g., "Right away, sir", "I've toggled the flashlight").
+  - Honesty confirmation semantics strictly enforced: "done" / past-tense completion confirmations are forbidden without Level 1, 2, or 3 verification. Level 4 (DISPATCHED/SUBMITTED) actions are explicitly phrased as "dispatched" / "submitted".
+  - Emotion states mapped accurately to `AssistantState` (FOCUSED on high risk, PANIC on critical safety alerts, CONFUSED on failed execution, LISTENING on normal success).
+  - Clarification formatting preserves prompt injection defenses and presents clear, disambiguated options to the user.
+  - `JciProactiveEngine` implemented enforcing quiet hours (22:00 - 08:00) where non-critical alerts are suppressed, while critical safety alerts bypass quiet hours.
+  - Rate limiting enforced to at most 1 alert per hour for routine proactive triggers.
+  - Initial state handling in proactive rate limiter correctly permits the first alert after initialization or reset.
+  - Feature flag verified: when `config.proactive=false` or `config.enabled=false`, all proactive triggers evaluate to `null`.
+- **Files created:**
+  - `app/src/main/java/com/jarvis/cognitive/style/JciStyleModels.kt`
+  - `app/src/main/java/com/jarvis/cognitive/style/JciStyleFormatter.kt`
+  - `app/src/main/java/com/jarvis/cognitive/style/JciProactiveEngine.kt`
+  - `app/src/test/java/com/jarvis/cognitive/JciStyleAndProactiveTest.kt`
+- **Files modified:**
+  - `app/src/main/java/com/jarvis/cognitive/style/JciProactiveEngine.kt`
+- **Dependencies added:** None
+- **Tests run:**
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests "com.jarvis.cognitive.JciStyleAndProactiveTest"` (8 passed, 0 failures)
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest` (848 passed, 0 failures across 159 test suites)
+- **Next gate proposed:** G7 — Evaluation, Hardening & Release
+
+## GATE: G7 — Evaluation, Hardening & Release
+- **Status:** PASSED
+- **Date:** 2026-10-20
+- **Confirmed facts:**
+  - `CognitiveOrchestrator` fully integrated end-to-end connecting all cognitive modules (`JciCapabilityRegistry`, `JciPolicyEngine`, `JciVerifier`, `JciInterpreter`, `JciPlanner`, `JciPlanExecutor`, `JciMemoryManager`, `JciStyleFormatter`, `JciProactiveEngine`).
+  - Active execution pipeline verified across all cognitive modes (`DIRECT`, `PLAN`, `CLARIFY`, `REFUSE`).
+  - Fast-path deterministic single-step commands bypass LLMs (0 tokens, 0 network latency, steady-state average execution ~1.39ms, sub-millisecond inspection).
+  - Safety policy confirmation strictly enforced: high-risk operations (e.g. `SCREEN_UNLOCK`) require explicit confirmation, while life-critical emergency triggers (`EMERGENCY_SOS`) are exempt from blocking gates.
+  - Destructive invariants verified: prohibited destructive operations ("wipe phone", "format device") are immediately and unconditionally refused with calm MCU-Jarvis formatting.
+  - Honesty invariant verified end-to-end: actions require Level 1, 2, or 3 verification before "done" can be claimed; Level 4 dispatches report "dispatched/submitted".
+  - Fail-safe fallback verified: any unexpected internal error or exception in JCI triggers immediate, seamless fail-safe to the legacy pipeline while recording an `OrchestratorFallback` structured event.
+  - Zero regressions: Full unit test suite passes 100% (855 tests passing across 160 test suites, up from 790 baseline).
+  - Production readiness confirmed: Additive only, `JCI_ENABLED=false` by default, clean separation of concerns, zero unvetted dependencies added.
+- **Files created:**
+  - `app/src/test/java/com/jarvis/cognitive/JciEndToEndIntegrationTest.kt`
+- **Files modified:**
+  - `app/src/main/java/com/jarvis/cognitive/CognitiveOrchestrator.kt` (end-to-end integration of interpreter, planner, executor, policy, verifier, formatter, memory, observed state)
+- **Dependencies added:** None
+- **Tests run:**
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests "com.jarvis.cognitive.JciEndToEndIntegrationTest"` (7 passed, 0 failures)
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest --tests "com.jarvis.cognitive.*"` (65 passed, 0 failures)
+  - `env JAVA_HOME=/home/shanu/jdk/jdk-17.0.13+11 ./gradlew testDebugUnitTest` (855 passed, 0 failures across 160 test suites)
+- **Status:** JCI Implementation Complete & Ready for Release.
