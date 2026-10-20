@@ -45,3 +45,8 @@
 -keep interface dev.langchain4j.** { *; }
 -dontwarn dev.langchain4j.**
 -keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
+
+# ---------------------------------------------------------------------------
+# 8. Emotional Intelligence Engine Models
+# ---------------------------------------------------------------------------
+-keep class com.jarvis.emotion.** { *; }

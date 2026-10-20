@@ -33,6 +33,8 @@ build/
 exports/
 /release-export/
 release-export/
+/release/
+release/
 
 # Understand-Anything transient files
 .ua/intermediate/
