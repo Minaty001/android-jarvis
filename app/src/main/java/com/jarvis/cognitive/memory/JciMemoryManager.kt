@@ -6,39 +6,32 @@ import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-interface JciMemoryBackend {
-    fun getEntries(category: JciMemoryCategory): List<JciMemoryEntry>
-    fun saveEntry(entry: JciMemoryEntry)
-    fun removeEntry(id: String)
-    fun clearCategory(category: JciMemoryCategory)
-}
-
-class InMemoryJciMemoryBackend : JciMemoryBackend {
+class InMemoryJciMemoryBackend {
     private val store = ConcurrentHashMap<JciMemoryCategory, MutableMap<String, JciMemoryEntry>>()
 
-    override fun getEntries(category: JciMemoryCategory): List<JciMemoryEntry> {
+    fun getEntries(category: JciMemoryCategory): List<JciMemoryEntry> {
         val map = store[category] ?: return emptyList()
         return synchronized(map) { map.values.toList() }
     }
 
-    override fun saveEntry(entry: JciMemoryEntry) {
+    fun saveEntry(entry: JciMemoryEntry) {
         val map = store.computeIfAbsent(entry.category) { ConcurrentHashMap() }
         map[entry.id] = entry
     }
 
-    override fun removeEntry(id: String) {
+    fun removeEntry(id: String) {
         for (map in store.values) {
             map.remove(id)
         }
     }
 
-    override fun clearCategory(category: JciMemoryCategory) {
+    fun clearCategory(category: JciMemoryCategory) {
         store[category]?.clear()
     }
 }
 
 class JciMemoryManager(
-    private val backend: JciMemoryBackend = InMemoryJciMemoryBackend(),
+    private val backend: InMemoryJciMemoryBackend = InMemoryJciMemoryBackend(),
     var config: CognitiveConfig = CognitiveConfig(enabled = true)
 ) {
     /**

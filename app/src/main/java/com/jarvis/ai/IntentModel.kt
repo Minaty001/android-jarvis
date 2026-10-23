@@ -58,8 +58,6 @@ enum class AssistantIntent {
     SCREEN_LOCK,
     SCREEN_UNLOCK,
     SMART_HOME_CONTROL,
-    FLIGHT_ASSISTANT,
-    FLIGHT_SIMULATOR,
     UI_GLOBAL_ACTION,
     UI_SCROLL_ACTION,
     VOICE_ACCESS_OVERLAY,
@@ -304,34 +302,6 @@ object IntentResolver {
             val params = mutableMapOf("domain" to "smart_home", "device" to "light", "target" to target, "action" to action)
             if (brightnessMatch != null) params["value"] = brightnessMatch.groupValues[1]
             return ResolvedIntent(intent = AssistantIntent.SMART_HOME_CONTROL, confidence = 0.95f, params = params, directPlan = ExecutionPlan("Adjusting $target lights.", listOf(ActionPlan("SMART_HOME", params))))
-        }
-
-        // Flight Assistant
-        if (text.contains("flight status") || text.contains("nearest airport") || text.contains("altitude") || text.contains("flight ")) {
-            val action = when {
-                text.contains("nearest airport") -> "nearest_airport"
-                text.contains("altitude") -> "altitude"
-                else -> "flight_status"
-            }
-            val params = mutableMapOf("domain" to "flight_assistant", "action" to action)
-            
-            if (action == "flight_status") {
-                val flightNumberMatch = Regex("flight\\s+([a-z0-9]+)\\s+status|status\\s+of\\s+flight\\s+([a-z0-9]+)|flight\\s+([a-z0-9]+)", RegexOption.IGNORE_CASE).find(text)
-                val flightNo = flightNumberMatch?.groupValues?.drop(1)?.firstOrNull { it.isNotBlank() }
-                if (flightNo != null) {
-                    params["value"] = flightNo.uppercase()
-                }
-            }
-            
-            return ResolvedIntent(intent = AssistantIntent.FLIGHT_ASSISTANT, confidence = 0.95f, params = params, directPlan = ExecutionPlan("Checking flight assistant...", listOf(ActionPlan("FLIGHT", params))))
-        }
-
-        // Flight Simulator
-        if (text.contains("simulator") && text.contains("destination")) {
-            val destMatch = Regex("destination\\s+([a-z]+)", RegexOption.IGNORE_CASE).find(text)
-            val target = destMatch?.groupValues?.get(1) ?: "unknown"
-            val params = mapOf("domain" to "flight_simulator", "action" to "set_destination", "target" to target)
-            return ResolvedIntent(intent = AssistantIntent.FLIGHT_SIMULATOR, confidence = 0.95f, params = params, directPlan = ExecutionPlan("Setting simulator destination.", listOf(ActionPlan("FLIGHT_SIM", params))))
         }
 
         // 0.1 Flashlight / Torch

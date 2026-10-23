@@ -40,8 +40,7 @@ data class VoiceEngineStatus(
     val wakeModelAvailable: Boolean = true,
     val lastTaskGoal: String? = null,
     val audioLevelRms: Float = 0.0f,
-    val isLiveConversationActive: Boolean = false,
-    val userEmotion: com.jarvis.voice.emotion.EmotionState = com.jarvis.voice.emotion.EmotionState.NEUTRAL
+    val isLiveConversationActive: Boolean = false
 )
 
 enum class PipelineState {
@@ -132,8 +131,6 @@ class VoiceEngine(
     val mediaDuckingManager = com.jarvis.media.MediaDuckingManager(context, audioFocusManager)
     val acousticFeedbackEngine = com.jarvis.voice.audio.AcousticFeedbackEngine(context)
 
-    val emotionClassifier = com.jarvis.voice.emotion.AcousticEmotionClassifier()
-
     // Session tracking and race protection gates
     private val sessionSequence = AtomicInteger(0)
     private val wakeTransitionGate = AtomicBoolean(false)
@@ -196,14 +193,6 @@ class VoiceEngine(
                     Log.i(TAG, "Barge-in triggered via $reason in state: $state")
                     bargeIn()
                 }
-            }
-        }
-        
-        voiceRouter.onSpeechFrame = { samples ->
-            emotionClassifier.processFrame(samples)
-            val currentEmotion = emotionClassifier.classifyEmotion()
-            if (_status.value.userEmotion != currentEmotion) {
-                _status.value = _status.value.copy(userEmotion = currentEmotion)
             }
         }
     }
@@ -470,8 +459,6 @@ class VoiceEngine(
 
     private suspend fun startListeningForCommand(isFollowUp: Boolean = false, initialAudio: ShortArray? = null) {
         stopCommandSession()
-        emotionClassifier.reset()
-        _status.value = _status.value.copy(userEmotion = com.jarvis.voice.emotion.EmotionState.NEUTRAL)
         transitionTo(PipelineState.ACTIVE_ASR)
 
         val routeToAppropriateAsr: (Int) -> Unit = { preRoll ->
@@ -643,7 +630,6 @@ class VoiceEngine(
         asrEngine.startListening(
             onSpeechStarted = {
                 onSpeechActivity()
-                assistantRuntime.vocalEmpathyEngine?.onSpeechStart()
             },
             onPartial = { partial ->
                 capturePartial(partial)
@@ -651,7 +637,6 @@ class VoiceEngine(
                 _status.value = _status.value.copy(partialTranscript = partial)
             },
             onFinal = { finalTranscript ->
-                assistantRuntime.vocalEmpathyEngine?.onSpeechEnd()
                 val transcript = finalTranscript.trim().ifBlank { getLastPartial().trim() }
                 if (transcript.isNotBlank()) onFinalHandled(transcript)
                 else onEmptyOrError(-1, "empty final")
@@ -662,7 +647,6 @@ class VoiceEngine(
                 if (conversationManager.currentStateValue == VoiceState.LISTENING) {
                     _status.value = _status.value.copy(audioLevelRms = rms)
                 }
-                assistantRuntime.vocalEmpathyEngine?.onRmsChanged(rms)
             }
         )
     }
@@ -836,13 +820,7 @@ class VoiceEngine(
             }
 
             val result = try {
-                val currentEmotion = emotionClassifier.classifyEmotion()
-                val commandWithEmotion = if (currentEmotion != com.jarvis.voice.emotion.EmotionState.NEUTRAL) {
-                    "[User Emotion: ${currentEmotion.name}] $cleanCommand"
-                } else {
-                    cleanCommand
-                }
-                assistantRuntime.executeCommand(commandWithEmotion) { event ->
+                assistantRuntime.executeCommand(cleanCommand) { event ->
                     when (event) {
                         is com.jarvis.agent.AgentEvent.BuildingContext -> {
                             if (showThinking) {

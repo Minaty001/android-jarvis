@@ -284,7 +284,6 @@ class JarvisOrbView @JvmOverloads constructor(
         shaderRadiusBucket = Int.MIN_VALUE
     }
 
-    var emotion: com.jarvis.voice.emotion.EmotionState = com.jarvis.voice.emotion.EmotionState.NEUTRAL
     var assistantEmotion: com.jarvis.emotion.AssistantState? = null
         private set
     var emotionProfile: com.jarvis.emotion.UiEmotionProfile? = null
@@ -329,8 +328,6 @@ class JarvisOrbView @JvmOverloads constructor(
         val state = assistantEmotion
         if (state != null) return com.jarvis.emotion.UiEmotionProfile.forState(state).primaryColor
 
-        if (emotion == com.jarvis.voice.emotion.EmotionState.FRUSTRATED) return 0xFFFF5C7A.toInt() // Red
-        if (emotion == com.jarvis.voice.emotion.EmotionState.EXCITED) return 0xFFFFCF5C.toInt() // Amber
         return when (currentState) {
             VoiceState.IDLE -> 0xFF39E0A0.toInt() // jarvis-pc good / arc green
             VoiceState.WAITING_FOR_WAKE -> 0xFF39E0A0.toInt()
@@ -354,8 +351,6 @@ class JarvisOrbView @JvmOverloads constructor(
         val state = assistantEmotion
         if (state != null) return com.jarvis.emotion.UiEmotionProfile.forState(state).secondaryColor
 
-        if (emotion == com.jarvis.voice.emotion.EmotionState.FRUSTRATED) return 0xFFD32F2F.toInt()
-        if (emotion == com.jarvis.voice.emotion.EmotionState.EXCITED) return 0xFFF57F17.toInt()
         return when (currentState) {
             VoiceState.IDLE -> 0xFF1FA670.toInt()
             VoiceState.WAITING_FOR_WAKE -> 0xFF1FA670.toInt()

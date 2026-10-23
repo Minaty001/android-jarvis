@@ -116,7 +116,6 @@ class AssistantRuntime(
         getCandidateAudio = { com.jarvis.service.JarvisForegroundService.instance?.voiceEngine?.continuousAudioStream?.rollingBuffer?.getRecentAudio(48000) ?: ShortArray(0) }
     )
     val haClient = com.jarvis.smart_home.HomeAssistantClient()
-    val smartHomeRouter = com.jarvis.smart_home.SmartHomeRouter(haClient)
 
 
     // Autonomous Control Plane Architecture (Layers 0 - 10)
@@ -297,15 +296,10 @@ class AssistantRuntime(
     }
 
     var recallService: com.jarvis.memory.JarvisRecallService? = null
-    var clipboardEngine: com.jarvis.clipboard.ClipboardContextEngine? = null
     var clipboardOverlay: com.jarvis.ui.overlay.ClipboardOverlayController? = null
     var diagnosticEngine: com.jarvis.device.SystemDiagnosticEngine? = null
-    var patternEngine: com.jarvis.routine.PatternLearningEngine? = null
     var photographicMemoryEngine: com.jarvis.memory.PhotographicMemoryEngine? = null
-    var notificationBatchingEngine: com.jarvis.notification.NotificationBatchingEngine? = null
-    var ambientPolitenessEngine: com.jarvis.ambient.AmbientPolitenessEngine? = null
     var knowledgeGraphEngine: com.jarvis.memory.KnowledgeGraphEngine? = null
-    var vocalEmpathyEngine: com.jarvis.voice.VocalEmpathyEngine? = null
     var privacyDefenderEngine: com.jarvis.security.PrivacyDefenderEngine? = null
 
     init {
@@ -437,19 +431,6 @@ class AssistantRuntime(
                 strongLlm = strongClient,
                 userProfile = activeUserProfile
             )
-            // Initialize LangChain Assistant for Memory and RAG
-            if (effectiveGroqKey.isNotBlank()) {
-                try {
-                    ensureActiveScope().launch(Dispatchers.IO) {
-                        try {
-                        } catch (e: Throwable) {
-                            android.util.Log.e("AssistantRuntime", "Failed to ingest profile: ${e.message}", e)
-                        }
-                    }
-                } catch (e: Throwable) {
-                    android.util.Log.e("AssistantRuntime", "Failed to initialize LangChainAssistant: ${e.message}", e)
-                }
-            }
         }
         toolRegistry.registerLazy(
             name = "SCREEN_VISION",
@@ -486,29 +467,9 @@ class AssistantRuntime(
                 clipboardOverlay = com.jarvis.ui.overlay.ClipboardOverlayController(context)
             }
             
-            if (clipboardEngine == null) {
-                clipboardEngine = com.jarvis.clipboard.ClipboardContextEngine(context, llm) { text, actions ->
-                    ensureActiveScope().launch(Dispatchers.Main) {
-                        clipboardOverlay?.showContextActions(text, actions) { action ->
-                            ensureActiveScope().launch {
-                                val msg = "User selected clipboard action '$action' on text: $text"
-                                Log.i(TAG, msg)
-                                executeCommand(msg, userApprovalGranted = true)
-                            }
-                        }
-                    }
-                }
-                clipboardEngine?.start()
-            }
-            
             if (diagnosticEngine == null) {
                 diagnosticEngine = com.jarvis.device.SystemDiagnosticEngine(context)
                 diagnosticEngine?.start()
-            }
-            
-            if (patternEngine == null) {
-                patternEngine = com.jarvis.routine.PatternLearningEngine(llm)
-                patternEngine?.start()
             }
             
             if (photographicMemoryEngine == null) {
@@ -516,21 +477,8 @@ class AssistantRuntime(
                 photographicMemoryEngine?.start()
             }
             
-            if (notificationBatchingEngine == null) {
-                notificationBatchingEngine = com.jarvis.notification.NotificationBatchingEngine(llm)
-            }
-            
-            if (ambientPolitenessEngine == null) {
-                ambientPolitenessEngine = com.jarvis.ambient.AmbientPolitenessEngine(context)
-                ambientPolitenessEngine?.start()
-            }
-            
             if (knowledgeGraphEngine == null) {
                 knowledgeGraphEngine = com.jarvis.memory.KnowledgeGraphEngine(context, llm, memoryStore)
-            }
-            
-            if (vocalEmpathyEngine == null) {
-                vocalEmpathyEngine = com.jarvis.voice.VocalEmpathyEngine(context)
             }
             
             if (privacyDefenderEngine == null) {
@@ -559,7 +507,7 @@ class AssistantRuntime(
         toolRegistry.register(com.jarvis.finance.ExpenseReportTool(context))
 
         // Control Layer Tools
-        val smartHomeTool = com.jarvis.tools.SmartHomeTool(smartHomeRouter, permissionGate)
+        val smartHomeTool = com.jarvis.tools.SmartHomeTool(haClient, permissionGate)
         toolRegistry.register(smartHomeTool)
 
 
@@ -660,12 +608,6 @@ class AssistantRuntime(
         // Foundation File & System tools
         val jarvisDbTool = JarvisDbTool(context)
         toolRegistry.register(jarvisDbTool, jarvisDbTool.metadata)
-        val locate = FileLocateTool(context)
-        val read = FileReadTool(context)
-        val write = FileWriteTool(context)
-        toolRegistry.register(locate, locate.metadata)
-        toolRegistry.register(read, read.metadata)
-        toolRegistry.register(write, write.metadata)
 
         val osInspect = OsSystemInspectionTool(context)
         toolRegistry.register(osInspect, osInspect.metadata)

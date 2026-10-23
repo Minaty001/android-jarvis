@@ -4,13 +4,12 @@ import android.util.Log
 import com.jarvis.ai.Message
 import com.jarvis.voice.VoiceState
 import com.jarvis.wakeword.RaphaelPhoneticMatcher
-import com.jarvis.util.MockContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore = com.jarvis.memory.MemoryStore(com.jarvis.util.MockContext(), useInMemory = true)) {
+class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore? = null) {
     private val TAG = "ConversationManager"
     private val _stateFlow = MutableStateFlow(VoiceState.IDLE)
     val stateFlow: StateFlow<VoiceState> = _stateFlow.asStateFlow()
@@ -90,7 +89,7 @@ class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore
 
         kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                memoryStore.saveConversation(sessionId, role, content)
+                memoryStore?.saveConversation(sessionId, role, content)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save conversation message", e)
             }

@@ -94,16 +94,9 @@ class DeepResearchTool(
 
         Log.i(TAG, "Step 4: Research report saved successfully at: ${saveResult.path}")
 
-        // Index report summary into Vector DB for future RAG / semantic retrieval
+        // Update storage hub manifest
         context?.let { ctx ->
             runCatching {
-                val vdb = com.jarvis.storage.VectorDbManager(ctx)
-                vdb.storeVector(
-                    id = "report_${cleanTopic}_$todayStr",
-                    text = reportContent.take(1500),
-                    topic = cleanTopic,
-                    metadata = mapOf("type" to "research_report", "date" to todayStr)
-                )
                 com.jarvis.storage.JarvisStorageHub.updateManifest(ctx)
             }
         }

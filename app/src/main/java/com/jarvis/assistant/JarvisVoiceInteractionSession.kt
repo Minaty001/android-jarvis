@@ -359,7 +359,6 @@ class JarvisVoiceInteractionSession(context: Context) : VoiceInteractionSession(
             val engine = JarvisForegroundService.instance?.voiceEngine ?: return@launch
             engine.status.collect { status ->
                 mainHandler.post {
-                    orbView?.emotion = status.userEmotion
                     orbView?.setState(status.voiceState)
                     orbView?.setAudioLevel(status.audioLevelRms)
 
