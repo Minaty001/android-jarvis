@@ -80,11 +80,108 @@ data class ResolvedIntent(
     val intent: AssistantIntent,
     val confidence: Float,
     val params: Map<String, String>,
-    val directPlan: ExecutionPlan? = null
+    val directPlan: ExecutionPlan? = null,
+    val reason: String? = null
 )
 
-class IntentModel {
+class IntentModel(private val llmClient: LlmClient? = null) {
+    private val reasoningCache = object : java.util.LinkedHashMap<String, ResolvedIntent>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ResolvedIntent>?): Boolean = size > 64
+    }
+
     fun classify(utterance: String): ResolvedIntent? = IntentResolver.resolve(utterance)
+
+    suspend fun classifyWithReasoning(
+        utterance: String,
+        llm: LlmClient? = llmClient
+    ): ResolvedIntent? {
+        val trimmed = utterance.trim()
+        if (trimmed.isBlank()) return null
+        val cacheKey = trimmed.lowercase(Locale.ROOT)
+        synchronized(reasoningCache) {
+            reasoningCache[cacheKey]?.let { return it }
+        }
+
+        // 1. Check deterministic fast-path
+        val deterministic = classify(trimmed)
+        if (deterministic != null) {
+            val result = deterministic.copy(reason = deterministic.reason ?: "Deterministic rule match")
+            synchronized(reasoningCache) {
+                reasoningCache[cacheKey] = result
+            }
+            return result
+        }
+
+        // 2. Check privacy
+        if (com.jarvis.foundation.SensitiveTerms.contains(trimmed)) {
+            return null
+        }
+
+        // 3. Fallback to LLM reasoning if client available
+        val client = llm ?: return null
+        val llmResolved = classifyWithLlm(trimmed, client)
+        if (llmResolved != null) {
+            synchronized(reasoningCache) {
+                reasoningCache[cacheKey] = llmResolved
+            }
+        }
+        return llmResolved
+    }
+
+    private suspend fun classifyWithLlm(utterance: String, llm: LlmClient): ResolvedIntent? {
+        val prompt = """
+            You are the JARVIS Intent Classifier.
+            Classify this user voice command into the most appropriate AssistantIntent.
+            Available intents: ${AssistantIntent.values().joinToString(", ") { it.name }}
+
+            Return strict JSON only:
+            {
+              "intent": "INTENT_NAME_OR_NULL",
+              "confidence": 0.85,
+              "params": {},
+              "reason": "Brief explanation of reasoning"
+            }
+        """.trimIndent()
+
+        val messages = listOf(
+            Message("system", prompt),
+            Message("user", utterance)
+        )
+
+        val raw = llm.chat(messages).getOrNull() ?: return null
+        return parseLlmIntentResponse(raw)
+    }
+
+    fun parseLlmIntentResponse(rawResponse: String): ResolvedIntent? {
+        val trimmed = rawResponse.trim()
+        val jsonStart = trimmed.indexOf('{')
+        val jsonEnd = trimmed.lastIndexOf('}')
+        if (jsonStart < 0 || jsonEnd <= jsonStart) return null
+        val jsonStr = trimmed.substring(jsonStart, jsonEnd + 1)
+
+        return runCatching {
+            val json = org.json.JSONObject(jsonStr)
+            val intentStr = json.optString("intent", "").uppercase().trim()
+            if (intentStr == "NULL" || intentStr.isBlank()) return null
+            val intent = AssistantIntent.valueOf(intentStr)
+            val confidence = json.optDouble("confidence", 0.8).toFloat()
+            val reason = json.optString("reason", "LLM reasoning classification")
+            val paramsMap = mutableMapOf<String, String>()
+            val paramsObj = json.optJSONObject("params")
+            if (paramsObj != null) {
+                for (key in paramsObj.keys()) {
+                    paramsMap[key] = paramsObj.optString(key, "")
+                }
+            }
+            ResolvedIntent(
+                intent = intent,
+                confidence = confidence,
+                params = paramsMap,
+                directPlan = null,
+                reason = reason
+            )
+        }.getOrNull()
+    }
 }
 
 private val COMPOUND_SPLIT_REGEX = Regex("\\s+(?:and|then|aur|fir)\\s+")

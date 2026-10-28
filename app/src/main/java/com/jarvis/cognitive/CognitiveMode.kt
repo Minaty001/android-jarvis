@@ -13,5 +13,6 @@ data class CognitiveDecision(
     val reason: String,
     val fastPath: Boolean = false,
     val capabilityId: String? = null,
-    val actionParams: Map<String, String> = emptyMap()
+    val actionParams: Map<String, String> = emptyMap(),
+    val reasoning: String? = null
 )

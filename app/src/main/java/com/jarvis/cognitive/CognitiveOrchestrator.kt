@@ -4,6 +4,8 @@ import android.util.Log
 import com.jarvis.agent.AgentEvent
 import com.jarvis.ai.AssistantIntent
 import com.jarvis.ai.IntentResolver
+import com.jarvis.ai.LlmClient
+import com.jarvis.ai.Message
 import com.jarvis.cognitive.capability.JciCapability
 import com.jarvis.cognitive.capability.JciCapabilityRegistry
 import com.jarvis.cognitive.capability.JciEvidenceLevel
@@ -216,6 +218,82 @@ class CognitiveOrchestrator(
             reason = "Conversational or general knowledge inquiry",
             fastPath = false
         )
+    }
+
+    /**
+     * Inspects the utterance and determines the cognitive mode with full explainability.
+     * Uses fast-path deterministic heuristics, and when ambiguous queries occur,
+     * supports LLM reasoning fallback.
+     */
+    suspend fun inspectModeWithReasoning(
+        utterance: String,
+        llmClient: LlmClient? = null
+    ): CognitiveDecision {
+        val baseDecision = inspectMode(utterance)
+        val reasoningTrace = when (baseDecision.mode) {
+            CognitiveMode.REFUSE -> "Safety invariant blocked request due to dangerous/destructive operation patterns."
+            CognitiveMode.CLARIFY -> "Heuristic detected ambiguous command or missing required arguments: '${baseDecision.reason}'."
+            CognitiveMode.PLAN -> "Multi-step sequence or compound intent identified requiring structured plan execution."
+            CognitiveMode.DIRECT -> {
+                if (baseDecision.fastPath) {
+                    "Deterministic fast-path matched capability '${baseDecision.capabilityId}' with high confidence."
+                } else if (baseDecision.capabilityId != null) {
+                    "Resolved single-intent tool dispatch for '${baseDecision.capabilityId}'."
+                } else {
+                    "Conversational/informational query evaluated for direct answer."
+                }
+            }
+        }
+
+        // If uncertain (default conversational with no capability) and LLM is provided, ask LLM
+        if (baseDecision.capabilityId == null && !baseDecision.fastPath && baseDecision.mode == CognitiveMode.DIRECT && llmClient != null) {
+            val llmDecision = runCatching {
+                val prompt = """
+                    You are the JARVIS Cognitive Mode Selector.
+                    Analyze this user request: "$utterance"
+                    Select the best execution mode:
+                    - DIRECT: single informational answer or simple question
+                    - PLAN: multi-step compound workflow
+                    - CLARIFY: ambiguous request missing parameters
+                    - REFUSE: unsafe, harmful, or prohibited request
+
+                    Return strict JSON only:
+                    {
+                      "mode": "DIRECT|PLAN|CLARIFY|REFUSE",
+                      "confidence": 0.85,
+                      "reason": "Brief reason",
+                      "reasoning": "Step-by-step rationale"
+                    }
+                """.trimIndent()
+                val messages = listOf(
+                    Message("system", prompt),
+                    Message("user", utterance)
+                )
+                val resp = llmClient.chat(messages).getOrNull() ?: return@runCatching null
+                val trimmed = resp.trim()
+                val start = trimmed.indexOf('{')
+                val end = trimmed.lastIndexOf('}')
+                if (start >= 0 && end > start) {
+                    val json = org.json.JSONObject(trimmed.substring(start, end + 1))
+                    val mStr = json.optString("mode", "DIRECT").uppercase()
+                    val m = runCatching { CognitiveMode.valueOf(mStr) }.getOrDefault(CognitiveMode.DIRECT)
+                    val conf = json.optDouble("confidence", 0.85).toFloat()
+                    val r = json.optString("reason", "LLM mode selection")
+                    val rTrace = json.optString("reasoning", r)
+                    CognitiveDecision(
+                        mode = m,
+                        confidence = conf,
+                        reason = r,
+                        fastPath = false,
+                        reasoning = rTrace
+                    )
+                } else null
+            }.getOrNull()
+
+            if (llmDecision != null) return llmDecision
+        }
+
+        return baseDecision.copy(reasoning = reasoningTrace)
     }
 
     /**
