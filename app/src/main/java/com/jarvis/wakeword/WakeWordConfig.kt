@@ -2,12 +2,12 @@ package com.jarvis.wakeword
 
 /** Runtime buffering and energy-gate settings. The model manifest owns the KWS threshold. */
 data class WakeWordConfig(
-    val confirmationWindowCount: Int = 4,
+    val confirmationWindowCount: Int = 2,
     val requiredPositiveWindows: Int = 2,
-    /** Normalized PCM RMS floor; calibrated to 0.00150 to reject ambient indoor noise (0.0004-0.0010 RMS). */
-    val minEnergyRms: Double = 0.00150,
-    /** Consecutive low-energy 80ms frames permitted before accumulated temporal confirmation history is reset (~240ms decay). */
-    val silenceFramesBeforeReset: Int = 3,
+    /** Normalized PCM RMS floor; calibrated to 0.00200 to reject ambient indoor noise (0.0004-0.0012 RMS). */
+    val minEnergyRms: Double = 0.00200,
+    /** Consecutive low-energy 80ms frames permitted before accumulated temporal confirmation history is reset (~160ms decay). */
+    val silenceFramesBeforeReset: Int = 2,
     val inferenceIntervalSamples: Int = 1600,
     val detectionCooldownMs: Long = 1500L
 ) {
@@ -23,22 +23,22 @@ data class WakeWordConfig(
         fun fromSensitivity(sensitivity: String, isLowEnd: Boolean = false): WakeWordConfig {
             val baseConfig = when (sensitivity.trim().uppercase()) {
                 "HIGH" -> WakeWordConfig(
-                    confirmationWindowCount = 4,
+                    confirmationWindowCount = 2,
                     requiredPositiveWindows = 2,
-                    minEnergyRms = 0.00080,
-                    silenceFramesBeforeReset = 3
+                    minEnergyRms = 0.00120,
+                    silenceFramesBeforeReset = 2
                 )
                 "LOW" -> WakeWordConfig(
-                    confirmationWindowCount = 5,
+                    confirmationWindowCount = 3,
                     requiredPositiveWindows = 3,
-                    minEnergyRms = 0.00300,
-                    silenceFramesBeforeReset = 3
+                    minEnergyRms = 0.00350,
+                    silenceFramesBeforeReset = 2
                 )
                 else -> WakeWordConfig( // BALANCED / MEDIUM / DEFAULT
-                    confirmationWindowCount = 4,
+                    confirmationWindowCount = 2,
                     requiredPositiveWindows = 2,
-                    minEnergyRms = 0.00150,
-                    silenceFramesBeforeReset = 3
+                    minEnergyRms = 0.00200,
+                    silenceFramesBeforeReset = 2
                 )
             }
             return if (isLowEnd) {

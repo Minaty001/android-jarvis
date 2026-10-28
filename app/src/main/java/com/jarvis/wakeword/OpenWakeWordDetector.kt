@@ -18,7 +18,13 @@ class OpenWakeWordDetector(
     private val context: Context,
     private val config: WakeWordConfig = WakeWordConfig()
 ) : WakeWordDetector {
-    private data class Head(val phrase: String, val asset: String, val threshold: Float, val interpreter: Interpreter)
+    private data class Head(
+        val phrase: String,
+        val asset: String,
+        val threshold: Float,
+        val interpreter: Interpreter,
+        val confirmation: KwsTemporalConfirmation
+    )
 
     private val rawPcm = ShortArray(RAW_HISTORY_SAMPLES)
     private var rawPcmIndex = 0
@@ -39,7 +45,6 @@ class OpenWakeWordDetector(
     private var realEmbeddingCount = 0
     private var latestEnergyGatePassed: Boolean? = null
     private var consecutiveSilenceFrames = 0
-    private val confirmation = KwsTemporalConfirmation(config.confirmationWindowCount, config.requiredPositiveWindows)
     private var melInputBuffer: FloatBuffer? = null
     private var melOutputBuffer: ByteBuffer? = null
     private var embeddingInputBuffer: FloatBuffer? = null
@@ -75,7 +80,11 @@ class OpenWakeWordDetector(
                 val interpreter = loadInterpreter(asset)
                 try {
                     validateHead(interpreter)
-                    loadedHeads += Head(model.getString("phrase"), asset, threshold, interpreter)
+                    val confirmation = KwsTemporalConfirmation(
+                        windowCount = config.confirmationWindowCount,
+                        requiredPositiveWindows = config.requiredPositiveWindows
+                    )
+                    loadedHeads += Head(model.getString("phrase"), asset, threshold, interpreter, confirmation)
                 } catch (failure: Throwable) {
                     interpreter.close()
                     throw failure
@@ -197,7 +206,7 @@ class OpenWakeWordDetector(
                 if (!energyPassed) {
                     consecutiveSilenceFrames++
                     if (consecutiveSilenceFrames >= config.silenceFramesBeforeReset) {
-                        confirmation.reset()
+                        heads.forEach { it.confirmation.reset() }
                         latestScore = 0f
                         detectedPhrase = null
                     }
@@ -209,23 +218,39 @@ class OpenWakeWordDetector(
         if (!processedFrame || latestEnergyGatePassed == false) return 0f
         if (realEmbeddingCount < FEATURE_WINDOW) return 0f
         val featureInput = flattenLastFeatures() ?: return 0f
-        var bestRatio = 0f
-        var bestPhrase: String? = null
+        var confirmedScore = 0f
+        var confirmedPhrase: String? = null
+        var maxRatio = 0f
+
         for (head in heads) {
             val score = runHead(head.interpreter, featureInput)
             val ratio = score / head.threshold
-            if (ratio > bestRatio) { bestRatio = ratio; bestPhrase = head.phrase }
+            if (ratio > maxRatio) {
+                maxRatio = ratio
+            }
+            if (ratio >= 0.5f) {
+                Log.d(TAG, "openWakeWord candidate: ${head.phrase} score=$score ratio=$ratio (thr=${head.threshold})")
+            }
+            val confirmed = head.confirmation.add(ratio, 1f)
+            if (confirmed >= 1f) {
+                // If multiple heads confirm simultaneously, prioritize multi-word phrase ("Hey Jarvis" > "Jarvis")
+                val isBetter = confirmedPhrase == null ||
+                    (head.phrase == "Hey Jarvis" && confirmedPhrase == "Jarvis") ||
+                    (confirmed > confirmedScore && confirmedPhrase != "Hey Jarvis")
+                if (isBetter) {
+                    confirmedScore = confirmed
+                    confirmedPhrase = head.phrase
+                }
+            }
         }
-        latestScore = bestRatio
-        if (bestRatio >= 0.5f) {
-            Log.d(TAG, "openWakeWord candidate: $bestPhrase ratio=$bestRatio (thr=${heads.firstOrNull { it.phrase == bestPhrase }?.threshold})")
-        }
-        val confirmed = confirmation.add(bestRatio, 1f)
-        detectedPhrase = if (confirmed >= 1f) bestPhrase else null
+        latestScore = maxRatio
+        detectedPhrase = confirmedPhrase
         if (detectedPhrase != null) {
-            Log.i(TAG, "openWakeWord CONFIRMED: phrase='$detectedPhrase' score=$confirmed")
+            Log.i(TAG, "openWakeWord CONFIRMED: phrase='$detectedPhrase' score=$confirmedScore")
+            heads.forEach { it.confirmation.reset() }
+            return confirmedScore
         }
-        return if (detectedPhrase != null) confirmed else 0f
+        return 0f
     }
 
     private fun processChunk() {
@@ -332,7 +357,8 @@ class OpenWakeWordDetector(
             repeat(MEL_WINDOW) { melFrames.addLast(FloatArray(MEL_BINS)) }
             repeat(FEATURE_HISTORY_FRAMES) { embeddingFrames.addLast(FloatArray(EMBEDDING_SIZE)) }
         }
-        latestScore = 0f; detectedPhrase = null; realEmbeddingCount = 0; confirmation.reset()
+        latestScore = 0f; detectedPhrase = null; realEmbeddingCount = 0
+        heads.forEach { it.confirmation.reset() }
         latestEnergyGatePassed = null
         consecutiveSilenceFrames = 0
     }

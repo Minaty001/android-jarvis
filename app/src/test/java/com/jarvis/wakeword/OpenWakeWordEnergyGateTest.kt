@@ -31,31 +31,31 @@ class OpenWakeWordEnergyGateTest {
     @Test
     fun testDefaultConfigCalibratedForMobileMicrophones() {
         val config = WakeWordConfig()
-        assertEquals("Default minEnergyRms should be 0.00150 for ambient room rejection", 0.00150, config.minEnergyRms, 0.00001)
-        assertEquals("Default silenceFramesBeforeReset should be 3 (~240ms decay)", 3, config.silenceFramesBeforeReset)
+        assertEquals("Default minEnergyRms should be 0.00200 for ambient room rejection", 0.00200, config.minEnergyRms, 0.00001)
+        assertEquals("Default silenceFramesBeforeReset should be 2 (~160ms decay)", 2, config.silenceFramesBeforeReset)
         assertEquals("Default detectionCooldownMs should be 1500ms", 1500L, config.detectionCooldownMs)
     }
 
     @Test
     fun testSilenceDecayWindowLogic() {
-        val confirmation = KwsTemporalConfirmation(windowCount = 4, requiredPositiveWindows = 2)
+        val confirmation = KwsTemporalConfirmation(windowCount = 2, requiredPositiveWindows = 2)
         // Simulate speech frame producing a positive confirmation score
         confirmation.add(1.1f, 1.0f)
 
         var consecutiveSilenceFrames = 0
-        val maxSilenceFrames = 3
+        val maxSilenceFrames = 2
 
-        // 2 consecutive silence frames (< 3) should NOT trigger reset
-        for (i in 1..2) {
+        // 1 consecutive silence frame (< 2) should NOT trigger reset
+        for (i in 1..1) {
             consecutiveSilenceFrames++
             val shouldReset = consecutiveSilenceFrames >= maxSilenceFrames
             assertFalse("Brief silence frame ($i) must not reset confirmation", shouldReset)
         }
 
-        // 1 more silence frame reaches threshold (3) -> triggers reset
+        // 1 more silence frame reaches threshold (2) -> triggers reset
         consecutiveSilenceFrames++
         val shouldReset = consecutiveSilenceFrames >= maxSilenceFrames
-        assertTrue("3 consecutive silence frames must trigger reset", shouldReset)
+        assertTrue("2 consecutive silence frames must trigger reset", shouldReset)
         if (shouldReset) {
             confirmation.reset()
         }
