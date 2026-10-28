@@ -32,8 +32,15 @@ class OpenWakeWordDetector(
 
     private val audioChunk = ShortArray(FRAME_SAMPLES)
     private var audioChunkIndex = 0
-    private val melFrames = ArrayDeque<FloatArray>(MEL_HISTORY_FRAMES)
-    private val embeddingFrames = ArrayDeque<FloatArray>(FEATURE_HISTORY_FRAMES)
+
+    // Pre-allocated circular ring buffers to eliminate GC churn in the streaming audio thread
+    private val melFramePool = Array(MEL_HISTORY_FRAMES) { FloatArray(MEL_BINS) }
+    private var melFrameHead = 0
+    private var melFrameCount = 0
+
+    private val embeddingFramePool = Array(FEATURE_HISTORY_FRAMES) { FloatArray(EMBEDDING_SIZE) }
+    private var embeddingFrameHead = 0
+
     private var melInterpreter: Interpreter? = null
     private var embeddingInterpreter: Interpreter? = null
     private var heads: List<Head> = emptyList()
@@ -103,8 +110,11 @@ class OpenWakeWordDetector(
             embeddingOutputBuffer = byteBuffer(embeddingInterpreter!!.getOutputTensor(0).numBytes())
             headInputBuffer = floatBufferElements(FEATURE_WINDOW * EMBEDDING_SIZE)
             headOutputBuffer = byteBuffer(loadedHeads.first().interpreter.getOutputTensor(0).numBytes())
-            repeat(MEL_WINDOW) { melFrames.addLast(FloatArray(MEL_BINS)) }
-            repeat(FEATURE_HISTORY_FRAMES) { embeddingFrames.addLast(FloatArray(EMBEDDING_SIZE)) }
+            melFramePool.forEach { it.fill(0f) }
+            melFrameHead = 0
+            melFrameCount = 0
+            embeddingFramePool.forEach { it.fill(0f) }
+            embeddingFrameHead = 0
             heads = loadedHeads
             available = true
             Log.i(TAG, "openWakeWord loaded heads=${heads.map { it.phrase }}")
@@ -127,6 +137,7 @@ class OpenWakeWordDetector(
         return Interpreter(mapped, Interpreter.Options().apply {
             setNumThreads(threadCount)
             setUseNNAPI(false)
+            setUseXNNPACK(true)
         })
     }
 
@@ -200,7 +211,6 @@ class OpenWakeWordDetector(
                 val rms = calculateRms(audioChunk)
                 val energyPassed = rms >= config.minEnergyRms
                 latestEnergyGatePassed = energyPassed
-                processChunk()
                 audioChunkIndex = 0
                 processedFrame = true
                 if (!energyPassed) {
@@ -210,8 +220,14 @@ class OpenWakeWordDetector(
                         latestScore = 0f
                         detectedPhrase = null
                     }
+                    // When room silence has saturated the history buffer (>= 16 frames = 1.28s),
+                    // skip redundant TFLite forward passes on pure silence to preserve CPU & battery
+                    if (consecutiveSilenceFrames <= FEATURE_WINDOW) {
+                        processChunk()
+                    }
                 } else {
                     consecutiveSilenceFrames = 0
+                    processChunk()
                 }
             }
         }
@@ -279,35 +295,49 @@ class OpenWakeWordDetector(
         melOutput.rewind()
         val shape = melTensor.shape()
         val frameCount = shape[shape.size - 2]
-        val melRows = Array(frameCount) { FloatArray(MEL_BINS) }
-        for (row in 0 until frameCount) for (column in 0 until MEL_BINS) {
-            melRows[row][column] = melOutput.float / 10f + 2f
+
+        // Fast zero-allocation insertion into circular mel pool
+        for (row in 0 until frameCount) {
+            val target = melFramePool[melFrameHead]
+            for (column in 0 until MEL_BINS) {
+                target[column] = melOutput.float / 10f + 2f
+            }
+            melFrameHead = (melFrameHead + 1) % MEL_HISTORY_FRAMES
+            melFrameCount = minOf(MEL_HISTORY_FRAMES, melFrameCount + 1)
         }
-        melRows.forEach {
-            if (melFrames.size == MEL_HISTORY_FRAMES) melFrames.removeFirst()
-            melFrames.addLast(it)
-        }
-        if (melFrames.size < MEL_WINDOW) return
+
+        if (melFrameCount < MEL_WINDOW) return
         val embeddingInput = embeddingInputBuffer ?: return
         embeddingInput.clear()
-        val melSkip = melFrames.size - MEL_WINDOW
-        melFrames.forEachIndexed { index, row -> if (index >= melSkip) row.forEach(embeddingInput::put) }
+
+        // Vectorized bulk copy of 76 mel frames into direct embedding buffer (zero allocations)
+        for (i in 0 until MEL_WINDOW) {
+            val idx = (melFrameHead - MEL_WINDOW + i + MEL_HISTORY_FRAMES) % MEL_HISTORY_FRAMES
+            embeddingInput.put(melFramePool[idx])
+        }
         embeddingInput.rewind()
         val embedded = embeddingOutputBuffer ?: return
         embedded.clear()
         embedding.run(embeddingInput, embedded)
         embedded.rewind()
-        val frame = FloatArray(EMBEDDING_SIZE) { embedded.float }
-        if (embeddingFrames.size == FEATURE_HISTORY_FRAMES) embeddingFrames.removeFirst()
-        embeddingFrames.addLast(frame)
+
+        // Fast zero-allocation insertion into circular feature embedding pool
+        val targetFrame = embeddingFramePool[embeddingFrameHead]
+        for (i in 0 until EMBEDDING_SIZE) {
+            targetFrame[i] = embedded.float
+        }
+        embeddingFrameHead = (embeddingFrameHead + 1) % FEATURE_HISTORY_FRAMES
         realEmbeddingCount = minOf(FEATURE_HISTORY_FRAMES, realEmbeddingCount + 1)
     }
 
     private fun flattenLastFeatures(): FloatBuffer? {
         val buffer = headInputBuffer ?: return null
         buffer.clear()
-        val skip = embeddingFrames.size - FEATURE_WINDOW
-        embeddingFrames.forEachIndexed { index, frame -> if (index >= skip) frame.forEach(buffer::put) }
+        // Vectorized bulk copy of 16 embedding frames into direct head input buffer (zero allocations)
+        for (i in 0 until FEATURE_WINDOW) {
+            val idx = (embeddingFrameHead - FEATURE_WINDOW + i + FEATURE_HISTORY_FRAMES) % FEATURE_HISTORY_FRAMES
+            buffer.put(embeddingFramePool[idx])
+        }
         buffer.rewind()
         return buffer
     }
@@ -352,11 +382,11 @@ class OpenWakeWordDetector(
         rawPcmFilled = false
         audioChunk.fill(0)
         audioChunkIndex = 0
-        melFrames.clear(); embeddingFrames.clear()
-        if (available) {
-            repeat(MEL_WINDOW) { melFrames.addLast(FloatArray(MEL_BINS)) }
-            repeat(FEATURE_HISTORY_FRAMES) { embeddingFrames.addLast(FloatArray(EMBEDDING_SIZE)) }
-        }
+        melFramePool.forEach { it.fill(0f) }
+        melFrameHead = 0
+        melFrameCount = 0
+        embeddingFramePool.forEach { it.fill(0f) }
+        embeddingFrameHead = 0
         latestScore = 0f; detectedPhrase = null; realEmbeddingCount = 0
         heads.forEach { it.confirmation.reset() }
         latestEnergyGatePassed = null
@@ -364,12 +394,12 @@ class OpenWakeWordDetector(
     }
 
     private fun calculateRms(samples: ShortArray): Double {
-        var sum = 0.0
+        var sumSquares = 0L
         for (i in 0 until FRAME_SAMPLES) {
-            val norm = samples[i].toDouble() / 32768.0
-            sum += norm * norm
+            val s = samples[i].toLong()
+            sumSquares += s * s
         }
-        return kotlin.math.sqrt(sum / FRAME_SAMPLES)
+        return kotlin.math.sqrt(sumSquares.toDouble() / FRAME_SAMPLES) / 32768.0
     }
 
     @Synchronized override fun close() {

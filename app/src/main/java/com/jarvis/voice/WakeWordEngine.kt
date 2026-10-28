@@ -272,12 +272,27 @@ class WakeWordEngine(
     }
 
     private fun appendRecentAudio(samples: ShortArray) {
-        samples.forEach { sample ->
-            recentAudio[recentAudioPosition] = sample
-            recentAudioPosition = (recentAudioPosition + 1) % recentAudio.size
-            recentAudioCount = minOf(recentAudioCount + 1, recentAudio.size)
-            totalAudioSamples++
+        val count = samples.size
+        if (count == 0) return
+        val capacity = recentAudio.size
+        if (count >= capacity) {
+            System.arraycopy(samples, count - capacity, recentAudio, 0, capacity)
+            recentAudioPosition = 0
+            recentAudioCount = capacity
+        } else {
+            val spaceAtEnd = capacity - recentAudioPosition
+            if (count <= spaceAtEnd) {
+                System.arraycopy(samples, 0, recentAudio, recentAudioPosition, count)
+                recentAudioPosition = (recentAudioPosition + count) % capacity
+            } else {
+                System.arraycopy(samples, 0, recentAudio, recentAudioPosition, spaceAtEnd)
+                val remaining = count - spaceAtEnd
+                System.arraycopy(samples, spaceAtEnd, recentAudio, 0, remaining)
+                recentAudioPosition = remaining
+            }
+            recentAudioCount = minOf(recentAudioCount + count, capacity)
         }
+        totalAudioSamples += count
     }
 
     private fun recentAudioWindow(): ShortArray {
@@ -293,8 +308,12 @@ class WakeWordEngine(
     }
 
     private fun calculateRms(samples: ShortArray): Double {
-        var sum = 0.0
-        samples.forEach { val normalized = it.toDouble() / 32768.0; sum += normalized * normalized }
-        return sqrt(sum / samples.size)
+        if (samples.isEmpty()) return 0.0
+        var sumSquares = 0L
+        for (i in samples.indices) {
+            val s = samples[i].toLong()
+            sumSquares += s * s
+        }
+        return sqrt(sumSquares.toDouble() / samples.size) / 32768.0
     }
 }
