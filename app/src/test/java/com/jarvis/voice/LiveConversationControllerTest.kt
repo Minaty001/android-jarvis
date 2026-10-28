@@ -33,6 +33,7 @@ class LiveConversationControllerTest {
             onRmsChanged: ((Float) -> Unit)?
         ) {}
         override suspend fun pushAudio(samples: ShortArray) {}
+        override suspend fun cancelListening() {}
         override suspend fun stopListening() {}
         override suspend fun stop() {}
     }

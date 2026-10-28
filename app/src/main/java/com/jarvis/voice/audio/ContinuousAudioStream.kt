@@ -354,20 +354,24 @@ class ContinuousAudioStream(
 
     /**
      * Reclaims the AudioRecord hardware after [suspendHardware].
+     * Includes a retry loop to gracefully handle audio server teardown latency
+     * from previous SpeechRecognizer sessions.
      */
     @Synchronized
     fun resumeHardware(): Boolean {
         if (!isRunning.get() || !isSuspended.get()) return true
-        val record = createAndStartAudioRecord()
-        audioRecord = record
-        if (record != null) {
-            isSuspended.set(false)
-            Log.i(TAG, "ContinuousAudioStream hardware resumed successfully")
-            return true
-        } else {
-            Log.e(TAG, "ContinuousAudioStream hardware resume failed: AudioRecord could not be initialized")
-            return false
+        for (attempt in 1..5) {
+            val record = createAndStartAudioRecord()
+            if (record != null) {
+                audioRecord = record
+                isSuspended.set(false)
+                Log.i(TAG, "ContinuousAudioStream hardware resumed successfully (attempt $attempt)")
+                return true
+            }
+            try { Thread.sleep(60) } catch (_: InterruptedException) { break }
         }
+        Log.e(TAG, "ContinuousAudioStream hardware resume failed: AudioRecord could not be initialized after retries")
+        return false
     }
 
     @Synchronized

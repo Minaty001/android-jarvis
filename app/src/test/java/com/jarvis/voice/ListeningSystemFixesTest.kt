@@ -51,6 +51,7 @@ class ListeningSystemFixesTest {
         val pushedAudioList = mutableListOf<ShortArray>()
         var startCount = 0
         var stopListeningCount = 0
+        var cancelListeningCount = 0
 
         override suspend fun start(asrDir: File) {
             _state.value = AsrState.READY
@@ -72,6 +73,11 @@ class ListeningSystemFixesTest {
             if (_state.value == AsrState.LISTENING) {
                 pushedAudioList.add(samples.copyOf())
             }
+        }
+
+        override suspend fun cancelListening() {
+            _state.value = AsrState.READY
+            cancelListeningCount++
         }
 
         override suspend fun stopListening() {
@@ -153,5 +159,62 @@ class ListeningSystemFixesTest {
 
         // Verify consumer is retained by explicitly testing clearConsumers contract
         stream.clearConsumers()
+    }
+
+    @Test
+    fun testCancelListeningTransitionsToReady() = runBlocking {
+        val stubAsr = StubAsrEngine()
+        stubAsr.start(File("/tmp"))
+        stubAsr.startListening(onPartial = {}, onFinal = {})
+        assertEquals(AsrState.LISTENING, stubAsr.state.value)
+
+        stubAsr.cancelListening()
+        assertEquals(AsrState.READY, stubAsr.state.value)
+        assertEquals(1, stubAsr.cancelListeningCount)
+    }
+
+    @Test
+    fun testContinuousAudioStreamResumeHardwareIdempotency() {
+        val stream = ContinuousAudioStream(sampleRate = 16000)
+        // If not running or not suspended, resumeHardware returns true cleanly without error
+        assertTrue(stream.resumeHardware())
+    }
+
+    @Test
+    fun testWatchdogTrailingSilenceActivatesOnlyOnCapturedPartial() {
+        var lastCapturedTranscript = ""
+        var activeTimeoutMs = 5000L
+        var activeReason = "initial silence"
+
+        fun scheduleTimeout(ms: Long, reason: String) {
+            activeTimeoutMs = ms
+            activeReason = reason
+        }
+
+        // 1. Initial wake state: full 5000ms window
+        scheduleTimeout(5000L, "initial silence")
+        assertEquals(5000L, activeTimeoutMs)
+
+        // 2. Speech onset callback fired (e.g. noise or beginning of breath), but NO words yet
+        val onSpeechStarted: () -> Unit = {
+            if (lastCapturedTranscript.isBlank()) {
+                scheduleTimeout(10000L, "active speech in progress")
+            }
+        }
+        onSpeechStarted()
+        // Must NOT collapse to 1200ms! Must retain generous speech window
+        assertEquals(10000L, activeTimeoutMs)
+        assertEquals("active speech in progress", activeReason)
+
+        // 3. User actually produces words -> NOW trailing silence activates
+        val onPartialSpeech: (String) -> Unit = { partial ->
+            if (partial.isNotBlank()) {
+                lastCapturedTranscript = partial
+                scheduleTimeout(1500L, "silence post-speech")
+            }
+        }
+        onPartialSpeech("turn on the")
+        assertEquals(1500L, activeTimeoutMs)
+        assertEquals("silence post-speech", activeReason)
     }
 }

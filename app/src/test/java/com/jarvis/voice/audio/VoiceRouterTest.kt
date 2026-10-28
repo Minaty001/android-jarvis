@@ -43,6 +43,7 @@ class VoiceRouterTest {
         override suspend fun pushAudio(samples: ShortArray) {
             pushedPcm++
         }
+        override suspend fun cancelListening() {}
         override suspend fun stopListening() {}
         override suspend fun stop() {}
     }

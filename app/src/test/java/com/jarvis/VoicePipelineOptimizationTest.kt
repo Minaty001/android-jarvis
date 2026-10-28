@@ -35,6 +35,10 @@ class VoicePipelineOptimizationTest {
 
         override suspend fun pushAudio(samples: ShortArray) {}
 
+        override suspend fun cancelListening() {
+            _state.value = AsrState.READY
+        }
+
         override suspend fun stopListening() {
             _state.value = AsrState.READY
         }

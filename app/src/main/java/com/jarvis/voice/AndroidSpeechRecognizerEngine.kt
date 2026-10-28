@@ -125,6 +125,9 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
                     return@post
                 }
 
+                try {
+                    recognizer.cancel()
+                } catch (_: Exception) {}
                 recognizer.startListening(buildRecognizerIntent())
                 _state.value = AsrState.LISTENING
                 Log.i(TAG, "SpeechRecognizer (session $session) started listening for command (reused instance)")
@@ -133,6 +136,7 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
                 recreateRecognizer()
                 try {
                     val recognizer = ensureSpeechRecognizer()
+                    try { recognizer?.cancel() } catch (_: Exception) {}
                     recognizer?.startListening(buildRecognizerIntent())
                     _state.value = AsrState.LISTENING
                 } catch (retryEx: Exception) {
@@ -145,6 +149,17 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
 
     open suspend fun pushAudio(samples: ShortArray) {
         // System SpeechRecognizer captures microphone directly
+    }
+
+    open suspend fun cancelListening() {
+        mainHandler.post {
+            try {
+                speechRecognizer?.cancel()
+                _state.value = AsrState.READY
+            } catch (e: Exception) {
+                Log.e(TAG, "Error cancelling SpeechRecognizer", e)
+            }
+        }
     }
 
     open suspend fun stopListening() {
@@ -189,11 +204,6 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
             // rmsdB typically ranges between -2 dB (ambient silence) to +10 dB (loud speech)
             val normalized = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f)
             rmsCallback?.invoke(normalized)
-
-            if (rmsdB > 3.0f && !speechStartedFired) {
-                speechStartedFired = true
-                speechStartedCallback?.invoke()
-            }
         }
 
         override fun onBufferReceived(buffer: ByteArray?) {}
@@ -214,7 +224,9 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
             }
             _state.value = AsrState.READY
 
-            if (error == SpeechRecognizer.ERROR_CLIENT || error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY) {
+            if (error == SpeechRecognizer.ERROR_CLIENT ||
+                error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY ||
+                error == SpeechRecognizer.ERROR_AUDIO) {
                 recreateRecognizer()
             }
 

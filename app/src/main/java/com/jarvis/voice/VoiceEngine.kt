@@ -479,29 +479,31 @@ class VoiceEngine(
                     voiceRouter.mute()
                     speakUtterance("Yes boss")
                     routeToAppropriateAsr(16000 * 1)
-                    acousticFeedbackEngine.playListeningTone()
+                    if (!asrEngine.usesRawAudio) delay(100)
                 }
                 "BOTH" -> {
                     acousticFeedbackEngine.playWakeTone()
+                    delay(100)
                     _status.value = _status.value.copy(statusMessage = "Yes boss")
                     voiceRouter.mute()
                     speakUtterance("Yes boss")
                     routeToAppropriateAsr(16000 * 1)
-                    acousticFeedbackEngine.playListeningTone()
+                    if (!asrEngine.usesRawAudio) delay(100)
                 }
                 "SILENT" -> {
                     routeToAppropriateAsr(16000 * 1)
+                    if (!asrEngine.usesRawAudio) delay(100)
                 }
                 else -> {
-                    // Default: "CHIME" — ultra-low latency earcon (<120ms total)
+                    // Default: "CHIME" — clean earcon (<100ms) with AudioFlinger settling
                     acousticFeedbackEngine.playWakeTone()
                     routeToAppropriateAsr(16000 * 1)
-                    acousticFeedbackEngine.playListeningTone()
+                    delay(120)
                 }
             }
         } else {
             routeToAppropriateAsr(16000 * 1)
-            acousticFeedbackEngine.playListeningTone()
+            if (!asrEngine.usesRawAudio) delay(80)
         }
 
         // 2. Initialize command finalization gate for this listening session
@@ -538,15 +540,38 @@ class VoiceEngine(
             }
         }
 
-        // Wire VAD events into VoiceRouter callbacks
-        voiceRouter.onSpeechActivity = { scheduleListeningTimeout(1200L, "silence post-speech") }
+        // Watchdog callbacks:
+        // onSpeechStarted: Speech onset recognized. Grant 10s active duration without cutting off prematurely.
+        val onSpeechStarted: () -> Unit = {
+            _status.value = _status.value.copy(statusMessage = "Hearing speech...")
+            if (lastCapturedTranscript.isBlank()) {
+                scheduleListeningTimeout(10000L, "active speech in progress")
+            }
+        }
+
+        // onPartialSpeech: Non-blank words detected! Set 1500ms trailing post-speech silence window.
+        val onPartialSpeech: (String) -> Unit = { partial ->
+            if (partial.isNotBlank()) {
+                lastCapturedTranscript = partial
+                _status.value = _status.value.copy(
+                    partialTranscript = partial,
+                    statusMessage = if (isFollowUp) "Listening... (say 'bye' to finish)" else "Listening..."
+                )
+                scheduleListeningTimeout(1500L, "silence post-speech")
+            }
+        }
+
+        // Wire VAD events into VoiceRouter callbacks (for raw-audio engines)
+        voiceRouter.onSpeechActivity = {
+            if (lastCapturedTranscript.isNotBlank()) {
+                scheduleListeningTimeout(1500L, "silence post-speech")
+            }
+        }
         voiceRouter.onSpeechEnd = {
             if (asrEngine.usesRawAudio) {
                 ensureActiveScope().launch { onSpeechEnded() }
             }
         }
-
-        val onSpeechActivity: () -> Unit = { scheduleListeningTimeout(1200L, "silence post-speech") }
 
         fun handleAsrEmptyOrError(code: Int, message: String) {
             if (commandFinalizationGate.get()) return
@@ -568,8 +593,8 @@ class VoiceEngine(
                 ensureActiveScope().launch {
                     delay(200)
                     if (!commandFinalizationGate.get() && conversationManager.currentStateValue == VoiceState.LISTENING) {
-                        launchAsrListen(onSpeechActivity, ::handleAsrEmptyOrError,
-                            { p -> if (p.isNotBlank()) lastCapturedTranscript = p }, { lastCapturedTranscript }) { t ->
+                        launchAsrListen(onSpeechStarted, ::handleAsrEmptyOrError,
+                            onPartialSpeech, { lastCapturedTranscript }) { t ->
                             if (commandFinalizationGate.compareAndSet(false, true)) {
                                 listeningTimeoutJob?.cancel()
                                 ensureActiveScope().launch { handleRecognizedTranscript(t) }
@@ -608,8 +633,8 @@ class VoiceEngine(
             statusMessage = if (isFollowUp) "Listening... (say 'bye' to finish)" else "Listening to command..."
         )
 
-        launchAsrListen(onSpeechActivity, ::handleAsrEmptyOrError,
-            { p -> if (p.isNotBlank()) lastCapturedTranscript = p }, { lastCapturedTranscript }) { t ->
+        launchAsrListen(onSpeechStarted, ::handleAsrEmptyOrError,
+            onPartialSpeech, { lastCapturedTranscript }) { t ->
             if (commandFinalizationGate.compareAndSet(false, true)) {
                 listeningTimeoutJob?.cancel()
                 ensureActiveScope().launch { handleRecognizedTranscript(t) }
@@ -624,20 +649,16 @@ class VoiceEngine(
 
     /** Deduplication helper — single place that calls asrEngine.startListening. */
     private suspend fun launchAsrListen(
-        onSpeechActivity: () -> Unit,
+        onSpeechStarted: () -> Unit,
         onEmptyOrError: (Int, String) -> Unit,
         capturePartial: (String) -> Unit,
         getLastPartial: () -> String,
         onFinalHandled: (String) -> Unit
     ) {
         asrEngine.startListening(
-            onSpeechStarted = {
-                onSpeechActivity()
-            },
+            onSpeechStarted = onSpeechStarted,
             onPartial = { partial ->
                 capturePartial(partial)
-                onSpeechActivity()
-                _status.value = _status.value.copy(partialTranscript = partial)
             },
             onFinal = { finalTranscript ->
                 val transcript = finalTranscript.trim().ifBlank { getLastPartial().trim() }
@@ -712,7 +733,7 @@ class VoiceEngine(
             listeningTimeoutJob?.cancel()
         }
         listeningTimeoutJob = null
-        asrEngine.stopListening()
+        asrEngine.cancelListening()
     }
 
     private suspend fun startWakeSession() {
