@@ -35,6 +35,7 @@ exports/
 release-export/
 /release/
 release/
+wakeword_live.log
 
 # Understand-Anything transient files
 .ua/intermediate/

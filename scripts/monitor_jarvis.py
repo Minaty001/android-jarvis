@@ -45,6 +45,9 @@ BANNER = f"""
 """
 
 TAG_FILTERS = [
+    "OpenWakeWord",
+    "WakeWordEngine",
+    "ContinuousAudioStream",
     "VoicePipeline",
     "VoiceEngine",
     "AndroidSpeechEngine",
