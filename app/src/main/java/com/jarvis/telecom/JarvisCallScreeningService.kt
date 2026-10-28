@@ -7,6 +7,63 @@ import android.telecom.CallScreeningService
 import android.util.Log
 import androidx.annotation.RequiresApi
 
+data class CallSpamScore(
+    val isSpam: Boolean,
+    val confidence: Float,
+    val reason: String
+)
+
+class CallSpamScorer {
+    fun scoreCall(rawNumber: String, isContactKnown: Boolean): CallSpamScore {
+        if (isContactKnown) {
+            return CallSpamScore(
+                isSpam = false,
+                confidence = 0.99f,
+                reason = "Caller is in user contacts"
+            )
+        }
+
+        val clean = rawNumber.filter { it.isDigit() }
+        if (clean.isBlank()) {
+            return CallSpamScore(
+                isSpam = false,
+                confidence = 0.5f,
+                reason = "Unknown or private caller number"
+            )
+        }
+
+        if (clean.startsWith("1800") && clean.length >= 10) {
+            return CallSpamScore(
+                isSpam = false,
+                confidence = 0.85f,
+                reason = "Recognized toll-free service number"
+            )
+        }
+
+        if (clean.startsWith("140") && clean.length == 10) {
+            return CallSpamScore(
+                isSpam = true,
+                confidence = 0.95f,
+                reason = "Matches 140 telemarketing prefix regulation"
+            )
+        }
+
+        if (clean.length == 10 && clean.toSet().size <= 2) {
+            return CallSpamScore(
+                isSpam = true,
+                confidence = 0.92f,
+                reason = "Repetitive spoofed digit pattern detected"
+            )
+        }
+
+        return CallSpamScore(
+            isSpam = false,
+            confidence = 0.60f,
+            reason = "Standard non-contact incoming number"
+        )
+    }
+}
+
 @RequiresApi(Build.VERSION_CODES.Q)
 class JarvisCallScreeningService : CallScreeningService() {
 
@@ -15,6 +72,8 @@ class JarvisCallScreeningService : CallScreeningService() {
         @Volatile
         var isSpamFilteringEnabled: Boolean = true
     }
+
+    private val spamScorer = CallSpamScorer()
 
     override fun onScreenCall(callDetails: Call.Details) {
         val handle = callDetails.handle
@@ -32,12 +91,13 @@ class JarvisCallScreeningService : CallScreeningService() {
         val contact = if (rawNumber.isNotBlank()) contactResolver.resolveContact(rawNumber) else null
         val callerName = contact?.name ?: rawNumber.ifBlank { "Unknown Caller" }
 
-        val isSpam = isSpamFilteringEnabled && isKnownSpamPattern(rawNumber)
+        val spamScore = spamScorer.scoreCall(rawNumber, isContactKnown = contact != null)
+        val isSpam = isSpamFilteringEnabled && spamScore.isSpam
 
         val responseBuilder = CallResponse.Builder()
 
         if (isSpam) {
-            Log.w(TAG, "Detected SPAM call from: $rawNumber. Silencing and rejecting.")
+            Log.w(TAG, "Detected SPAM call from: $rawNumber (${spamScore.reason}, confidence=${spamScore.confidence}). Silencing and rejecting.")
             responseBuilder
                 .setDisallowCall(true)
                 .setRejectCall(true)
@@ -63,11 +123,6 @@ class JarvisCallScreeningService : CallScreeningService() {
     }
 
     private fun isKnownSpamPattern(number: String): Boolean {
-        val clean = number.filter { it.isDigit() }
-        // Example spam heuristics: toll-free robocalls, repetitive digits, or 140-series telemarketing numbers in India
-        if (clean.startsWith("140") && clean.length == 10) return true
-        if (clean.startsWith("1800") && clean.length >= 10) return false // legitimate toll-free
-        if (clean.length == 10 && clean.toSet().size <= 2) return true // fake numbers like 9999999999
-        return false
+        return spamScorer.scoreCall(number, isContactKnown = false).isSpam
     }
 }

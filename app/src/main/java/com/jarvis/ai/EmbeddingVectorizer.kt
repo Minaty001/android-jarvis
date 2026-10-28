@@ -4,6 +4,13 @@ import java.util.Locale
 import kotlin.math.sqrt
 
 /**
+ * Pluggable interface for semantic or learned text embeddings (e.g., ONNX / TFLite / LLM).
+ */
+interface SemanticEncoder {
+    fun embedText(text: String): FloatArray?
+}
+
+/**
  * Local, deterministic dense embeddings computed from character n-grams.
  *
  * No embedding API is required: a fixed random projection of hashed tokens
@@ -12,9 +19,14 @@ import kotlin.math.sqrt
  * Not semantic in the LLM sense, so callers treat missing cosine signal as
  * "no match" and fail closed to keyword retrieval.
  */
-class EmbeddingVectorizer(private val dims: Int = 256) {
+class EmbeddingVectorizer(
+    private val dims: Int = 256,
+    private val semanticEncoder: SemanticEncoder? = null
+) {
 
     fun embed(text: String): FloatArray {
+        semanticEncoder?.embedText(text)?.let { return it }
+
         val vec = FloatArray(dims)
         for (word in words(text)) {
             for (piece in pieces(word)) {

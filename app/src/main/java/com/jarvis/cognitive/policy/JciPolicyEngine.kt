@@ -7,7 +7,7 @@ import com.jarvis.cognitive.capability.JciRiskLevel
 import java.util.concurrent.ConcurrentHashMap
 
 data class PolicyContext(
-    val hour: Int = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY),
+    val hour: Int = 12,
     val userTrustScore: Float = 0.5f,
     val confirmedInvocationCount: Int = 0,
     val ambientState: String? = null,

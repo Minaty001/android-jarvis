@@ -20,8 +20,51 @@ data class SoundClassificationResult(
     val confidence: Float,
     val dominantFrequencyHz: Float = 0f,
     val energyRatio: Float = 0f,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val explanation: String = ""
 )
+
+class TemporalSoundSmoother(private val windowFrames: Int = 5) {
+    private val history = java.util.ArrayDeque<SoundClassificationResult>(windowFrames)
+
+    @Synchronized
+    fun reset() {
+        history.clear()
+    }
+
+    @Synchronized
+    fun smooth(latest: SoundClassificationResult): SoundClassificationResult {
+        history.addLast(latest)
+        if (history.size > windowFrames) {
+            history.removeFirst()
+        }
+
+        val nonNone = history.filter { it.category != SoundCategory.NONE }
+        if (nonNone.isEmpty()) {
+            return latest.copy(explanation = "Ambient noise / speech baseline")
+        }
+
+        val dominantGroup = nonNone.groupBy { it.category }.maxByOrNull { it.value.size }
+            ?: return latest
+
+        val dominantCategory = dominantGroup.key
+        val count = dominantGroup.value.size
+        val avgConfidence = dominantGroup.value.map { it.confidence }.average().toFloat()
+
+        val finalCategory = if (count >= 2) dominantCategory else SoundCategory.NONE
+        val explanation = if (finalCategory != SoundCategory.NONE) {
+            "Temporal confirmation: $count/${history.size} frames confirmed $finalCategory (avg confidence: ${"%.2f".format(avgConfidence)})"
+        } else {
+            "Transient anomaly discarded; awaiting multi-frame confirmation"
+        }
+
+        return latest.copy(
+            category = finalCategory,
+            confidence = if (finalCategory != SoundCategory.NONE) avgConfidence else latest.confidence,
+            explanation = explanation
+        )
+    }
+}
 
 /**
  * AmbientSoundClassifier
