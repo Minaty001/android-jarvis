@@ -6,6 +6,14 @@ import com.jarvis.cognitive.capability.JciParamType
 import com.jarvis.cognitive.capability.JciRiskLevel
 import java.util.concurrent.ConcurrentHashMap
 
+data class PolicyContext(
+    val hour: Int = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY),
+    val userTrustScore: Float = 0.5f,
+    val confirmedInvocationCount: Int = 0,
+    val ambientState: String? = null,
+    val isOwnerVoiceVerified: Boolean = false
+)
+
 data class JciPolicyDecision(
     val allowed: Boolean,
     val requiresConfirmation: Boolean = false,
@@ -55,6 +63,20 @@ class JciPolicyEngine(
         params: Map<String, String> = emptyMap(),
         userConfirmed: Boolean = false,
         isExecutionDispatch: Boolean = true
+    ): JciPolicyDecision = evaluateCapabilityWithReasoning(
+        capability = capability,
+        params = params,
+        userConfirmed = userConfirmed,
+        isExecutionDispatch = isExecutionDispatch,
+        context = PolicyContext()
+    )
+
+    fun evaluateCapabilityWithReasoning(
+        capability: JciCapability,
+        params: Map<String, String> = emptyMap(),
+        userConfirmed: Boolean = false,
+        isExecutionDispatch: Boolean = true,
+        context: PolicyContext = PolicyContext()
     ): JciPolicyDecision {
         val capId = capability.id
 
@@ -77,13 +99,24 @@ class JciPolicyEngine(
             }
         }
 
-        // 4. Argument validation
+        // 4. Night-hours protection for high-risk actions without verified owner voice
+        val isNightHours = context.hour >= 22 || context.hour < 7
+        if (isNightHours && capability.riskLevel == JciRiskLevel.HIGH && !context.isOwnerVoiceVerified && !userConfirmed) {
+            return JciPolicyDecision.requireConfirmation("High-risk action '${capability.id}' requires owner voice verification during night hours (22:00-07:00).")
+        }
+
+        // 5. In-car driving mode safety gating
+        if (context.ambientState.equals("DRIVING", ignoreCase = true) && capability.riskLevel == JciRiskLevel.HIGH && !userConfirmed) {
+            return JciPolicyDecision.requireConfirmation("High-risk action '${capability.id}' requires explicit confirmation while driving for road safety.")
+        }
+
+        // 6. Argument validation
         val argValidation = validateArguments(capability, params)
         if (!argValidation.allowed) {
             return argValidation
         }
 
-        // 5. Rate limiting & Deduplication (enforced only during active execution dispatch)
+        // 7. Rate limiting & Deduplication (enforced only during active execution dispatch)
         if (isExecutionDispatch) {
             val rateLimitDecision = checkRateLimits(capability, params)
             if (!rateLimitDecision.allowed) {
@@ -91,14 +124,20 @@ class JciPolicyEngine(
             }
         }
 
-        // 6. High risk gating (model CANNOT bypass)
+        // 8. High risk gating with adaptive user trust history
         if (capability.riskLevel == JciRiskLevel.HIGH) {
-            if (!userConfirmed) {
-                return JciPolicyDecision.requireConfirmation("High-risk action '${capability.id}' requires explicit user confirmation.")
+            if (userConfirmed) {
+                if (isExecutionDispatch) recordInvocation(capability, params)
+                return JciPolicyDecision.allow("High-risk action '${capability.id}' confirmed by user.")
             }
+            if (context.confirmedInvocationCount >= 10 && context.userTrustScore >= 0.9f) {
+                if (isExecutionDispatch) recordInvocation(capability, params)
+                return JciPolicyDecision.allow("Action '${capability.id}' approved based on trusted user history (${context.confirmedInvocationCount} prior confirmations).")
+            }
+            return JciPolicyDecision.requireConfirmation("High-risk action '${capability.id}' requires explicit user confirmation.")
         }
 
-        // 7. Medium risk gating (optional strict mode)
+        // 9. Medium risk gating (optional strict mode)
         if (strictMediumRisk && capability.riskLevel == JciRiskLevel.MEDIUM && !userConfirmed) {
             return JciPolicyDecision.requireConfirmation("Medium-risk action '${capability.id}' requires confirmation in strict mode.")
         }

@@ -13,6 +13,11 @@ enum class ContextNeed {
     DEVICE_STATE
 }
 
+data class ContextRoutingResult(
+    val needs: Set<ContextNeed>,
+    val rationale: String
+)
+
 class AgentContextRouter(
     private val memoryPipeline: AugmentedMemoryPipeline? = null,
     private val ragInjector: com.jarvis.rag.RagContextInjector? = null,
@@ -21,25 +26,29 @@ class AgentContextRouter(
     var activeSessionId: String = "default"
     fun activeAppSession(): String? = stateProvider?.snapshot()?.activeAppSession
 
-    fun routeNeeds(goal: String): Set<ContextNeed> {
+    fun routeNeeds(goal: String): Set<ContextNeed> = routeNeedsWithReasoning(goal).needs
+
+    fun routeNeedsWithReasoning(goal: String): ContextRoutingResult {
         val lower = goal.trim().lowercase(Locale.ROOT)
         val needs = mutableSetOf<ContextNeed>()
+        val reasons = mutableListOf<String>()
 
         // 1. Explicit memory references
         if (lower.contains("favorite") || lower.contains("favourite") || lower.contains("mera") ||
             lower.contains("yaad") || lower.contains("preference") || lower.contains("remember") ||
-            lower.contains("badiya") || lower.contains("mujhe pasand")
+            lower.contains("badiya") || lower.contains("mujhe pasand") || lower.contains("usual") ||
+            lower.contains("preferred")
         ) {
             needs.add(ContextNeed.MEMORY)
+            reasons.add("User preference and personal memory references detected")
         }
 
-        // 2. Previous context / references ("wahi", "again", "phir se", "usko", "chat", "history", "previous", "baat", "pehle")
-        if (lower.contains("wahi") || lower.contains("again") || lower.contains("phir") ||
-            lower.contains("it") || lower.contains("that song") || lower.contains("last") ||
-            lower.contains("chat") || lower.contains("chats") || lower.contains("history") ||
-            lower.contains("previous") || lower.contains("baat") || lower.contains("pehle") || lower.contains("purani")
-        ) {
+        // 2. Previous context / references (pronouns, anaphora, chat history)
+        val hasPronounRef = listOf(" her ", " him ", " them ", " that ", " this ", " it ").any { " $lower ".contains(it) }
+        val hasHistoryRef = listOf("wahi", "again", "phir", "last", "chat", "chats", "history", "previous", "baat", "pehle", "purani", "usko").any { lower.contains(it) }
+        if (hasPronounRef || hasHistoryRef) {
             needs.add(ContextNeed.CONVERSATION)
+            reasons.add("Conversational anaphora or pronoun reference requiring previous chat history")
         }
 
         // 3. Document / Knowledge Vault references
@@ -49,6 +58,7 @@ class AgentContextRouter(
             lower.contains("report") || lower.contains("file") || lower.contains("kisme")
         ) {
             needs.add(ContextNeed.KNOWLEDGE_VAULT)
+            reasons.add("Document and local knowledge vault query tokens identified")
         }
 
         // 4. Current device/ambient state references
@@ -57,10 +67,12 @@ class AgentContextRouter(
             lower.contains("device state")
         ) {
             needs.add(ContextNeed.DEVICE_STATE)
+            reasons.add("Device hardware and ambient state inquiry detected")
         }
 
         if (needs.isEmpty()) {
             needs.add(ContextNeed.NONE)
+            reasons.add("Self-contained single-turn command with no external context required")
         }
 
         // Always include device state if there is an active foreground app session,
@@ -68,9 +80,10 @@ class AgentContextRouter(
         if (activeAppSession() != null) {
             needs.add(ContextNeed.DEVICE_STATE)
             needs.remove(ContextNeed.NONE)
+            reasons.add("Active foreground app session present on screen")
         }
 
-        return needs
+        return ContextRoutingResult(needs, reasons.joinToString("; "))
     }
 
     fun buildContext(

@@ -60,6 +60,57 @@ class DeepBatteryGovernor(private val context: Context? = null) {
         val recommendation: String
     )
 
+    data class BatteryTrendReport(
+        val percentage: Int,
+        val isCharging: Boolean,
+        val temperatureCelsius: Double,
+        val voltageMv: Int,
+        val throttleState: ThrottleState,
+        val recommendation: String,
+        val drainRatePerHour: Double = 0.0,
+        val estimatedMinutesRemaining: Int? = null,
+        val rationale: String = ""
+    )
+
+    fun evaluateGovernorStateWithReasoning(
+        customPercentage: Int? = null,
+        customCharging: Boolean? = null,
+        drainRateOverride: Double? = null
+    ): BatteryTrendReport {
+        val baseReport = evaluateGovernorState()
+        val pct = customPercentage ?: baseReport.percentage
+        val isCharging = customCharging ?: baseReport.isCharging
+        val drainRate = drainRateOverride ?: 0.0
+
+        val estimatedMinutes = if (drainRate > 0.0 && !isCharging && pct > 0) {
+            ((pct.toDouble() / drainRate) * 60.0).toInt().coerceAtLeast(1)
+        } else null
+
+        val adjustedState = if (estimatedMinutes != null && estimatedMinutes <= 45 && baseReport.throttleState == ThrottleState.NORMAL) {
+            ThrottleState.BATTERY_SAVING
+        } else {
+            baseReport.throttleState
+        }
+
+        val rationale = if (estimatedMinutes != null) {
+            "Projected battery depletion in ~$estimatedMinutes minutes under current drain rate ($drainRate%/hr). Throttle state: ${adjustedState.name}."
+        } else {
+            baseReport.recommendation
+        }
+
+        return BatteryTrendReport(
+            percentage = pct,
+            isCharging = isCharging,
+            temperatureCelsius = baseReport.temperatureCelsius,
+            voltageMv = baseReport.voltageMv,
+            throttleState = adjustedState,
+            recommendation = baseReport.recommendation,
+            drainRatePerHour = drainRate,
+            estimatedMinutesRemaining = estimatedMinutes,
+            rationale = rationale
+        )
+    }
+
     fun evaluateGovernorState(): HealthReport {
         val ctx = context ?: return HealthReport(
             percentage = 100,

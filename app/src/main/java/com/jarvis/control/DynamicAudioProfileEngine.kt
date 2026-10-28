@@ -19,6 +19,13 @@ class DynamicAudioProfileEngine(private val context: Context? = null) {
         LOUD        // > 65 dB
     }
 
+    data class AudioReasoningContext(
+        val hour: Int = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY),
+        val isHeadsetConnected: Boolean = false,
+        val userPreferredVolume: Int? = null,
+        val ambientState: String? = null
+    )
+
     data class AudioProfileReport(
         val acousticLevel: AmbientAcousticLevel,
         val recommendedVolumePercent: Int,
@@ -26,8 +33,14 @@ class DynamicAudioProfileEngine(private val context: Context? = null) {
         val rationale: String
     )
 
-    fun evaluateAmbientProfile(ambientDecibels: Double? = null): AudioProfileReport {
-        val am = context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    fun evaluateAmbientProfile(ambientDecibels: Double? = null): AudioProfileReport =
+        evaluateAmbientProfileWithReasoning(ambientDecibels, AudioReasoningContext())
+
+    fun evaluateAmbientProfileWithReasoning(
+        ambientDecibels: Double? = null,
+        context: AudioReasoningContext = AudioReasoningContext()
+    ): AudioProfileReport {
+        val am = this.context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         val currentVol = am?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 5
         val maxVol = am?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
         val currentPct = Math.round((currentVol.toFloat() / maxVol.coerceAtLeast(1)) * 100)
@@ -40,23 +53,50 @@ class DynamicAudioProfileEngine(private val context: Context? = null) {
             else -> AmbientAcousticLevel.MODERATE
         }
 
-        val recommendedPct = when (level) {
+        var recommendedPct = when (level) {
             AmbientAcousticLevel.QUIET -> 25
             AmbientAcousticLevel.MODERATE -> 55
             AmbientAcousticLevel.LOUD -> 90
         }
 
-        val rationale = when (level) {
-            AmbientAcousticLevel.QUIET -> "Environment is quiet. Kept speech volume low to prevent disturbance."
-            AmbientAcousticLevel.MODERATE -> "Standard acoustic environment. Balanced volume active."
-            AmbientAcousticLevel.LOUD -> "Noisy background detected. Boosted volume to ensure clear speech audibility."
+        val rationales = mutableListOf<String>()
+        rationales.add(
+            when (level) {
+                AmbientAcousticLevel.QUIET -> "Environment is quiet."
+                AmbientAcousticLevel.MODERATE -> "Standard acoustic environment."
+                AmbientAcousticLevel.LOUD -> "Noisy background detected."
+            }
+        )
+
+        val isNightHours = context.hour >= 22 || context.hour < 7
+        if (isNightHours) {
+            recommendedPct = minOf(recommendedPct, 40)
+            rationales.add("Night hours active (${context.hour}:00); capped volume to prevent disturbance.")
+        }
+
+        if (context.ambientState.equals("DRIVING", ignoreCase = true)) {
+            recommendedPct = maxOf(recommendedPct, 80)
+            rationales.add("Driving environment detected; elevated volume for navigation and speech audibility.")
+        } else if (context.ambientState.equals("MEETING", ignoreCase = true)) {
+            recommendedPct = minOf(recommendedPct, 25)
+            rationales.add("Meeting context active; reduced volume.")
+        }
+
+        if (context.isHeadsetConnected) {
+            recommendedPct = (recommendedPct - 20).coerceAtLeast(15)
+            rationales.add("Connected headset detected; lowered output to protect user hearing.")
+        }
+
+        if (context.userPreferredVolume != null) {
+            recommendedPct = Math.round(recommendedPct * 0.4f + context.userPreferredVolume * 0.6f)
+            rationales.add("Blended with user learned preference (${context.userPreferredVolume}%).")
         }
 
         return AudioProfileReport(
             acousticLevel = level,
-            recommendedVolumePercent = recommendedPct,
+            recommendedVolumePercent = recommendedPct.coerceIn(10, 100),
             currentMediaVolumePercent = currentPct,
-            rationale = rationale
+            rationale = rationales.joinToString(" ")
         )
     }
 

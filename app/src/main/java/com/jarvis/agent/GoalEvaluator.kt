@@ -1,5 +1,7 @@
 package com.jarvis.agent
 
+import com.jarvis.ai.LlmClient
+import com.jarvis.ai.Message
 import com.jarvis.execution.VerificationResult
 import com.jarvis.execution.VerificationStatus
 
@@ -195,6 +197,63 @@ class GoalEvaluator {
             missingRequirements = if (verification.verified) emptyList() else listOf("Verification status unknown"),
             reason = "Default goal evaluation: verified=${verification.verified}"
         )
+    }
+
+    suspend fun evaluateWithReasoning(
+        goal: String,
+        state: AgentState,
+        observation: AgentObservation,
+        verification: VerificationResult,
+        llm: LlmClient? = null
+    ): GoalEvaluation {
+        val baseEval = evaluate(goal, state, observation, verification)
+        if (baseEval.satisfied || !observation.success || baseEval.confidence >= 0.8f || llm == null) {
+            return baseEval
+        }
+
+        return runCatching {
+            val prompt = """
+                You are the JARVIS Goal Verification Evaluator.
+                The user had this goal: "$goal"
+                An action was executed:
+                - Action Type: ${state.lastAction?.type}
+                - Params: ${state.lastAction?.params}
+                - Tool Message: ${observation.message}
+                - Verification Status: ${verification.status}
+
+                Determine if the user's intent was semantically satisfied.
+                Return strict JSON:
+                {
+                  "satisfied": true/false,
+                  "confidence": 0.85,
+                  "reason": "Clear explanation of semantic evaluation"
+                }
+            """.trimIndent()
+            val messages = listOf(
+                Message("system", prompt),
+                Message("user", "Evaluate goal satisfaction")
+            )
+            val resp = llm.chat(messages).getOrNull() ?: return@runCatching baseEval
+            val trimmed = resp.trim()
+            val start = trimmed.indexOf('{')
+            val end = trimmed.lastIndexOf('}')
+            if (start >= 0 && end > start) {
+                val json = org.json.JSONObject(trimmed.substring(start, end + 1))
+                val sat = json.optBoolean("satisfied", false)
+                val conf = json.optDouble("confidence", baseEval.confidence.toDouble()).toFloat()
+                val r = json.optString("reason", baseEval.reason)
+                if (sat && verification.status == VerificationStatus.FAILED) {
+                    baseEval
+                } else {
+                    GoalEvaluation(
+                        satisfied = sat,
+                        confidence = conf,
+                        missingRequirements = if (sat) emptyList() else baseEval.missingRequirements,
+                        reason = r
+                    )
+                }
+            } else baseEval
+        }.getOrDefault(baseEval)
     }
 
     private fun lowerGoal(goal: String): String = goal.lowercase().trim()
