@@ -33,6 +33,12 @@ class OpenWakeWordDetector(
     private val audioChunk = ShortArray(FRAME_SAMPLES)
     private var audioChunkIndex = 0
 
+    // Pre-allocated flat buffers for bulk JNI / SIMD memory copies (zero allocations)
+    private val rawPcmFloats = FloatArray(RAW_HISTORY_SAMPLES)
+    private val rawMelFloats = FloatArray(MEL_FRAME_COUNT * MEL_BINS)
+    private val minEnergyThresholdSumSquares: Long =
+        (FRAME_SAMPLES * (config.minEnergyRms * 32768.0) * (config.minEnergyRms * 32768.0)).toLong()
+
     // Pre-allocated circular ring buffers to eliminate GC churn in the streaming audio thread
     private val melFramePool = Array(MEL_HISTORY_FRAMES) { FloatArray(MEL_BINS) }
     private var melFrameHead = 0
@@ -198,21 +204,32 @@ class OpenWakeWordDetector(
         initialize()
         if (!available || samples.isEmpty()) return 0f
         var processedFrame = false
-        for (sample in samples) {
-            rawPcm[rawPcmIndex] = sample
-            rawPcmIndex++
-            if (rawPcmIndex == RAW_HISTORY_SAMPLES) {
-                rawPcmIndex = 0
-                rawPcmFilled = true
-            }
+        var srcPos = 0
+        var remaining = samples.size
+        while (remaining > 0) {
+            val chunkSpace = FRAME_SAMPLES - audioChunkIndex
+            val toCopy = minOf(remaining, chunkSpace)
 
-            audioChunk[audioChunkIndex++] = sample
+            System.arraycopy(samples, srcPos, audioChunk, audioChunkIndex, toCopy)
+            audioChunkIndex += toCopy
+
+            copyToRawPcm(samples, srcPos, toCopy)
+
+            srcPos += toCopy
+            remaining -= toCopy
+
             if (audioChunkIndex == FRAME_SAMPLES) {
-                val rms = calculateRms(audioChunk)
-                val energyPassed = rms >= config.minEnergyRms
-                latestEnergyGatePassed = energyPassed
                 audioChunkIndex = 0
                 processedFrame = true
+
+                var sumSquares = 0L
+                for (i in 0 until FRAME_SAMPLES) {
+                    val s = audioChunk[i].toLong()
+                    sumSquares += s * s
+                }
+                val energyPassed = sumSquares >= minEnergyThresholdSumSquares
+                latestEnergyGatePassed = energyPassed
+
                 if (!energyPassed) {
                     consecutiveSilenceFrames++
                     if (consecutiveSilenceFrames >= config.silenceFramesBeforeReset) {
@@ -269,24 +286,46 @@ class OpenWakeWordDetector(
         return 0f
     }
 
+    private fun copyToRawPcm(samples: ShortArray, srcPos: Int, length: Int) {
+        val spaceToEnd = RAW_HISTORY_SAMPLES - rawPcmIndex
+        if (length <= spaceToEnd) {
+            System.arraycopy(samples, srcPos, rawPcm, rawPcmIndex, length)
+            rawPcmIndex += length
+            if (rawPcmIndex == RAW_HISTORY_SAMPLES) {
+                rawPcmIndex = 0
+                rawPcmFilled = true
+            }
+        } else {
+            System.arraycopy(samples, srcPos, rawPcm, rawPcmIndex, spaceToEnd)
+            val wrapLength = length - spaceToEnd
+            System.arraycopy(samples, srcPos + spaceToEnd, rawPcm, 0, wrapLength)
+            rawPcmIndex = wrapLength
+            rawPcmFilled = true
+        }
+    }
+
     private fun processChunk() {
         val mel = melInterpreter ?: return
         val embedding = embeddingInterpreter ?: return
         val input = melInputBuffer ?: return
         input.clear()
         if (rawPcmFilled) {
+            var dst = 0
             for (i in rawPcmIndex until RAW_HISTORY_SAMPLES) {
-                input.put(rawPcm[i].toFloat())
+                rawPcmFloats[dst++] = rawPcm[i].toFloat()
             }
             for (i in 0 until rawPcmIndex) {
-                input.put(rawPcm[i].toFloat())
+                rawPcmFloats[dst++] = rawPcm[i].toFloat()
             }
         } else {
             val pad = RAW_HISTORY_SAMPLES - rawPcmIndex
-            for (i in 0 until pad) input.put(0f)
-            for (i in 0 until rawPcmIndex) input.put(rawPcm[i].toFloat())
+            rawPcmFloats.fill(0f, 0, pad)
+            var dst = pad
+            for (i in 0 until rawPcmIndex) {
+                rawPcmFloats[dst++] = rawPcm[i].toFloat()
+            }
         }
-        if (input.position() != RAW_HISTORY_SAMPLES) return
+        input.put(rawPcmFloats, 0, RAW_HISTORY_SAMPLES)
         input.rewind()
         val melTensor = mel.getOutputTensor(0)
         val melOutput = melOutputBuffer ?: return
@@ -296,11 +335,14 @@ class OpenWakeWordDetector(
         val shape = melTensor.shape()
         val frameCount = shape[shape.size - 2]
 
-        // Fast zero-allocation insertion into circular mel pool
+        // Fast zero-allocation insertion into circular mel pool with bulk float copy
+        val melFloatBuffer = melOutput.asFloatBuffer()
+        melFloatBuffer.get(rawMelFloats)
+        var floatIdx = 0
         for (row in 0 until frameCount) {
             val target = melFramePool[melFrameHead]
             for (column in 0 until MEL_BINS) {
-                target[column] = melOutput.float / 10f + 2f
+                target[column] = rawMelFloats[floatIdx++] * 0.1f + 2.0f
             }
             melFrameHead = (melFrameHead + 1) % MEL_HISTORY_FRAMES
             melFrameCount = minOf(MEL_HISTORY_FRAMES, melFrameCount + 1)
@@ -321,11 +363,10 @@ class OpenWakeWordDetector(
         embedding.run(embeddingInput, embedded)
         embedded.rewind()
 
-        // Fast zero-allocation insertion into circular feature embedding pool
+        // Fast zero-allocation bulk copy into circular feature embedding pool
         val targetFrame = embeddingFramePool[embeddingFrameHead]
-        for (i in 0 until EMBEDDING_SIZE) {
-            targetFrame[i] = embedded.float
-        }
+        val embedFloatBuffer = embedded.asFloatBuffer()
+        embedFloatBuffer.get(targetFrame, 0, EMBEDDING_SIZE)
         embeddingFrameHead = (embeddingFrameHead + 1) % FEATURE_HISTORY_FRAMES
         realEmbeddingCount = minOf(FEATURE_HISTORY_FRAMES, realEmbeddingCount + 1)
     }
@@ -380,6 +421,8 @@ class OpenWakeWordDetector(
         rawPcm.fill(0)
         rawPcmIndex = 0
         rawPcmFilled = false
+        rawPcmFloats.fill(0f)
+        rawMelFloats.fill(0f)
         audioChunk.fill(0)
         audioChunkIndex = 0
         melFramePool.forEach { it.fill(0f) }

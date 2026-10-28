@@ -405,11 +405,12 @@ class VoiceEngine(
         Log.i(TAG, "VOICE session=$currentSession event=WAKE_DETECTED phrase=\"$detectedPhrase\"")
         wakeOnlyCommandRetryUsed.set(false)
 
+        val appSettings = runCatching { UiPreferencesStore(context).loadSettings() }.getOrDefault(com.jarvis.ui.model.AppSettings())
+
         // Wake screen if display is currently inactive and lock-screen voice is enabled
         try {
             val pm = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
             val km = context.getSystemService(Context.KEYGUARD_SERVICE) as? android.app.KeyguardManager
-            val appSettings = runCatching { UiPreferencesStore(context).loadSettings() }.getOrDefault(com.jarvis.ui.model.AppSettings())
             val isLocked = km?.isKeyguardLocked == true || pm?.isInteractive == false
             if (appSettings.lockScreenVoiceEnabled && isLocked) {
                 if (appSettings.deviceUnlockPin.isNotBlank()) {
@@ -430,7 +431,6 @@ class VoiceEngine(
         }
 
         // 1. Duck background media and route to ASR
-        val appSettings = runCatching { UiPreferencesStore(context).loadSettings() }.getOrDefault(com.jarvis.ui.model.AppSettings())
         if (appSettings.mediaDuckingEnabled) {
             mediaDuckingManager.startDucking(duckPercent = appSettings.mediaDuckingPercent, isMusicAllowed = appSettings.mediaDuckingMusic)
         } else {

@@ -255,12 +255,12 @@ class ContinuousAudioStream(
             }
 
             if (read > 0) {
-                var sum = 0.0
+                var sumSquares = 0L
                 for (i in 0 until read) {
-                    val norm = readBuffer[i].toDouble() / 32768.0
-                    sum += norm * norm
+                    val s = readBuffer[i].toLong()
+                    sumSquares += s * s
                 }
-                latestAudioRms = kotlin.math.sqrt(sum / read)
+                latestAudioRms = kotlin.math.sqrt(sumSquares.toDouble() / read) / 32768.0
 
                 rollingBuffer.write(readBuffer, 0, read)
 
