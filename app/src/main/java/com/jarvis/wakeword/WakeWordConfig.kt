@@ -4,12 +4,12 @@ package com.jarvis.wakeword
 data class WakeWordConfig(
     val confirmationWindowCount: Int = 4,
     val requiredPositiveWindows: Int = 2,
-    /** Normalized PCM RMS floor; calibrated to 0.0003 for mobile phone microphones in indoor acoustic environments. */
-    val minEnergyRms: Double = 0.0003,
-    /** Consecutive low-energy 80ms frames permitted before accumulated temporal confirmation history is reset (~400ms decay). */
-    val silenceFramesBeforeReset: Int = 5,
+    /** Normalized PCM RMS floor; calibrated to 0.00150 to reject ambient indoor noise (0.0004-0.0010 RMS). */
+    val minEnergyRms: Double = 0.00150,
+    /** Consecutive low-energy 80ms frames permitted before accumulated temporal confirmation history is reset (~240ms decay). */
+    val silenceFramesBeforeReset: Int = 3,
     val inferenceIntervalSamples: Int = 1600,
-    val detectionCooldownMs: Long = 1200L
+    val detectionCooldownMs: Long = 1500L
 ) {
     init {
         require(confirmationWindowCount in 1..10)
@@ -25,24 +25,24 @@ data class WakeWordConfig(
                 "HIGH" -> WakeWordConfig(
                     confirmationWindowCount = 4,
                     requiredPositiveWindows = 2,
-                    minEnergyRms = 0.00015,
-                    silenceFramesBeforeReset = 6
+                    minEnergyRms = 0.00080,
+                    silenceFramesBeforeReset = 3
                 )
                 "LOW" -> WakeWordConfig(
                     confirmationWindowCount = 5,
                     requiredPositiveWindows = 3,
-                    minEnergyRms = 0.00100,
-                    silenceFramesBeforeReset = 4
+                    minEnergyRms = 0.00300,
+                    silenceFramesBeforeReset = 3
                 )
                 else -> WakeWordConfig( // BALANCED / MEDIUM / DEFAULT
                     confirmationWindowCount = 4,
                     requiredPositiveWindows = 2,
-                    minEnergyRms = 0.00030,
-                    silenceFramesBeforeReset = 5
+                    minEnergyRms = 0.00150,
+                    silenceFramesBeforeReset = 3
                 )
             }
             return if (isLowEnd) {
-                baseConfig.copy(minEnergyRms = baseConfig.minEnergyRms * 0.75)
+                baseConfig.copy(minEnergyRms = baseConfig.minEnergyRms * 0.85)
             } else {
                 baseConfig
             }
