@@ -214,6 +214,7 @@ class ProactiveContextEngine(
                 val minsUntil = ((event.startTimeMillis - now) / 60_000L).coerceAtLeast(1)
                 val locationStr = if (event.location.isNotBlank()) " on ${event.location}" else ""
                 val spokenText = "Boss, you have ${event.title} starting in $minsUntil minutes$locationStr."
+                val prepText = calendarPrepText(event.description)
 
                 // Dispatch system heads-up notification
                 context?.let { ctx ->
@@ -221,7 +222,7 @@ class ProactiveContextEngine(
                         context = ctx,
                         notificationId = eventKey.hashCode(),
                         title = "Upcoming: ${event.title} (in ${minsUntil}m)",
-                        message = "Starts at ${formatTime(event.startTimeMillis)}$locationStr"
+                        message = "Starts at ${formatTime(event.startTimeMillis)}$locationStr${if (prepText.isNotEmpty()) "\n$prepText" else ""}"
                     )
                 }
 
@@ -321,4 +322,10 @@ class ProactiveContextEngine(
         }
         return String.format(java.util.Locale.US, "%02d:%02d %s", displayHour, m, amPm)
     }
+}
+
+internal fun calendarPrepText(description: String): String {
+    val normalized = description.trim().replace(Regex("\\s+"), " ")
+    if (normalized.isEmpty()) return ""
+    return "Prep: ${if (normalized.length > 180) normalized.take(179) + "…" else normalized}"
 }

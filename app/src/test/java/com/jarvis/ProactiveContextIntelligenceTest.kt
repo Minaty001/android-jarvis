@@ -2,6 +2,7 @@ package com.jarvis
 
 import com.jarvis.calendar.CalendarManager
 import com.jarvis.context.ProactiveContextEngine
+import com.jarvis.context.calendarPrepText
 import com.jarvis.device.BatteryState
 import com.jarvis.ui.model.AppSettings
 import org.json.JSONObject
@@ -91,6 +92,22 @@ class ProactiveContextIntelligenceTest {
         assertTrue(triggered[0].contains("Quarterly Business Review"))
         assertTrue(triggered[0].contains("starting in 10 minutes"))
         assertTrue(triggered[0].contains("Board Room"))
+    }
+
+    @Test
+    fun calendarNotificationIncludesCleanBoundedPrepDetails() {
+        val event = calendarManager.addEvent(
+            title = "Design review",
+            startTimeMillis = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10),
+            description = " Review   the prototype\nAnd confirm scope "
+        )
+
+        assertEquals(
+            "Prep: Review the prototype And confirm scope",
+            calendarPrepText(event.description)
+        )
+        assertEquals("", calendarPrepText("  \n "))
+        assertEquals("Prep: ${"x".repeat(179)}…", calendarPrepText("x".repeat(200)))
     }
 
     @Test
