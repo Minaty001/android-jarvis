@@ -479,6 +479,7 @@ class VoiceEngine(
                     voiceRouter.mute()
                     speakUtterance("Yes boss")
                     routeToAppropriateAsr(16000 * 1)
+                    acousticFeedbackEngine.playListeningTone()
                 }
                 "BOTH" -> {
                     acousticFeedbackEngine.playWakeTone()
@@ -486,6 +487,7 @@ class VoiceEngine(
                     voiceRouter.mute()
                     speakUtterance("Yes boss")
                     routeToAppropriateAsr(16000 * 1)
+                    acousticFeedbackEngine.playListeningTone()
                 }
                 "SILENT" -> {
                     routeToAppropriateAsr(16000 * 1)
@@ -494,13 +496,13 @@ class VoiceEngine(
                     // Default: "CHIME" — ultra-low latency earcon (<120ms total)
                     acousticFeedbackEngine.playWakeTone()
                     routeToAppropriateAsr(16000 * 1)
+                    acousticFeedbackEngine.playListeningTone()
                 }
             }
         } else {
             routeToAppropriateAsr(16000 * 1)
+            acousticFeedbackEngine.playListeningTone()
         }
-
-        acousticFeedbackEngine.playListeningTone()
 
         // 2. Initialize command finalization gate for this listening session
         commandFinalizationGate.set(false)

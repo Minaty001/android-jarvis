@@ -60,4 +60,13 @@ class ListeningOptimizationTest {
 
         assertTrue(normalizedRms > 0.4f && normalizedRms < 0.6f)
     }
+
+    @Test
+    fun testWakeAcknowledgmentModeValues() {
+        val modes = listOf("CHIME", "VOICE", "BOTH", "SILENT")
+        modes.forEach { mode ->
+            val settings = AppSettings(wakeAcknowledgment = mode)
+            assertEquals(mode, settings.wakeAcknowledgment)
+        }
+    }
 }
