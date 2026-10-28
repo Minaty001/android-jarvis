@@ -20,7 +20,7 @@ data class TermPosting(
     val freq: Int
 )
 
-class RagDatabaseHelper(context: Context) :
+open class RagDatabaseHelper(context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -83,8 +83,17 @@ class RagDatabaseHelper(context: Context) :
 }
 
 
-class RagIndexStore(context: android.content.Context) {
-    private val dbHelper = RagDatabaseHelper(com.jarvis.storage.JarvisStorageHub.createDatabaseContext(context.applicationContext))
+class RagIndexStore(context: android.content.Context, useInMemory: Boolean = false) {
+    private val dbHelper = if (useInMemory) {
+        object : RagDatabaseHelper(context) {
+            override fun onCreate(db: SQLiteDatabase) {
+                super.onCreate(db)
+            }
+            override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+        }
+    } else {
+        RagDatabaseHelper(com.jarvis.storage.JarvisStorageHub.createDatabaseContext(context.applicationContext))
+    }
 
     companion object {
         val STOP_WORDS = setOf(
@@ -282,7 +291,7 @@ class RagIndexStore(context: android.content.Context) {
     }
 
     fun getStats(): RagStats {
-        val db = dbHelper.readableDatabase
+        val db = dbHelper.readableDatabase ?: return RagStats(0, 0, 0, 0.0)
         var totalDocs = 0
         var totalChunks = 0
         var totalWords = 0

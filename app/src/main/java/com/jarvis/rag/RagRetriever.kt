@@ -1,6 +1,8 @@
 package com.jarvis.rag
 
 import com.jarvis.ai.EmbeddingVectorizer
+import com.jarvis.ai.LlmClient
+import com.jarvis.ai.Message
 import java.util.Locale
 import kotlin.math.ln
 import kotlin.math.sqrt
@@ -43,6 +45,37 @@ class RagRetriever(
         denseCache.getOrPut("${chunk.chunkId}:${chunk.checksum}") {
             vectorizer.embed("${chunk.title} ${chunk.content}")
         }
+
+    /**
+     * Executes retrieval with optional LLM-backed query expansion/rewriting
+     * when the input query is short or ambiguous to maximize recall.
+     */
+    suspend fun retrieveWithQueryRewrite(
+        query: String,
+        limit: Int = 4,
+        docIdFilter: String? = null,
+        llm: LlmClient? = null
+    ): RagQueryResult {
+        val trimmed = query.trim()
+        val rewrittenQuery = if (trimmed.length < 25 && llm != null && !com.jarvis.foundation.SensitiveTerms.contains(trimmed)) {
+            val prompt = "You are a search query expander for a personal document retrieval system. Rewrite this short user query into an explicit, detailed search query to maximize recall: \"$trimmed\". Return ONLY the rewritten search query with no quotes or extra text."
+            val messages = listOf(
+                Message("system", prompt),
+                Message("user", trimmed)
+            )
+            val rewritten = llm.chat(messages).getOrNull()?.trim()
+            if (!rewritten.isNullOrBlank() && rewritten.length in 5..120) rewritten else trimmed
+        } else {
+            trimmed
+        }
+
+        val result = retrieve(rewrittenQuery, limit, docIdFilter)
+        return if (rewrittenQuery != trimmed) {
+            result.copy(query = rewrittenQuery)
+        } else {
+            result
+        }
+    }
 
     /**
      * Executes hybrid retrieval (BM25 + TF-IDF Vector Cosine [+ local dense

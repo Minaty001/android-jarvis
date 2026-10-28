@@ -4,6 +4,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.util.Log
+import com.jarvis.ai.LlmClient
+import com.jarvis.ai.Message
 import com.jarvis.bluetooth.BluetoothHeadsetManager
 import com.jarvis.runtime.JarvisEvent
 import com.jarvis.runtime.JarvisEventBus
@@ -129,6 +131,58 @@ class ClipboardIntelligenceEngine(
         if (isHeadset && ttsEngine != null) {
             ttsEngine.speak(analysis.promptText)
         }
+    }
+
+    suspend fun analyzeTextWithReasoning(
+        text: String,
+        llm: LlmClient? = null
+    ): ClipboardAnalysis? {
+        val deterministic = analyzeText(text)
+        if (deterministic != null) return deterministic
+
+        if (llm == null || text.isBlank() || isSensitiveContent(text) || text.length > 500) {
+            return null
+        }
+
+        return runCatching {
+            val prompt = """
+                You are the JARVIS Clipboard Intelligence Classifier.
+                Analyze this copied text from user's clipboard and determine if it contains an actionable entity
+                (e.g. EMAIL_ADDRESS, EVENT_SUMMARY, TODO_ITEM, INGREDIENTS_LIST, CODE_SNIPPET).
+                Copied text: "$text"
+
+                If actionable, return strict JSON:
+                {
+                  "type": "ENTITY_TYPE",
+                  "extracted_value": "extracted entity or cleaned text",
+                  "suggested_action": "action_id",
+                  "prompt_text": "Spoken or displayed prompt question to ask user"
+                }
+                If not actionable or generic text, return strict JSON: {"type": null}
+            """.trimIndent()
+            val messages = listOf(
+                Message("system", prompt),
+                Message("user", text)
+            )
+            val resp = llm.chat(messages).getOrNull() ?: return@runCatching null
+            val trimmed = resp.trim()
+            val start = trimmed.indexOf('{')
+            val end = trimmed.lastIndexOf('}')
+            if (start >= 0 && end > start) {
+                val json = org.json.JSONObject(trimmed.substring(start, end + 1))
+                val type = json.optString("type", "")
+                if (type.isBlank() || type == "null") return@runCatching null
+                val extracted = json.optString("extracted_value", text.take(100))
+                val action = json.optString("suggested_action", "view")
+                val promptText = json.optString("prompt_text", "Copied $type. Would you like to use this?")
+                ClipboardAnalysis(
+                    type = type,
+                    extractedValue = extracted,
+                    suggestedAction = action,
+                    promptText = promptText
+                )
+            } else null
+        }.getOrNull()
     }
 
     fun analyzeText(text: String): ClipboardAnalysis? {

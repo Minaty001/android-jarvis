@@ -37,6 +37,15 @@ class BargeInDetector(
         baseThresholdRms = rms.coerceIn(150.0f, 1200.0f)
     }
 
+    /**
+     * Dynamically adapts the acoustic barge-in energy threshold based on real-time
+     * speaker echo readings during active TTS playback.
+     */
+    fun calibrateFromSpeakerEcho(speakerRmsDuringSpeech: Float) {
+        val adaptedThreshold = (speakerRmsDuringSpeech * 1.8f).coerceIn(200f, 800f)
+        baseThresholdRms = adaptedThreshold
+    }
+
     fun getEffectiveThreshold(): Float = baseThresholdRms
 
     @Synchronized

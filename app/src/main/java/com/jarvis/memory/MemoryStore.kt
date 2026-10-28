@@ -147,6 +147,56 @@ open class MemoryDatabaseHelper(context: Context) :
     }
 }
 
+enum class MemoryQueryType {
+    GENERAL,
+    PREFERENCE,
+    EPISODIC,
+    SEARCH
+}
+
+data class MemoryRetrievalProfile(
+    val queryType: MemoryQueryType = MemoryQueryType.GENERAL,
+    val wOverlap: Double = 0.35,
+    val wSemantic: Double = 0.35,
+    val wImportance: Double = 0.15,
+    val wRecency: Double = 0.10,
+    val wUsage: Double = 0.05,
+    val rationale: String = "Standard balanced retrieval weights"
+) {
+    companion object {
+        fun forType(type: MemoryQueryType): MemoryRetrievalProfile = when (type) {
+            MemoryQueryType.PREFERENCE -> MemoryRetrievalProfile(
+                queryType = type,
+                wOverlap = 0.20,
+                wSemantic = 0.30,
+                wImportance = 0.40,
+                wRecency = 0.05,
+                wUsage = 0.05,
+                rationale = "Preference query: boosted importance weight to prioritize declared user preferences"
+            )
+            MemoryQueryType.EPISODIC -> MemoryRetrievalProfile(
+                queryType = type,
+                wOverlap = 0.20,
+                wSemantic = 0.30,
+                wImportance = 0.05,
+                wRecency = 0.40,
+                wUsage = 0.05,
+                rationale = "Episodic query: boosted recency weight to prioritize recent interactions"
+            )
+            MemoryQueryType.SEARCH -> MemoryRetrievalProfile(
+                queryType = type,
+                wOverlap = 0.40,
+                wSemantic = 0.35,
+                wImportance = 0.15,
+                wRecency = 0.05,
+                wUsage = 0.05,
+                rationale = "Search query: boosted exact lexical overlap matching"
+            )
+            MemoryQueryType.GENERAL -> MemoryRetrievalProfile()
+        }
+    }
+}
+
 class MemoryStore(context: android.content.Context, useInMemory: Boolean = false) {
     private val dbHelper: MemoryDatabaseHelper = if (useInMemory) {
         object : MemoryDatabaseHelper(context) {
@@ -406,7 +456,8 @@ class MemoryStore(context: android.content.Context, useInMemory: Boolean = false
         query: String,
         types: Set<MemoryType>,
         limit: Int = 8,
-        namespace: String = "all"
+        namespace: String = "all",
+        profile: MemoryRetrievalProfile = MemoryRetrievalProfile()
     ): List<MemoryItem> {
         val cleanQuery = query.trim()
         if (cleanQuery.isBlank()) return emptyList()
@@ -492,13 +543,13 @@ class MemoryStore(context: android.content.Context, useInMemory: Boolean = false
                 val recency = exp(-ageHours / (24.0 * 30.0))
                 val usage = ln(1.0 + item.accessCount.toDouble()).coerceIn(0.0, 2.0) / 2.0
                 
-                // Combine lexical, semantic, importance, recency, and usage
+                // Combine lexical, semantic, importance, recency, and usage using adaptive profile
                 val combined = (
-                    overlap * 0.35 +
-                    semanticSim * 0.35 +
-                    item.importance * 0.15 +
-                    recency * 0.10 +
-                    usage * 0.05
+                    overlap * profile.wOverlap +
+                    semanticSim * profile.wSemantic +
+                    item.importance * profile.wImportance +
+                    recency * profile.wRecency +
+                    usage * profile.wUsage
                 ).coerceIn(0.0, 1.0)
                 item.copy(score = combined)
             }
