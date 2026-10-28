@@ -1,28 +1,20 @@
 package com.jarvis.wakeword
 
-/** The KWS layer owns temporal confirmation; later wake gates must not count hits again. */
+/** The KWS layer owns temporal confirmation; requires multiple consecutive/windowed hits. */
 class KwsTemporalConfirmation(
     private val windowCount: Int = 4,
-    private val requiredPositiveWindows: Int = 2,
-    private val spikeMultiplier: Float = 1.15f
+    private val requiredPositiveWindows: Int = 2
 ) {
     private val scores = ArrayDeque<Float>()
 
     init {
         require(windowCount in 1..10)
         require(requiredPositiveWindows in 1..windowCount)
-        require(spikeMultiplier >= 1.0f)
     }
 
     @Synchronized
     fun add(score: Float, threshold: Float): Float {
         if (!score.isFinite() || !threshold.isFinite()) return 0f
-
-        // High-confidence single-window spike or single required window immediately triggers
-        if (score >= threshold * spikeMultiplier || (requiredPositiveWindows == 1 && score >= threshold)) {
-            scores.clear()
-            return score
-        }
 
         scores.addLast(score)
         while (scores.size > windowCount) scores.removeFirst()

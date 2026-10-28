@@ -8,8 +8,8 @@ class KwsTemporalConfirmationTest {
 
     @Test
     fun testTrailingSilenceDoesNotDiscardConfirmation() {
-        val confirmation = KwsTemporalConfirmation(windowCount = 4, requiredPositiveWindows = 2, spikeMultiplier = 1.15f)
-        // First frame (below spike multiplier 1.15x)
+        val confirmation = KwsTemporalConfirmation(windowCount = 4, requiredPositiveWindows = 2)
+        // First frame
         assertEquals(0f, confirmation.add(1.05f, 1.0f), 0f)
         // Second frame completes required positive windows
         val score = confirmation.add(1.08f, 1.0f)
@@ -19,7 +19,7 @@ class KwsTemporalConfirmationTest {
 
     @Test
     fun testTrailingSilenceScoreReturnsMaxScoreNotSilence() {
-        val confirmation = KwsTemporalConfirmation(windowCount = 4, requiredPositiveWindows = 2, spikeMultiplier = 1.15f)
+        val confirmation = KwsTemporalConfirmation(windowCount = 4, requiredPositiveWindows = 2)
         assertEquals(0f, confirmation.add(1.10f, 1.0f), 0f)
         assertEquals(0f, confirmation.add(0.3f, 1.0f), 0f)
         // 3rd frame has silence, but previous positive + current positive
@@ -28,19 +28,21 @@ class KwsTemporalConfirmationTest {
     }
 
     @Test
-    fun testHighConfidenceSpikeTriggersImmediatelyAtPointFifteen() {
-        val confirmation = KwsTemporalConfirmation(windowCount = 4, requiredPositiveWindows = 2, spikeMultiplier = 1.15f)
-        val nonSpike = confirmation.add(1.10f, 1.0f)
-        assertEquals("Score 1.10x is below 1.15x spike multiplier, must not trigger on single frame", 0f, nonSpike, 0.001f)
+    fun testSingleFrameSpikeDoesNotBypassMultiFrameConfirmation() {
+        val confirmation = KwsTemporalConfirmation(windowCount = 4, requiredPositiveWindows = 2)
+        // High spike exceeding threshold by 1.5x on a single 80ms frame must not trigger
+        val spikeScore = confirmation.add(1.50f, 1.0f)
+        assertEquals("Single-frame spike must not trigger immediate wake", 0f, spikeScore, 0.001f)
 
-        val spikeConfirmation = KwsTemporalConfirmation(windowCount = 4, requiredPositiveWindows = 2, spikeMultiplier = 1.15f)
-        val score = spikeConfirmation.add(1.16f, 1.0f)
-        assertEquals("Spike exceeding 1.15x threshold must trigger immediately", 1.16f, score, 0.001f)
+        // Second positive frame within 4-frame window completes confirmation
+        val confirmedScore = confirmation.add(1.05f, 1.0f)
+        assertTrue("Second positive window must confirm wake", confirmedScore >= 1.0f)
+        assertEquals(1.50f, confirmedScore, 0.001f)
     }
 
     @Test
     fun testFourWindowConfirmationWithInterveningLowFrames() {
-        val confirmation = KwsTemporalConfirmation(windowCount = 4, requiredPositiveWindows = 2, spikeMultiplier = 1.15f)
+        val confirmation = KwsTemporalConfirmation(windowCount = 4, requiredPositiveWindows = 2)
         // Frame 1: positive
         assertEquals(0f, confirmation.add(1.02f, 1.0f), 0f)
         // Frame 2: dip
