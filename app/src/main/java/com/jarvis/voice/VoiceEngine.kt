@@ -539,14 +539,14 @@ class VoiceEngine(
         }
 
         // Wire VAD events into VoiceRouter callbacks
-        voiceRouter.onSpeechActivity = { scheduleListeningTimeout(8000L, "silence post-speech") }
+        voiceRouter.onSpeechActivity = { scheduleListeningTimeout(1200L, "silence post-speech") }
         voiceRouter.onSpeechEnd = {
             if (asrEngine.usesRawAudio) {
                 ensureActiveScope().launch { onSpeechEnded() }
             }
         }
 
-        val onSpeechActivity: () -> Unit = { scheduleListeningTimeout(8000L, "silence post-speech") }
+        val onSpeechActivity: () -> Unit = { scheduleListeningTimeout(1200L, "silence post-speech") }
 
         fun handleAsrEmptyOrError(code: Int, message: String) {
             if (commandFinalizationGate.get()) return
@@ -592,13 +592,14 @@ class VoiceEngine(
                         }
                     } else {
                         Log.d(TAG, "ASR empty/error ($code: $message) retry limit reached. Returning to wake.")
+                        wakeTransitionGate.set(false)
                         ensureActiveScope().launch { returnToWakeListening() }
                     }
                 }
             }
         }
 
-        val initialTimeout = if (isFollowUp) followUpTimeoutMs.coerceIn(4000L, 8000L) else 8000L
+        val initialTimeout = if (isFollowUp) followUpTimeoutMs.coerceIn(3000L, 5000L) else 5000L
         scheduleListeningTimeout(initialTimeout, if (isFollowUp) "follow-up silence" else "initial silence")
 
         conversationManager.transitionTo(VoiceState.LISTENING)

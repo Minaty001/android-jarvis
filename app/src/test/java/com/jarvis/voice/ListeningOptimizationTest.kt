@@ -69,4 +69,11 @@ class ListeningOptimizationTest {
             assertEquals(mode, settings.wakeAcknowledgment)
         }
     }
+
+    @Test
+    fun testAsrIntentSilenceConfiguration() {
+        assertEquals(1500L, AndroidSpeechRecognizerEngine.MINIMUM_SPEECH_LENGTH_MILLIS)
+        assertEquals(800L, AndroidSpeechRecognizerEngine.COMPLETE_SILENCE_LENGTH_MILLIS)
+        assertEquals(800L, AndroidSpeechRecognizerEngine.POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS)
+    }
 }

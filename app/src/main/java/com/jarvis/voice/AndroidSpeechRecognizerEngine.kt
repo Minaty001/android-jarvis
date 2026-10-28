@@ -92,11 +92,9 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
         putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 50L)
-        // Background wake handoff can add a few hundred milliseconds on Samsung devices;
-        // do not finalize a valid command while the user is still speaking.
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L)
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 700L)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, MINIMUM_SPEECH_LENGTH_MILLIS)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, COMPLETE_SILENCE_LENGTH_MILLIS)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS)
     }
 
     open suspend fun startListening(
@@ -265,5 +263,11 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
         SpeechRecognizer.ERROR_SERVER -> "Server error"
         SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech input timeout"
         else -> "Unknown error ($error)"
+    }
+
+    companion object {
+        const val MINIMUM_SPEECH_LENGTH_MILLIS: Long = 1500L
+        const val COMPLETE_SILENCE_LENGTH_MILLIS: Long = 800L
+        const val POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: Long = 800L
     }
 }
