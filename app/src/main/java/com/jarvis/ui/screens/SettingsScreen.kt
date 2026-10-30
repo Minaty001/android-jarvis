@@ -21,7 +21,9 @@ class SettingsScreen(
     private val onDirtyChanged: (Boolean) -> Unit,
     private val onSaved: (() -> Unit)? = null,
     private val voiceEngine: com.jarvis.voice.VoiceEngine? = null,
-    private val onOpenWakeWordSetup: (() -> Unit)? = null
+    private val onOpenBrain: (() -> Unit)? = null,
+    private val onOpenMemory: (() -> Unit)? = null,
+    private val onOpenLogs: (() -> Unit)? = null
 ) : ScrollView(context) {
     private var settings = initial
     private var voiceProfile: UserVoiceProfile = store.loadVoiceProfile()
@@ -83,7 +85,26 @@ class SettingsScreen(
 
         root.addView(Ui.divider(context))
 
-        // 👤 User Profile & AI Personality Card
+        // Sub-system Navigation Quick Links
+        val hubRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = Ui.dp(context, 8)
+                bottomMargin = Ui.dp(context, 12)
+            }
+        }
+        if (onOpenBrain != null) {
+            hubRow.addView(Ui.primaryButton(context, "AI Models") { onOpenBrain.invoke() }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = Ui.dp(context, 4) })
+        }
+        if (onOpenMemory != null) {
+            hubRow.addView(Ui.button(context, "Memory") { onOpenMemory.invoke() }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = Ui.dp(context, 4); marginEnd = Ui.dp(context, 4) })
+        }
+        if (onOpenLogs != null) {
+            hubRow.addView(Ui.button(context, "Logs") { onOpenLogs.invoke() }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = Ui.dp(context, 4) })
+        }
+        root.addView(hubRow)
+
+        // User Profile & AI Personality Card
         root.addView(Ui.sectionLabel(context, "User Profile & AI Personality"))
         val profileStore = com.jarvis.ui.data.UserProfileStore(context)
         var userProfile = profileStore.loadProfile()
@@ -123,7 +144,7 @@ class SettingsScreen(
         profileInner.addView(TextView(context).apply { text = "SYSTEM PERSONA & INSTRUCTIONS"; textSize = 10f; setTextColor(Ui.MUTED); setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 2)) })
         profileInner.addView(customInstructionsLayout)
 
-        val saveProfileBtn = Ui.primaryButton(context, "💾 SAVE & SYNC TO RAG MEMORY") {
+        val saveProfileBtn = Ui.primaryButton(context, "SAVE & SYNC TO RAG MEMORY") {
             val updatedProfile = com.jarvis.ui.model.UserProfile(
                 userName = userNameInput.text?.toString()?.ifBlank { "Alex" } ?: "Alex",
                 userTitle = userTitleInput.text?.toString()?.ifBlank { "Sir" } ?: "Sir",
@@ -692,7 +713,7 @@ class SettingsScreen(
         }
 
         val enrollVoiceBtn = com.google.android.material.button.MaterialButton(context).apply {
-            text = "🎙 RECORD DATASET SAMPLES"
+            text = "RECORD DATASET SAMPLES"
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.BG)
@@ -750,7 +771,7 @@ class SettingsScreen(
         }
 
         val customSetupBtn = com.google.android.material.button.MaterialButton(context).apply {
-            text = "⚡ DATASET STATUS & EXPORT"
+            text = "DATASET STATUS & EXPORT"
             textSize = 11f
             setTextColor(Ui.CYAN)
             strokeColor = android.content.res.ColorStateList.valueOf(Ui.CYAN_DIM)
@@ -761,7 +782,24 @@ class SettingsScreen(
             layoutParams = LinearLayout.LayoutParams(-2, -2).apply {
                 marginStart = Ui.dp(context, 8)
             }
-            setOnClickListener { onOpenWakeWordSetup?.invoke() }
+            setOnClickListener {
+                val count = WakeWordDatasetStore(context).getPositiveSampleCount()
+                val sha = WakeWordDatasetStore(context).getPositiveDatasetSha256()
+                val diag = voiceEngine?.wakeEngine?.getDiagnostics(count, sha)
+                val diagInfo = buildString {
+                    append("Phrase: ${diag?.phrase ?: "hey jarvis"}\n")
+                    append("Samples Enrolled: $count / ${WakeWordDatasetStore.TARGET_SAMPLES}\n")
+                    append("Model Status: ${diag?.modelStatus?.name ?: "ACTIVE"}\n")
+                    append("Model File: ${diag?.modelFile ?: "embedded"}\n")
+                    append("SHA-256: ${diag?.modelSha256 ?: "none"}\n\n")
+                    append("PCM16 WAV recordings are stored in internal app storage. Use scripts/train_kws.py on PC for retraining.")
+                }
+                androidx.appcompat.app.AlertDialog.Builder(context)
+                    .setTitle("Wake Engine Diagnostics & Dataset")
+                    .setMessage(diagInfo)
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
         }
 
         updateVoiceProfileCard()
@@ -851,7 +889,7 @@ class SettingsScreen(
             com.jarvis.wear.WearableNotificationDispatcher.dispatchWearableCard(
                 context,
                 title = "J.A.R.V.I.S. Wrist Companion",
-                statusText = "Ready • Tap 🎙 Talk or 🛑 Stop"
+                statusText = "Ready • Tap Talk or Stop"
             )
             Toast.makeText(context, "Dispatched wearable companion card", Toast.LENGTH_SHORT).show()
         }

@@ -104,10 +104,10 @@ class SkillsScreen(
 
         val topRow = Ui.row(context)
         topRow.addView(TextView(context).apply {
-            text = "🎵 MUSIC & ENTERTAINMENT"
+            text = "MUSIC & ENTERTAINMENT"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.CYAN)
+            setTextColor(Ui.PRIMARY)
             letterSpacing = 0.08f
         }, LinearLayout.LayoutParams(0, -2, 1f))
         topRow.addView(Ui.hudBadge(context, "SYNCED", Ui.SUCCESS))
@@ -120,21 +120,21 @@ class SkillsScreen(
             setPadding(0, Ui.dp(context, 4), 0, Ui.dp(context, 10))
         })
 
-        // Transport Controls Row: [⏮ Prev] [▶ Play] [⏸ Pause] [⏭ Next] [⏹ Stop]
+        // Transport Controls Row: [Prev] [Play] [Pause] [Next] [Stop]
         val transportRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(-1, Ui.dp(context, 38)).apply { bottomMargin = Ui.dp(context, 10) }
         }
-        val prevBtn = Ui.button(context, "⏮ PREV") { onExecuteCommand("previous song") }
-        val playBtn = Ui.primaryButton(context, "▶ PLAY") { onExecuteCommand("resume music") }
-        val pauseBtn = Ui.button(context, "⏸ PAUSE") { onExecuteCommand("pause music") }
-        val nextBtn = Ui.button(context, "⏭ NEXT") { onExecuteCommand("next track") }
-        val stopBtn = Ui.dangerButton(context, "⏹") { onExecuteCommand("stop music") }
+        val prevBtn = Ui.button(context, "PREV") { onExecuteCommand("previous song") }
+        val playBtn = Ui.primaryButton(context, "PLAY") { onExecuteCommand("resume music") }
+        val pauseBtn = Ui.button(context, "PAUSE") { onExecuteCommand("pause music") }
+        val nextBtn = Ui.button(context, "NEXT") { onExecuteCommand("next track") }
+        val stopBtn = Ui.dangerButton(context, "STOP") { onExecuteCommand("stop music") }
         transportRow.addView(prevBtn, LinearLayout.LayoutParams(0, -1, 1.2f))
         transportRow.addView(playBtn, LinearLayout.LayoutParams(0, -1, 1.2f).apply { marginStart = Ui.dp(context, 4) })
         transportRow.addView(pauseBtn, LinearLayout.LayoutParams(0, -1, 1.2f).apply { marginStart = Ui.dp(context, 4) })
         transportRow.addView(nextBtn, LinearLayout.LayoutParams(0, -1, 1.2f).apply { marginStart = Ui.dp(context, 4) })
-        transportRow.addView(stopBtn, LinearLayout.LayoutParams(Ui.dp(context, 38), -1).apply { marginStart = Ui.dp(context, 4) })
+        transportRow.addView(stopBtn, LinearLayout.LayoutParams(Ui.dp(context, 54), -1).apply { marginStart = Ui.dp(context, 4) })
         inner.addView(transportRow)
 
         // Quick Genre Chips
@@ -144,10 +144,10 @@ class SkillsScreen(
         }
         val presetRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
         listOf("Synthwave", "Lo-Fi Chill", "Deep Focus", "Top Hits", "Workout Mix").forEach { genre ->
-            val chip = Ui.techChip(context, genre, "▶") {
+            val chip = Ui.button(context, genre) {
                 onExecuteCommand("play $genre music on spotify")
             }
-            presetRow.addView(chip)
+            presetRow.addView(chip, LinearLayout.LayoutParams(-2, Ui.dp(context, 32)).apply { marginEnd = Ui.dp(context, 6) })
         }
         presets.addView(presetRow)
         inner.addView(presets)
@@ -173,7 +173,7 @@ class SkillsScreen(
 
         val topRow = Ui.row(context)
         topRow.addView(TextView(context).apply {
-            text = "📞 PHONE CALLS & TELEPHONY"
+            text = "PHONE CALLS & TELEPHONY"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.parseColor("#00E676"))
@@ -193,10 +193,10 @@ class SkillsScreen(
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(context, 38))
         }
-        val answerCallBtn = Ui.button(context, "🟢 ANSWER") { onExecuteCommand("answer call") }
-        val rejectCallBtn = Ui.button(context, "🔴 REJECT") { onExecuteCommand("reject call") }
-        val readSmsBtn = Ui.button(context, "✉️ READ SMS") { onExecuteCommand("read sms") }
-        val getOtpBtn = Ui.button(context, "🔑 GET OTP") { onExecuteCommand("what is my otp") }
+        val answerCallBtn = Ui.button(context, "ANSWER") { onExecuteCommand("answer call") }
+        val rejectCallBtn = Ui.button(context, "DECLINE") { onExecuteCommand("reject call") }
+        val readSmsBtn = Ui.button(context, "READ SMS") { onExecuteCommand("read sms") }
+        val getOtpBtn = Ui.button(context, "GET OTP") { onExecuteCommand("what is my otp") }
 
         btnRow.addView(answerCallBtn, LinearLayout.LayoutParams(0, -1, 1f))
         btnRow.addView(rejectCallBtn, LinearLayout.LayoutParams(0, -1, 1f).apply { marginStart = Ui.dp(context, 4) })
@@ -218,7 +218,7 @@ class SkillsScreen(
 
         val topRow = Ui.row(context)
         topRow.addView(TextView(context).apply {
-            text = "💬 WHATSAPP & MESSAGING"
+            text = "WHATSAPP & MESSAGING"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.parseColor("#25D366"))
@@ -238,13 +238,13 @@ class SkillsScreen(
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(context, 38))
         }
-        val readUnreadBtn = Ui.button(context, "💬 READ UNREAD") {
+        val readUnreadBtn = Ui.button(context, "READ UNREAD") {
             onExecuteCommand("read my whatsapp messages")
         }
-        val autoReplyDrivingBtn = Ui.button(context, "🚗 AUTO-REPLY (DRIVE)") {
+        val autoReplyDrivingBtn = Ui.button(context, "AUTO-REPLY (DRIVE)") {
             onExecuteCommand("turn on whatsapp auto reply driving mode")
         }
-        val autoReplyOffBtn = Ui.button(context, "⏹ OFF") {
+        val autoReplyOffBtn = Ui.button(context, "OFF") {
             onExecuteCommand("turn off whatsapp auto reply")
         }
         btnRow.addView(readUnreadBtn, LinearLayout.LayoutParams(0, -1, 1.2f))
@@ -266,7 +266,7 @@ class SkillsScreen(
 
         val topRow = Ui.row(context)
         topRow.addView(TextView(context).apply {
-            text = "👁️ CAMERA VISION & PERCEPTION"
+            text = "CAMERA VISION & PERCEPTION"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
@@ -286,9 +286,9 @@ class SkillsScreen(
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(context, 38))
         }
-        val lookBtn = Ui.button(context, "👁️ WHAT IS THIS?") { onExecuteCommand("what am I looking at") }
-        val readSignBtn = Ui.button(context, "📖 READ TEXT") { onExecuteCommand("camera se padh ke batao") }
-        val selfieBtn = Ui.button(context, "🤳 SELFIE SCAN") { onExecuteCommand("what am I looking at front camera") }
+        val lookBtn = Ui.button(context, "WHAT IS THIS?") { onExecuteCommand("what am I looking at") }
+        val readSignBtn = Ui.button(context, "READ TEXT") { onExecuteCommand("camera se padh ke batao") }
+        val selfieBtn = Ui.button(context, "SELFIE SCAN") { onExecuteCommand("what am I looking at front camera") }
 
         btnRow.addView(lookBtn, LinearLayout.LayoutParams(0, -1, 1.2f))
         btnRow.addView(readSignBtn, LinearLayout.LayoutParams(0, -1, 1.1f).apply { marginStart = Ui.dp(context, 4) })
@@ -310,7 +310,7 @@ class SkillsScreen(
         // Header: Title + Live Status Badge
         val topRow = Ui.row(context)
         topRow.addView(TextView(context).apply {
-            text = "🛡️ AUTONOMOUS MODES & SENTINEL DECK"
+            text = "AUTONOMOUS MODES & PROFILES"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
@@ -333,9 +333,9 @@ class SkillsScreen(
                 bottomMargin = Ui.dp(context, 6)
             }
         }
-        val drivingModeBtn = Ui.button(context, "🚗 DRIVING") { onExecuteCommand("driving mode on") }
-        val meetingModeBtn = Ui.button(context, "📅 MEETING") { onExecuteCommand("meeting mode on") }
-        val focusModeBtn = Ui.button(context, "🧠 FOCUS") { onExecuteCommand("focus mode on") }
+        val drivingModeBtn = Ui.button(context, "DRIVING") { onExecuteCommand("driving mode on") }
+        val meetingModeBtn = Ui.button(context, "MEETING") { onExecuteCommand("meeting mode on") }
+        val focusModeBtn = Ui.button(context, "FOCUS") { onExecuteCommand("focus mode on") }
 
         row1.addView(drivingModeBtn, LinearLayout.LayoutParams(0, -1, 1f))
         row1.addView(meetingModeBtn, LinearLayout.LayoutParams(0, -1, 1f).apply { marginStart = Ui.dp(context, 4) })
@@ -349,9 +349,9 @@ class SkillsScreen(
                 bottomMargin = Ui.dp(context, 8)
             }
         }
-        val nightModeBtn = Ui.button(context, "🌙 NIGHT") { onExecuteCommand("night mode on") }
-        val workoutModeBtn = Ui.button(context, "🏋️ WORKOUT") { onExecuteCommand("workout mode on") }
-        val autoModeBtn = Ui.button(context, "🔄 AUTO") { onExecuteCommand("auto mode on") }
+        val nightModeBtn = Ui.button(context, "NIGHT") { onExecuteCommand("night mode on") }
+        val workoutModeBtn = Ui.button(context, "WORKOUT") { onExecuteCommand("workout mode on") }
+        val autoModeBtn = Ui.button(context, "AUTO") { onExecuteCommand("auto mode on") }
 
         row2.addView(nightModeBtn, LinearLayout.LayoutParams(0, -1, 1f))
         row2.addView(workoutModeBtn, LinearLayout.LayoutParams(0, -1, 1f).apply { marginStart = Ui.dp(context, 4) })
@@ -363,9 +363,9 @@ class SkillsScreen(
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(context, 36))
         }
-        val toggleAutopilotBtn = Ui.secondaryButton(context, "⚡ AUTOPILOT ON") { onExecuteCommand("enable autopilot") }
-        val statusBtn = Ui.button(context, "🤖 STATUS") { onExecuteCommand("autonomous status") }
-        val logsBtn = Ui.button(context, "📜 LOGS") { onExecuteCommand("decision logs") }
+        val toggleAutopilotBtn = Ui.secondaryButton(context, "AUTOPILOT ON") { onExecuteCommand("enable autopilot") }
+        val statusBtn = Ui.button(context, "STATUS") { onExecuteCommand("autonomous status") }
+        val logsBtn = Ui.button(context, "LOGS") { onExecuteCommand("decision logs") }
 
         controlRow.addView(toggleAutopilotBtn, LinearLayout.LayoutParams(0, -1, 1.2f))
         controlRow.addView(statusBtn, LinearLayout.LayoutParams(0, -1, 1f).apply { marginStart = Ui.dp(context, 4) })
@@ -386,7 +386,7 @@ class SkillsScreen(
 
         val topRow = Ui.row(context)
         topRow.addView(TextView(context).apply {
-            text = "⚡ DEVICE CONTROLS & SHORTCUTS"
+            text = "DEVICE CONTROLS & SHORTCUTS"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
@@ -406,13 +406,13 @@ class SkillsScreen(
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(context, 38))
         }
-        sysRow.addView(Ui.button(context, "📶 WI-FI") {
+        sysRow.addView(Ui.button(context, "WI-FI") {
             runCatching { context.startActivity(Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         }, LinearLayout.LayoutParams(0, -1, 1f))
-        sysRow.addView(Ui.button(context, "📡 BLUETOOTH") {
+        sysRow.addView(Ui.button(context, "BLUETOOTH") {
             runCatching { context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         }, LinearLayout.LayoutParams(0, -1, 1.1f).apply { marginStart = Ui.dp(context, 4) })
-        sysRow.addView(Ui.button(context, "🔋 BATTERY") {
+        sysRow.addView(Ui.button(context, "BATTERY") {
             runCatching { context.startActivity(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         }, LinearLayout.LayoutParams(0, -1, 1f).apply { marginStart = Ui.dp(context, 4) })
         inner.addView(sysRow)
@@ -481,7 +481,7 @@ class SkillsScreen(
 
                     if (routine.triggers.isNotEmpty()) {
                         rInner.addView(TextView(context).apply {
-                            text = "🗣️ \"${routine.triggers.joinToString("\", \"")}\""
+                            text = "\"${routine.triggers.joinToString("\", \"")}\""
                             textSize = 10.5f
                             setTextColor(Ui.CYAN_DIM)
                             setTypeface(null, Typeface.ITALIC)
@@ -544,7 +544,7 @@ class SkillsScreen(
 
         val topRow = Ui.row(context)
         topRow.addView(TextView(context).apply {
-            text = "🌐 DEEP WEB & BROWSER AGENT"
+            text = "WEB & BROWSER RESEARCH"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
@@ -600,7 +600,7 @@ class SkillsScreen(
 
         val topRow = Ui.row(context)
         topRow.addView(TextView(context).apply {
-            text = "💻 DESKTOP COMPANION & LAN BRIDGE"
+            text = "DESKTOP COMPANION & LAN BRIDGE"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
@@ -630,13 +630,13 @@ class SkillsScreen(
         }
         val detailsInner = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         detailsInner.addView(TextView(context).apply {
-            text = "🌐 Web Console: http://$ip:8888"
+            text = "Web Console: http://$ip:8888"
             textSize = 12.5f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
         })
         detailsInner.addView(TextView(context).apply {
-            text = "🔑 Pairing PIN: $pin"
+            text = "Pairing PIN: $pin"
             textSize = 11.5f
             setTextColor(Ui.TEXT)
             setPadding(0, Ui.dp(context, 4), 0, 0)
@@ -677,7 +677,7 @@ class SkillsScreen(
 
         val headerRow = Ui.row(context)
         headerRow.addView(TextView(context).apply {
-            text = "🧠 DYNAMIC & EVOLVED SKILLS (DB)"
+            text = "DYNAMIC & EVOLVED SKILLS (DB)"
             textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
@@ -694,11 +694,11 @@ class SkillsScreen(
         })
 
         val btnRow = Ui.row(context)
-        btnRow.addView(Ui.button(context, "⚡ DECISION SYNTHESIS") {
+        btnRow.addView(Ui.button(context, "DECISION SYNTHESIS") {
             onExecuteCommand("make a decision on optimal background performance and battery")
         }, LinearLayout.LayoutParams(0, -2, 1f))
 
-        btnRow.addView(Ui.button(context, "🔍 CHECK DB SKILLS") {
+        btnRow.addView(Ui.button(context, "CHECK DB SKILLS") {
             val store = com.jarvis.skills.db.PersistentSkillStore(context)
             val skills = store.getAllSkills()
             Toast.makeText(context, "Database contains ${skills.size} skills.", Toast.LENGTH_LONG).show()

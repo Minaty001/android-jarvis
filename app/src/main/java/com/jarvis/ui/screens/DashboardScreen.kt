@@ -1,36 +1,40 @@
 package com.jarvis.ui.screens
 
-import android.util.Log
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import com.jarvis.R
 import com.jarvis.service.JarvisForegroundService
-import com.jarvis.ui.JarvisOrbView
 import com.jarvis.ui.JarvisWaveformView
 import com.jarvis.ui.components.Ui
-import com.jarvis.ui.model.*
+import com.jarvis.ui.model.AppSettings
 import com.jarvis.voice.VoiceState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
- * Rebuilt J.A.R.V.I.S. Dashboard Screen conforming to Google Stitch & Material 3.
+ * Modern, human-crafted conversational dashboard for J.A.R.V.I.S.
  * Features:
- * - Clean Top HUD with single dynamic status pill & settings shortcut
- * - Interactive Arc Reactor hero with tap-to-talk & live waveform
- * - 5 high-impact quick action chips
- * - Context-aware active task card (hidden when idle)
- * - Live conversational exchange
- * - Unified Smart Command Bar (input + dynamic 🎙 / ➤ / ⏹ button)
+ * - Minimalist top HUD with clean status indicator and direct settings access
+ * - Compact interactive voice status & live audio waveform card (~68dp)
+ * - True multi-turn scrollable conversation feed with user and assistant message bubbles
+ * - Context-aware active task execution card
+ * - Curated quick-action prompt chips with vector icons
+ * - Fixed bottom command capsule with dynamic vector actions (mic, send, stop)
  */
 class DashboardScreen(
     context: Context,
@@ -39,70 +43,72 @@ class DashboardScreen(
     private val onOpenSettings: () -> Unit,
     private val onOpenSkills: (() -> Unit)? = null,
     private val onOpenMemory: (() -> Unit)? = null
-) : ScrollView(context) {
+) : LinearLayout(context) {
 
-    private val status = TextView(context)
-    private val transcript = TextView(context)
-    private val response = TextView(context)
+    private val statusText = TextView(context)
     private val activityDetail = TextView(context)
-    private val protocolCard: View
-    private val protocolStep1 = TextView(context)
-    private val protocolStep2 = TextView(context)
-    private val protocolStep3 = TextView(context)
-    private val protocolBadge = Ui.hudBadge(context, "STANDBY", Ui.CYAN)
-    private val input = EditText(context)
-    private val smartActionBtn = TextView(context)
-    private val orb = JarvisOrbView(context)
+    private val serviceBadge = Ui.hudBadge(context, "● READY", Ui.SUCCESS)
     private val waveform = JarvisWaveformView(context)
-    private val serviceBadge = Ui.hudBadge(context, "● READY", Ui.CYAN)
+
+    // Conversation feed
+    private val chatScroll = ScrollView(context)
+    private val chatMessagesContainer = LinearLayout(context)
+
+    // Task Execution Card
+    private val protocolCard: View
+    private val protocolBadge = Ui.hudBadge(context, "STANDBY", Ui.PRIMARY)
+    private val protocolGoalText = TextView(context)
+    private val protocolStepText = TextView(context)
+
+    // Input Bar
+    private val input = EditText(context)
+    private val smartActionBtn = ImageView(context)
 
     private var currentVoiceState: VoiceState = VoiceState.WAITING_FOR_WAKE
     private var commandJob: Job? = null
     private var statusJob: Job? = null
     private var boundService: JarvisForegroundService? = null
 
+    private var lastRecordedResponse: String = ""
+    private var lastRecordedTranscript: String = ""
+
+    private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+
     private fun String.safeDisplay(): String = replace(Regex("[\\r\\n\\t]"), " ").trim()
+    private fun currentTimeString(): String = timeFormat.format(Date())
 
     init {
+        orientation = VERTICAL
         setBackgroundColor(Ui.BG)
-        isFillViewport = true
-        overScrollMode = OVER_SCROLL_IF_CONTENT_SCROLLS
+        setPadding(Ui.dp(context, 14), Ui.dp(context, 10), Ui.dp(context, 14), Ui.dp(context, 10))
 
-        val root = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT)
-            setPadding(Ui.dp(context, 16), Ui.dp(context, 12), Ui.dp(context, 16), Ui.dp(context, 24))
-        }
-        addView(root)
-
-        // 1. Top HUD Bar (Title + Dynamic Status Pill + Settings)
+        // 1. Top HUD Header
         val header = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
+            orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = Ui.dp(context, 8)
             }
         }
 
-        val brand = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        val brandCol = LinearLayout(context).apply {
+            orientation = VERTICAL
+            layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
             addView(TextView(context).apply {
-                text = "J.A.R.V.I.S."
-                textSize = 21f
+                text = "JARVIS"
+                textSize = 19f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Ui.CYAN)
-                letterSpacing = 0.16f
+                setTextColor(Ui.TEXT)
+                letterSpacing = 0.06f
             })
             addView(TextView(context).apply {
-                text = "INTELLIGENT VOICE SYSTEM"
-                textSize = 9.5f
-                typeface = Typeface.DEFAULT_BOLD
+                text = "Personal AI Assistant"
+                textSize = 11f
                 setTextColor(Ui.MUTED)
-                letterSpacing = 0.12f
+                letterSpacing = 0.02f
             })
         }
-        header.addView(brand)
+        header.addView(brandCol)
 
         serviceBadge.apply {
             setOnClickListener {
@@ -116,279 +122,210 @@ class DashboardScreen(
                 }
             }
         }
-        header.addView(serviceBadge, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        header.addView(serviceBadge, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
 
-        val settingsButton = TextView(context).apply {
-            text = "⚙"
-            textSize = 18f
-            gravity = Gravity.CENTER
-            setTextColor(Ui.CYAN)
-            background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER_GLOW, 8)
-            layoutParams = LinearLayout.LayoutParams(Ui.dp(context, 34), Ui.dp(context, 34)).apply {
+        val settingsBtn = ImageView(context).apply {
+            setImageResource(R.drawable.ic_nav_settings)
+            imageTintList = ColorStateList.valueOf(Ui.MUTED)
+            val btnSize = Ui.dp(context, 34)
+            layoutParams = LayoutParams(btnSize, btnSize).apply {
                 marginStart = Ui.dp(context, 8)
             }
+            background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 8)
+            setPadding(Ui.dp(context, 7), Ui.dp(context, 7), Ui.dp(context, 7), Ui.dp(context, 7))
+            isClickable = true
+            isFocusable = true
             setOnClickListener { onOpenSettings() }
             contentDescription = "Open settings"
         }
-        header.addView(settingsButton)
-        root.addView(header)
-        root.addView(Ui.divider(context))
+        header.addView(settingsBtn)
+        addView(header)
 
-        // 2. Holographic Hero Section (Arc Reactor Orb + Waveform + Tap-to-Talk)
-        val hero = Ui.glassCard(context, Ui.CYAN_DIM)
-        val heroInner = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14))
-        }
-
-        val orbSize = Ui.dp(context, 190)
-        orb.layoutParams = FrameLayout.LayoutParams(orbSize, orbSize).apply { gravity = Gravity.CENTER }
-        val orbFrame = FrameLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(context, 195))
-            background = Ui.rounded(context, 0x0D63EFFF.toInt(), Ui.BORDER, 999)
+        // 2. Compact Voice & Waveform Status Card (~68dp)
+        val voiceCard = Ui.glassCard(context, Ui.BORDER).apply {
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = Ui.dp(context, 8)
+            }
             isClickable = true
             isFocusable = true
             setOnClickListener { triggerListen() }
         }
-        orbFrame.addView(orb)
-        heroInner.addView(orbFrame)
 
-        waveform.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(context, 44)).apply {
-            topMargin = Ui.dp(context, 6)
-            bottomMargin = Ui.dp(context, 4)
+        val voiceInner = LinearLayout(context).apply {
+            orientation = VERTICAL
+            setPadding(Ui.dp(context, 12), Ui.dp(context, 8), Ui.dp(context, 12), Ui.dp(context, 8))
         }
-        heroInner.addView(waveform)
 
-        status.apply {
+        val statusRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        statusText.apply {
             text = "LISTENING FOR ${settings().wakeWord.uppercase()}…"
-            textSize = 12.5f
+            textSize = 11.5f
             typeface = Typeface.DEFAULT_BOLD
-            letterSpacing = 0.12f
-            gravity = Gravity.CENTER
-            setTextColor(Ui.CYAN)
+            letterSpacing = 0.04f
+            setTextColor(Ui.PRIMARY)
+            layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
         }
-        heroInner.addView(status)
+        statusRow.addView(statusText)
 
         activityDetail.apply {
-            text = "Tap Arc Reactor or say \"${settings().wakeWord}\" to speak"
-            textSize = 10.5f
-            gravity = Gravity.CENTER
+            text = "Tap to speak"
+            textSize = 10f
             setTextColor(Ui.MUTED)
-            setPadding(0, Ui.dp(context, 4), 0, 0)
         }
-        heroInner.addView(activityDetail)
+        statusRow.addView(activityDetail)
+        voiceInner.addView(statusRow)
 
-        hero.addView(heroInner)
-        root.addView(hero)
+        waveform.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, Ui.dp(context, 34)).apply {
+            topMargin = Ui.dp(context, 4)
+        }
+        voiceInner.addView(waveform)
+        voiceCard.addView(voiceInner)
+        addView(voiceCard)
 
-        // 3. Quick Action Tech Chips (Curated 5 High-Impact Prompts)
+        // 3. Context-Aware Active Task / Protocol Card (Hidden when idle)
+        protocolCard = Ui.glassCard(context, Ui.BORDER_GLOW).apply {
+            visibility = GONE
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = Ui.dp(context, 8)
+            }
+        }
+        val protocolInner = LinearLayout(context).apply {
+            orientation = VERTICAL
+            setPadding(Ui.dp(context, 12), Ui.dp(context, 8), Ui.dp(context, 12), Ui.dp(context, 8))
+        }
+
+        val protoHead = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val protoTitle = TextView(context).apply {
+            text = "ACTIVE TASK"
+            textSize = 11f
+            typeface = Typeface.DEFAULT_BOLD
+            letterSpacing = 0.06f
+            setTextColor(Ui.PRIMARY)
+            layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
+        }
+        protoHead.addView(protoTitle)
+        protoHead.addView(protocolBadge)
+
+        val cancelBtn = TextView(context).apply {
+            text = "CANCEL"
+            textSize = 10f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Ui.ERROR)
+            background = Ui.rounded(context, Ui.SURFACE_2, 0x44EF4444.toInt(), 6)
+            setPadding(Ui.dp(context, 8), Ui.dp(context, 3), Ui.dp(context, 8), Ui.dp(context, 3))
+            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                marginStart = Ui.dp(context, 6)
+            }
+            setOnClickListener { cancelActiveTask() }
+        }
+        protoHead.addView(cancelBtn)
+        protocolInner.addView(protoHead)
+
+        protocolGoalText.apply {
+            text = "Analyzing context..."
+            textSize = 11.5f
+            setTextColor(Ui.TEXT)
+            setPadding(0, Ui.dp(context, 4), 0, Ui.dp(context, 2))
+        }
+        protocolStepText.apply {
+            text = "Executing autonomous action…"
+            textSize = 10.5f
+            setTextColor(Ui.MUTED)
+        }
+        protocolInner.addView(protocolGoalText)
+        protocolInner.addView(protocolStepText)
+        protocolCard.addView(protocolInner)
+        addView(protocolCard)
+
+        // 4. Conversation Feed (Scrollable message thread)
+        chatScroll.apply {
+            isFillViewport = true
+            overScrollMode = OVER_SCROLL_IF_CONTENT_SCROLLS
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f).apply {
+                bottomMargin = Ui.dp(context, 8)
+            }
+        }
+
+        chatMessagesContainer.apply {
+            orientation = VERTICAL
+            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT)
+            setPadding(0, Ui.dp(context, 4), 0, Ui.dp(context, 4))
+        }
+        chatScroll.addView(chatMessagesContainer)
+        addView(chatScroll)
+
+        // Initial assistant greeting
+        addAssistantMessage("Hello! I am Jarvis, your personal AI assistant. How can I help you today?", currentTimeString())
+
+        // 5. Quick Suggestion Prompt Chips
         val chipsScroll = HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = Ui.dp(context, 10)
-                bottomMargin = Ui.dp(context, 12)
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = Ui.dp(context, 8)
             }
         }
-        val chipsRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+        val chipsRow = LinearLayout(context).apply { orientation = HORIZONTAL }
 
-        chipsRow.addView(Ui.techChip(context, "Floating Orb", "🔮") {
-            toggleFloatingOverlay(context)
-        })
-        chipsRow.addView(Ui.techChip(context, "Play Music", "▶") {
+        chipsRow.addView(Ui.vectorChip(context, "Play Music", R.drawable.ic_send) {
             input.setText("play music")
             sendCommand()
         })
-        chipsRow.addView(Ui.techChip(context, "WhatsApp", "💬") {
+        chipsRow.addView(Ui.vectorChip(context, "Send Message", R.drawable.ic_nav_chat) {
             input.setText("send whatsapp message to ")
             input.setSelection(input.text.length)
             input.requestFocus()
         })
-        chipsRow.addView(Ui.techChip(context, "Search", "🔍") {
+        chipsRow.addView(Ui.vectorChip(context, "Search Web", R.drawable.ic_send) {
             input.setText("search ")
             input.setSelection(input.text.length)
             input.requestFocus()
         })
-        chipsRow.addView(Ui.techChip(context, "Skills Hub", "⚡") {
+        chipsRow.addView(Ui.vectorChip(context, "Skills Hub", R.drawable.ic_nav_skills) {
             onOpenSkills?.invoke()
+        })
+        chipsRow.addView(Ui.vectorChip(context, "Floating Orb", R.drawable.ic_nav_chat) {
+            toggleFloatingOverlay(context)
         })
 
         chipsScroll.addView(chipsRow)
-        root.addView(chipsScroll)
+        addView(chipsScroll)
 
-        // 3.5 Voice Profile HUD Card
-        val voiceStore = com.jarvis.ui.data.UiPreferencesStore(context)
-        val profile = voiceStore.loadVoiceProfile()
-        val voiceCard = Ui.glassCard(context, if (profile.isEnrolled) Ui.BORDER_GLOW else Ui.BORDER)
-        val voiceInner = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(Ui.dp(context, 14), Ui.dp(context, 10), Ui.dp(context, 14), Ui.dp(context, 10))
-        }
-        val voiceRow = Ui.row(context)
-        val voiceTitle = TextView(context).apply {
-            text = "OWNER VOICE PROFILE"
-            textSize = 12f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.TEXT)
-            letterSpacing = 0.08f
-        }
-        voiceRow.addView(voiceTitle, LinearLayout.LayoutParams(0, -2, 1f))
-        voiceRow.addView(Ui.hudBadge(context, if (profile.isEnrolled) "ENROLLED" else "UNENROLLED", if (profile.isEnrolled) Ui.SUCCESS else Ui.WARNING))
-        voiceInner.addView(voiceRow)
-
-        voiceInner.addView(TextView(context).apply {
-            text = if (profile.isEnrolled) "Speaker verification active • KWS phrase '${profile.wakeWordPhrase}' (${profile.sampleCount} samples enrolled)" else "Owner voice uncalibrated • Tap below to setup voice profile"
-            textSize = 10.5f
-            setTextColor(Ui.MUTED)
-            setPadding(0, Ui.dp(context, 2), 0, Ui.dp(context, 6))
-        })
-
-        val enrollBtn = Ui.button(context, if (profile.isEnrolled) "RE-ENROLL VOICE MODEL" else "ENROLL VOICE MODEL") {
-            onOpenSettings()
-        }
-        voiceInner.addView(enrollBtn)
-        voiceCard.addView(voiceInner)
-        root.addView(voiceCard)
-
-        // 4. Context-Aware Active Protocol / Task Card (Hidden by default when idle)
-        protocolCard = Ui.glassCard(context, Ui.BORDER_GLOW).apply {
-            visibility = View.GONE
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = Ui.dp(context, 12)
-            }
-        }
-        val protocolInner = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
-        }
-        val protocolHeader = Ui.row(context)
-        val protocolTitle = TextView(context).apply {
-            text = "⚡ ACTIVE PROTOCOL"
-            textSize = 11.5f
-            typeface = Typeface.DEFAULT_BOLD
-            letterSpacing = 0.10f
-            setTextColor(Ui.CYAN)
-        }
-        protocolHeader.addView(protocolTitle, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        protocolHeader.addView(protocolBadge, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-
-        val cancelTaskBtn = TextView(context).apply {
-            text = "CANCEL"
-            textSize = 10f
-            gravity = Gravity.CENTER
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.ERROR)
-            background = Ui.rounded(context, Ui.SURFACE_2, 0xFF6E3038.toInt(), 6)
-            setPadding(Ui.dp(context, 10), Ui.dp(context, 4), Ui.dp(context, 10), Ui.dp(context, 4))
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                marginStart = Ui.dp(context, 8)
-            }
-            setOnClickListener { cancelActiveTask() }
-            contentDescription = "Cancel active task"
-        }
-        protocolHeader.addView(cancelTaskBtn)
-        protocolInner.addView(protocolHeader)
-
-        protocolStep1.apply {
-            text = "• Analyzing voice context & intent"
-            textSize = 11.5f
-            setTextColor(Ui.TEXT)
-            setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 2))
-        }
-        protocolStep2.apply {
-            text = "• Executing autonomous skills…"
-            textSize = 11.5f
-            setTextColor(Ui.MUTED)
-            setPadding(0, Ui.dp(context, 2), 0, Ui.dp(context, 2))
-        }
-        protocolStep3.apply {
-            text = "• Verifying outcome & assertions"
-            textSize = 11.5f
-            setTextColor(Ui.MUTED)
-            setPadding(0, Ui.dp(context, 2), 0, Ui.dp(context, 4))
-        }
-        protocolInner.addView(protocolStep1)
-        protocolInner.addView(protocolStep2)
-        protocolInner.addView(protocolStep3)
-        protocolCard.addView(protocolInner)
-        root.addView(protocolCard)
-
-        // 5. Live Glassmorphic Exchange (Clean Chat Bubbles)
-        val exchange = Ui.glassCard(context)
-        val ex = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
-        }
-        ex.addView(Ui.sectionLabel(context, "Live Exchange"))
-
-        // User Chat Bubble
-        val userBubble = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            background = Ui.rounded(context, 0x1A63EFFF.toInt(), Ui.CYAN_DIM, 10)
-            setPadding(Ui.dp(context, 12), Ui.dp(context, 8), Ui.dp(context, 12), Ui.dp(context, 8))
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = Ui.dp(context, 8)
-            }
-        }
-        transcript.apply {
-            text = "You  •  —"
-            textSize = 12f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Ui.CYAN)
-        }
-        userBubble.addView(transcript)
-        ex.addView(userBubble)
-
-        // Jarvis Chat Bubble
-        val jarvisBubble = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 10)
-            setPadding(Ui.dp(context, 12), Ui.dp(context, 8), Ui.dp(context, 12), Ui.dp(context, 8))
-        }
-        response.apply {
-            text = "JARVIS  •  How can I assist you today, sir?"
-            textSize = 12.5f
-            setTextColor(Ui.TEXT)
-            setLineSpacing(0f, 1.18f)
-        }
-        jarvisBubble.addView(response)
-        ex.addView(jarvisBubble)
-
-        exchange.addView(ex)
-        root.addView(exchange)
-
-        // 6. Unified Smart Command Bar (Pill Container with Dynamic Button)
-        root.addView(Ui.sectionLabel(context, "Command Input").apply {
-            setPadding(0, Ui.dp(context, 8), 0, Ui.dp(context, 4))
-        })
-
-        val composer = Ui.glassCard(context, Ui.BORDER_GLOW)
-        val composerInner = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
+        // 6. Modern Command Input Bar Capsule
+        val composer = LinearLayout(context).apply {
+            orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = Ui.rounded(context, Ui.BG, Ui.CYAN_DIM, 24)
+            background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 26)
             setPadding(Ui.dp(context, 14), Ui.dp(context, 4), Ui.dp(context, 6), Ui.dp(context, 4))
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, Ui.dp(context, 52))
         }
 
         input.apply {
             hint = "Ask Jarvis anything…"
-            textSize = 13.5f
+            textSize = 14f
             setTextColor(Ui.TEXT)
             setHintTextColor(Ui.MUTED)
             setBackgroundColor(Color.TRANSPARENT)
             setSingleLine(true)
             imeOptions = EditorInfo.IME_ACTION_SEND
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-            layoutParams = LinearLayout.LayoutParams(0, Ui.dp(context, 46), 1f)
+            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
         }
-        composerInner.addView(input)
+        composer.addView(input)
 
         smartActionBtn.apply {
-            textSize = 16f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(Ui.dp(context, 42), Ui.dp(context, 42))
+            val iconBtnSize = Ui.dp(context, 40)
+            layoutParams = LayoutParams(iconBtnSize, iconBtnSize)
+            setPadding(Ui.dp(context, 9), Ui.dp(context, 9), Ui.dp(context, 9), Ui.dp(context, 9))
+            isClickable = true
+            isFocusable = true
         }
         updateSmartActionButton()
 
@@ -424,12 +361,124 @@ class DashboardScreen(
             }
         }
 
-        composerInner.addView(smartActionBtn)
-        composer.addView(composerInner)
-        root.addView(composer)
+        composer.addView(smartActionBtn)
+        addView(composer)
 
-        orb.setState(VoiceState.WAITING_FOR_WAKE)
         waveform.setState(VoiceState.WAITING_FOR_WAKE)
+    }
+
+    private fun addUserMessage(text: String, time: String) {
+        val bubbleContainer = LinearLayout(context).apply {
+            orientation = VERTICAL
+            gravity = Gravity.END
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                topMargin = Ui.dp(context, 4)
+                bottomMargin = Ui.dp(context, 4)
+            }
+        }
+
+        val bubble = LinearLayout(context).apply {
+            orientation = VERTICAL
+            background = Ui.rounded(context, Ui.PRIMARY, Color.TRANSPARENT, 14)
+            setPadding(Ui.dp(context, 12), Ui.dp(context, 8), Ui.dp(context, 12), Ui.dp(context, 8))
+            val maxWidth = (resources.displayMetrics.widthPixels * 0.82f).toInt()
+            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.END
+                marginStart = Ui.dp(context, 48)
+            }
+        }
+
+        val msgText = TextView(context).apply {
+            this.text = text
+            textSize = 13.5f
+            setTextColor(Color.WHITE)
+            setLineSpacing(0f, 1.15f)
+        }
+        val timeText = TextView(context).apply {
+            this.text = time
+            textSize = 9.5f
+            setTextColor(0xAAFFFFFF.toInt())
+            gravity = Gravity.END
+            setPadding(0, Ui.dp(context, 2), 0, 0)
+        }
+
+        bubble.addView(msgText)
+        bubble.addView(timeText)
+        bubbleContainer.addView(bubble)
+        chatMessagesContainer.addView(bubbleContainer)
+        scrollToBottom()
+    }
+
+    private fun addAssistantMessage(text: String, time: String, executionBadge: String? = null) {
+        val bubbleContainer = LinearLayout(context).apply {
+            orientation = VERTICAL
+            gravity = Gravity.START
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+                topMargin = Ui.dp(context, 4)
+                bottomMargin = Ui.dp(context, 4)
+            }
+        }
+
+        val bubble = LinearLayout(context).apply {
+            orientation = VERTICAL
+            background = Ui.rounded(context, Ui.SURFACE_2, Ui.BORDER, 14)
+            setPadding(Ui.dp(context, 14), Ui.dp(context, 10), Ui.dp(context, 14), Ui.dp(context, 10))
+            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.START
+                marginEnd = Ui.dp(context, 36)
+            }
+        }
+
+        val headerRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = Ui.dp(context, 3)
+            }
+        }
+
+        val nameTag = TextView(context).apply {
+            this.text = "Jarvis"
+            textSize = 10.5f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Ui.PRIMARY)
+        }
+        headerRow.addView(nameTag)
+
+        val timeTag = TextView(context).apply {
+            this.text = " • $time"
+            textSize = 9.5f
+            setTextColor(Ui.MUTED)
+        }
+        headerRow.addView(timeTag)
+
+        if (!executionBadge.isNullOrBlank()) {
+            val badge = TextView(context).apply {
+                this.text = "  [$executionBadge]"
+                textSize = 9f
+                setTextColor(Ui.SUCCESS)
+            }
+            headerRow.addView(badge)
+        }
+        bubble.addView(headerRow)
+
+        val msgText = TextView(context).apply {
+            this.text = text
+            textSize = 13.5f
+            setTextColor(Ui.TEXT)
+            setLineSpacing(0f, 1.18f)
+        }
+        bubble.addView(msgText)
+
+        bubbleContainer.addView(bubble)
+        chatMessagesContainer.addView(bubbleContainer)
+        scrollToBottom()
+    }
+
+    private fun scrollToBottom() {
+        chatScroll.post {
+            chatScroll.fullScroll(View.FOCUS_DOWN)
+        }
     }
 
     private fun updateSmartActionButton() {
@@ -439,19 +488,19 @@ class DashboardScreen(
         val hasText = !input.text.isNullOrBlank()
 
         if (isTaskActive) {
-            smartActionBtn.text = "⏹"
-            smartActionBtn.setTextColor(Ui.ERROR)
-            smartActionBtn.background = Ui.rounded(context, 0x33FF5555.toInt(), Ui.ERROR, 21)
+            smartActionBtn.setImageResource(R.drawable.ic_stop)
+            smartActionBtn.imageTintList = ColorStateList.valueOf(Ui.ERROR)
+            smartActionBtn.background = Ui.rounded(context, 0x33EF4444.toInt(), Ui.ERROR, 20)
             smartActionBtn.contentDescription = "Stop active task"
         } else if (hasText) {
-            smartActionBtn.text = "➤"
-            smartActionBtn.setTextColor(Color.BLACK)
-            smartActionBtn.background = Ui.rounded(context, Ui.CYAN, Ui.CYAN, 21)
+            smartActionBtn.setImageResource(R.drawable.ic_send)
+            smartActionBtn.imageTintList = ColorStateList.valueOf(Color.WHITE)
+            smartActionBtn.background = Ui.rounded(context, Ui.PRIMARY, Color.TRANSPARENT, 20)
             smartActionBtn.contentDescription = "Send command"
         } else {
-            smartActionBtn.text = "🎙"
-            smartActionBtn.setTextColor(Ui.CYAN)
-            smartActionBtn.background = Ui.rounded(context, Ui.SURFACE_2, Ui.CYAN, 21)
+            smartActionBtn.setImageResource(R.drawable.ic_mic)
+            smartActionBtn.imageTintList = ColorStateList.valueOf(Ui.PRIMARY)
+            smartActionBtn.background = Ui.rounded(context, Ui.SURFACE, Ui.BORDER, 20)
             smartActionBtn.contentDescription = "Voice input"
         }
     }
@@ -477,20 +526,18 @@ class DashboardScreen(
         input.text?.clear()
         updateSmartActionButton()
 
-        transcript.text = "You  •  ${command.safeDisplay()}"
-        response.text = "JARVIS  •  Processing command…"
-        status.text = "THINKING…"
-        protocolStep1.text = "✓ Analyzed request: \"${command.take(24)}\""
-        protocolStep1.setTextColor(Ui.SUCCESS)
-        protocolStep2.text = "• Executing autonomous skills…"
-        protocolStep2.setTextColor(Ui.CYAN)
+        addUserMessage(command.safeDisplay(), currentTimeString())
+
+        statusText.text = "THINKING…"
+        activityDetail.text = "Processing request"
+        protocolGoalText.text = "Request: \"${command.take(32)}\""
+        protocolStepText.text = "Planning execution steps…"
         protocolBadge.apply {
             text = "● PLANNING"
-            setTextColor(Ui.CYAN)
+            setTextColor(Ui.PRIMARY)
         }
         protocolCard.visibility = View.VISIBLE
 
-        orb.setState(VoiceState.THINKING)
         waveform.setState(VoiceState.THINKING)
 
         commandJob?.cancel()
@@ -498,29 +545,26 @@ class DashboardScreen(
             try {
                 val engine = boundService?.voiceEngine
                 if (engine == null) {
-                    response.text = "JARVIS  •  Voice service is unavailable."
-                    status.text = "SERVICE OFFLINE"
+                    addAssistantMessage("Voice service is unavailable.", currentTimeString())
+                    statusText.text = "SERVICE OFFLINE"
                     serviceBadge.apply {
                         text = "● OFFLINE"
                         setTextColor(Ui.ERROR)
                     }
-                    orb.setState(VoiceState.ERROR)
                     waveform.setState(VoiceState.ERROR)
                     protocolCard.visibility = View.GONE
                     return@launch
                 }
                 val ok = engine.processTextCommand(command)
                 if (!ok) {
-                    response.text = "JARVIS  •  Busy processing previous command."
-                    status.text = "BUSY"
-                    orb.setState(engine.status.value.voiceState)
+                    addAssistantMessage("Busy processing previous command.", currentTimeString())
+                    statusText.text = "BUSY"
                     waveform.setState(engine.status.value.voiceState)
                 }
             } catch (t: Throwable) {
                 Log.e("Dashboard", "Command failed", t)
-                response.text = "JARVIS  •  Failed."
-                status.text = "ERROR"
-                orb.setState(VoiceState.ERROR)
+                addAssistantMessage("An error occurred while executing command.", currentTimeString())
+                statusText.text = "ERROR"
                 waveform.setState(VoiceState.ERROR)
             }
         }
@@ -528,30 +572,28 @@ class DashboardScreen(
 
     private fun cancelActiveTask() {
         boundService?.voiceEngine?.assistantRuntime?.cancelCurrentTask()
-        status.text = "TASK CANCELLED"
-        activityDetail.text = "Current execution cancelled by user"
-        protocolStep2.text = "• Execution cancelled by user"
-        protocolStep2.setTextColor(Ui.ERROR)
+        statusText.text = "TASK CANCELLED"
+        activityDetail.text = "Cancelled by user"
+        protocolStepText.text = "Cancelled by user"
         protocolBadge.apply {
             text = "● CANCELLED"
             setTextColor(Ui.ERROR)
         }
-        orb.setState(VoiceState.CANCELLED)
         waveform.setState(VoiceState.CANCELLED)
         currentVoiceState = VoiceState.CANCELLED
         updateSmartActionButton()
+        addAssistantMessage("Task was cancelled.", currentTimeString())
     }
 
     private fun startEngine() {
         JarvisForegroundService.startService(context)
         boundService?.startEngine()
-        status.text = "STARTING ENGINE…"
+        statusText.text = "STARTING ENGINE…"
         serviceBadge.apply {
             text = "● READY"
             setTextColor(Ui.SUCCESS)
         }
-        activityDetail.text = "Service starting • Listening for wake word"
-        orb.setState(VoiceState.WAITING_FOR_WAKE)
+        activityDetail.text = "Listening for wake word"
         waveform.setState(VoiceState.WAITING_FOR_WAKE)
         currentVoiceState = VoiceState.WAITING_FOR_WAKE
         updateSmartActionButton()
@@ -559,13 +601,12 @@ class DashboardScreen(
 
     private fun stopEngine() {
         owner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) { JarvisForegroundService.stopService(context) }
-        status.text = "ENGINE HALTED"
+        statusText.text = "ENGINE HALTED"
         serviceBadge.apply {
             text = "● HALTED"
             setTextColor(Ui.ERROR)
         }
-        activityDetail.text = "Service halted • Tap status badge or Arc Reactor to resume"
-        orb.setState(VoiceState.IDLE)
+        activityDetail.text = "Tap badge to resume"
         waveform.setState(VoiceState.IDLE)
         currentVoiceState = VoiceState.IDLE
         protocolCard.visibility = View.GONE
@@ -600,7 +641,7 @@ class DashboardScreen(
                         }
                     }
 
-                    status.text = when (s.voiceState) {
+                    statusText.text = when (s.voiceState) {
                         VoiceState.WAITING_FOR_WAKE -> if (s.wakeModelAvailable) "LISTENING FOR ${wakePhrase.uppercase()}…" else "WAKE MODEL UNAVAILABLE • TAP TO TALK"
                         VoiceState.WAKE_DETECTED -> "WAKE WORD DETECTED"
                         VoiceState.LISTENING -> "LISTENING…"
@@ -614,15 +655,15 @@ class DashboardScreen(
                     }
 
                     activityDetail.text = when (s.voiceState) {
-                        VoiceState.WAITING_FOR_WAKE -> "Tap Arc Reactor or say \"$wakePhrase\" to speak"
+                        VoiceState.WAITING_FOR_WAKE -> "Tap to speak"
                         VoiceState.LISTENING -> "Listening… Speak now"
-                        VoiceState.THINKING -> "Analyzing your request…"
-                        VoiceState.EXECUTING -> "Executing task: ${s.lastTaskGoal?.take(28) ?: "Device automation"}"
+                        VoiceState.THINKING -> "Analyzing request…"
+                        VoiceState.EXECUTING -> "Running: ${s.lastTaskGoal?.take(22) ?: "Automation"}"
                         VoiceState.VERIFYING -> "Verifying outcome…"
-                        VoiceState.SPEAKING -> "Speaking response • Tap Arc Reactor to interrupt"
-                        VoiceState.IDLE -> "Service halted • Tap status badge to resume"
-                        VoiceState.ERROR -> "An error occurred. Check logs."
-                        else -> s.statusMessage.ifBlank { "Ready for commands" }
+                        VoiceState.SPEAKING -> "Tap to interrupt"
+                        VoiceState.IDLE -> "Tap badge to resume"
+                        VoiceState.ERROR -> "Error occurred"
+                        else -> s.statusMessage.ifBlank { "Ready" }
                     }
 
                     val isTaskActive = s.voiceState in setOf(
@@ -642,38 +683,38 @@ class DashboardScreen(
                         }
                         protocolBadge.apply {
                             text = "● $badgeLabel"
-                            setTextColor(if (s.voiceState == VoiceState.ERROR) Ui.ERROR else Ui.CYAN)
+                            setTextColor(if (s.voiceState == VoiceState.ERROR) Ui.ERROR else Ui.PRIMARY)
                         }
 
                         if (!s.lastTaskGoal.isNullOrBlank()) {
-                            protocolStep1.text = "✓ Analyzed context: \"${s.lastTaskGoal.take(24)}\""
-                            protocolStep1.setTextColor(Ui.SUCCESS)
+                            protocolGoalText.text = "Goal: ${s.lastTaskGoal}"
                         }
                         if (s.voiceState == VoiceState.EXECUTING) {
-                            protocolStep2.text = "✓ Executing: ${s.lastTaskGoal?.take(30) ?: "Device automation"}"
-                            protocolStep2.setTextColor(Ui.CYAN)
+                            protocolStepText.text = "Executing autonomous action…"
                         } else if (s.voiceState == VoiceState.VERIFYING) {
-                            protocolStep3.text = "✓ Verifying outcome honesty & assertions"
-                            protocolStep3.setTextColor(Ui.SUCCESS)
+                            protocolStepText.text = "Verifying outcome assertions…"
                         }
                     }
 
-                    if (s.partialTranscript.isNotBlank()) {
-                        transcript.text = "You  •  ${s.partialTranscript.safeDisplay()}"
-                    }
-                    if (s.lastResponse.isNotBlank()) {
-                        response.text = "JARVIS  •  ${s.lastResponse.safeDisplay()}"
+                    // Feed partial transcripts or completed responses to chat
+                    if (s.partialTranscript.isNotBlank() && s.partialTranscript != lastRecordedTranscript) {
+                        lastRecordedTranscript = s.partialTranscript
+                        if (s.voiceState == VoiceState.THINKING || s.voiceState == VoiceState.EXECUTING) {
+                            addUserMessage(s.partialTranscript.safeDisplay(), currentTimeString())
+                        }
                     }
 
-                    orb.setState(s.voiceState)
+                    if (s.lastResponse.isNotBlank() && s.lastResponse != lastRecordedResponse) {
+                        lastRecordedResponse = s.lastResponse
+                        addAssistantMessage(s.lastResponse.safeDisplay(), currentTimeString())
+                    }
+
                     waveform.setState(s.voiceState)
 
                     if (s.voiceState == VoiceState.LISTENING) {
                         val level = if (s.audioLevelRms > 0.05f) s.audioLevelRms else 0.25f
-                        orb.setAudioLevel(level)
                         waveform.setAudioLevel(level)
                     } else {
-                        orb.setAudioLevel(0.5f)
                         waveform.setAudioLevel(0.5f)
                     }
                 }

@@ -179,15 +179,12 @@ class ApiManagerScreen(
             overScrollMode = View.OVER_SCROLL_NEVER
         }
         val modelRow = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-        modelRow.addView(Ui.techChip(context, "Groq", "⚡") {
-            showSimpleEditor("Groq")
-        })
-        modelRow.addView(Ui.techChip(context, "Gemini", "✨") {
-            showSimpleEditor("Gemini")
-        })
-        modelRow.addView(Ui.techChip(context, "OpenRouter", "🎭") {
-            showSimpleEditor("OpenRouter")
-        })
+        val groqBtn = Ui.primaryButton(context, "Groq") { showSimpleEditor("Groq") }
+        val geminiBtn = Ui.button(context, "Gemini") { showSimpleEditor("Gemini") }
+        val openRouterBtn = Ui.button(context, "OpenRouter") { showSimpleEditor("OpenRouter") }
+        modelRow.addView(groqBtn, LinearLayout.LayoutParams(-2, Ui.dp(context, 34)).apply { marginEnd = Ui.dp(context, 6) })
+        modelRow.addView(geminiBtn, LinearLayout.LayoutParams(-2, Ui.dp(context, 34)).apply { marginEnd = Ui.dp(context, 6) })
+        modelRow.addView(openRouterBtn, LinearLayout.LayoutParams(-2, Ui.dp(context, 34)))
         modelScroll.addView(modelRow)
         modelInner.addView(modelScroll)
         modelCard.addView(modelInner)
