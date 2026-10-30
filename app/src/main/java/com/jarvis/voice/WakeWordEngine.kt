@@ -168,6 +168,7 @@ class WakeWordEngine(
             datasetSampleCount > 0 -> WakeModelStatus.DATASET_ENROLLING
             else -> WakeModelStatus.MODEL_MISSING
         }
+        val currentRms = if (recentAudioCount > 0) calculateRms(recentAudioWindow()) else latestRms
         return WakeWordDiagnostics(
             modelAvailable = available,
             modelError = if (available) null else det?.getModelLoadError() ?: "MODEL MISSING — TRAIN MODEL FIRST",
@@ -176,7 +177,7 @@ class WakeWordEngine(
             phrase = metadata?.phrase ?: det?.getSupportedPhrases()?.joinToString(" / ").orEmpty().ifBlank { "unavailable" },
             threshold = det?.getModelThreshold(),
             latestScore = det?.getLatestRawScore()?.takeIf { it.isFinite() } ?: latestScore,
-            audioRms = latestRms,
+            audioRms = currentRms,
             audioDurationMs = minOf(totalAudioSamples, spec.windowSamples.toLong()) * 1000L / spec.sampleRate,
             sampleRate = spec.sampleRate,
             inputShape = det?.getInputShape() ?: "unavailable",
@@ -215,7 +216,6 @@ class WakeWordEngine(
     fun acceptAudio(samples: ShortArray): Boolean {
         if (state != WakeWordState.RUNNING || detectionInProgress || samples.isEmpty()) return false
         appendRecentAudio(samples)
-        latestRms = calculateRms(samples)
         val det = detector ?: return false
         if (!det.isModelAvailable()) return false
         val score = det.pushAudio(samples)

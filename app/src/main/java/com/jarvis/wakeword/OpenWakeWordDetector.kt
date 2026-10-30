@@ -26,25 +26,24 @@ class OpenWakeWordDetector(
         val confirmation: KwsTemporalConfirmation
     )
 
-    private val rawPcm = ShortArray(RAW_HISTORY_SAMPLES)
-    private var rawPcmIndex = 0
-    private var rawPcmFilled = false
-
     private val audioChunk = ShortArray(FRAME_SAMPLES)
     private var audioChunkIndex = 0
 
     // Pre-allocated flat buffers for bulk JNI / SIMD memory copies (zero allocations)
     private val rawPcmFloats = FloatArray(RAW_HISTORY_SAMPLES)
+    private var rawPcmIndex = 0
+    private var rawPcmFilled = false
+
     private val rawMelFloats = FloatArray(MEL_FRAME_COUNT * MEL_BINS)
     private val minEnergyThresholdSumSquares: Long =
         (FRAME_SAMPLES * (config.minEnergyRms * 32768.0) * (config.minEnergyRms * 32768.0)).toLong()
 
-    // Pre-allocated circular ring buffers to eliminate GC churn in the streaming audio thread
-    private val melFramePool = Array(MEL_HISTORY_FRAMES) { FloatArray(MEL_BINS) }
+    // Pre-allocated contiguous flat ring buffers (100% cache-resident in L1 data cache)
+    private val melFlatPool = FloatArray(MEL_TOTAL_FLOATS)
     private var melFrameHead = 0
     private var melFrameCount = 0
 
-    private val embeddingFramePool = Array(FEATURE_HISTORY_FRAMES) { FloatArray(EMBEDDING_SIZE) }
+    private val embeddingFlatPool = FloatArray(FEATURE_TOTAL_FLOATS)
     private var embeddingFrameHead = 0
 
     private var melInterpreter: Interpreter? = null
@@ -60,8 +59,10 @@ class OpenWakeWordDetector(
     private var consecutiveSilenceFrames = 0
     private var melInputBuffer: FloatBuffer? = null
     private var melOutputBuffer: ByteBuffer? = null
+    private var melOutputFloatBuffer: FloatBuffer? = null
     private var embeddingInputBuffer: FloatBuffer? = null
     private var embeddingOutputBuffer: ByteBuffer? = null
+    private var embeddingOutputFloatBuffer: FloatBuffer? = null
     private var headInputBuffer: FloatBuffer? = null
     private var headOutputBuffer: ByteBuffer? = null
 
@@ -112,14 +113,16 @@ class OpenWakeWordDetector(
             validateFrontend(melInterpreter!!, embeddingInterpreter!!)
             melInputBuffer = floatBufferElements(RAW_HISTORY_SAMPLES)
             melOutputBuffer = byteBuffer(melInterpreter!!.getOutputTensor(0).numBytes())
+            melOutputFloatBuffer = melOutputBuffer!!.asFloatBuffer()
             embeddingInputBuffer = floatBufferElements(MEL_WINDOW * MEL_BINS)
             embeddingOutputBuffer = byteBuffer(embeddingInterpreter!!.getOutputTensor(0).numBytes())
+            embeddingOutputFloatBuffer = embeddingOutputBuffer!!.asFloatBuffer()
             headInputBuffer = floatBufferElements(FEATURE_WINDOW * EMBEDDING_SIZE)
             headOutputBuffer = byteBuffer(loadedHeads.first().interpreter.getOutputTensor(0).numBytes())
-            melFramePool.forEach { it.fill(0f) }
+            melFlatPool.fill(0f)
             melFrameHead = 0
             melFrameCount = 0
-            embeddingFramePool.forEach { it.fill(0f) }
+            embeddingFlatPool.fill(0f)
             embeddingFrameHead = 0
             heads = loadedHeads
             available = true
@@ -213,7 +216,7 @@ class OpenWakeWordDetector(
             System.arraycopy(samples, srcPos, audioChunk, audioChunkIndex, toCopy)
             audioChunkIndex += toCopy
 
-            copyToRawPcm(samples, srcPos, toCopy)
+            copyToRawPcmFloats(samples, srcPos, toCopy)
 
             srcPos += toCopy
             remaining -= toCopy
@@ -286,19 +289,25 @@ class OpenWakeWordDetector(
         return 0f
     }
 
-    private fun copyToRawPcm(samples: ShortArray, srcPos: Int, length: Int) {
+    private fun copyToRawPcmFloats(samples: ShortArray, srcPos: Int, length: Int) {
         val spaceToEnd = RAW_HISTORY_SAMPLES - rawPcmIndex
         if (length <= spaceToEnd) {
-            System.arraycopy(samples, srcPos, rawPcm, rawPcmIndex, length)
+            for (i in 0 until length) {
+                rawPcmFloats[rawPcmIndex + i] = samples[srcPos + i].toFloat()
+            }
             rawPcmIndex += length
             if (rawPcmIndex == RAW_HISTORY_SAMPLES) {
                 rawPcmIndex = 0
                 rawPcmFilled = true
             }
         } else {
-            System.arraycopy(samples, srcPos, rawPcm, rawPcmIndex, spaceToEnd)
+            for (i in 0 until spaceToEnd) {
+                rawPcmFloats[rawPcmIndex + i] = samples[srcPos + i].toFloat()
+            }
             val wrapLength = length - spaceToEnd
-            System.arraycopy(samples, srcPos + spaceToEnd, rawPcm, 0, wrapLength)
+            for (i in 0 until wrapLength) {
+                rawPcmFloats[i] = samples[srcPos + spaceToEnd + i].toFloat()
+            }
             rawPcmIndex = wrapLength
             rawPcmFilled = true
         }
@@ -310,22 +319,15 @@ class OpenWakeWordDetector(
         val input = melInputBuffer ?: return
         input.clear()
         if (rawPcmFilled) {
-            var dst = 0
-            for (i in rawPcmIndex until RAW_HISTORY_SAMPLES) {
-                rawPcmFloats[dst++] = rawPcm[i].toFloat()
-            }
-            for (i in 0 until rawPcmIndex) {
-                rawPcmFloats[dst++] = rawPcm[i].toFloat()
+            input.put(rawPcmFloats, rawPcmIndex, RAW_HISTORY_SAMPLES - rawPcmIndex)
+            if (rawPcmIndex > 0) {
+                input.put(rawPcmFloats, 0, rawPcmIndex)
             }
         } else {
             val pad = RAW_HISTORY_SAMPLES - rawPcmIndex
-            rawPcmFloats.fill(0f, 0, pad)
-            var dst = pad
-            for (i in 0 until rawPcmIndex) {
-                rawPcmFloats[dst++] = rawPcm[i].toFloat()
-            }
+            for (i in 0 until pad) input.put(0f)
+            input.put(rawPcmFloats, 0, rawPcmIndex)
         }
-        input.put(rawPcmFloats, 0, RAW_HISTORY_SAMPLES)
         input.rewind()
         val melTensor = mel.getOutputTensor(0)
         val melOutput = melOutputBuffer ?: return
@@ -336,13 +338,14 @@ class OpenWakeWordDetector(
         val frameCount = shape[shape.size - 2]
 
         // Fast zero-allocation insertion into circular mel pool with bulk float copy
-        val melFloatBuffer = melOutput.asFloatBuffer()
+        val melFloatBuffer = melOutputFloatBuffer ?: return
+        melFloatBuffer.rewind()
         melFloatBuffer.get(rawMelFloats)
         var floatIdx = 0
         for (row in 0 until frameCount) {
-            val target = melFramePool[melFrameHead]
+            val targetOffset = melFrameHead * MEL_BINS
             for (column in 0 until MEL_BINS) {
-                target[column] = rawMelFloats[floatIdx++] * 0.1f + 2.0f
+                melFlatPool[targetOffset + column] = rawMelFloats[floatIdx++] * 0.1f + 2.0f
             }
             melFrameHead = (melFrameHead + 1) % MEL_HISTORY_FRAMES
             melFrameCount = minOf(MEL_HISTORY_FRAMES, melFrameCount + 1)
@@ -352,21 +355,25 @@ class OpenWakeWordDetector(
         val embeddingInput = embeddingInputBuffer ?: return
         embeddingInput.clear()
 
-        // Vectorized bulk copy of 76 mel frames into direct embedding buffer (zero allocations)
-        for (i in 0 until MEL_WINDOW) {
-            val idx = (melFrameHead - MEL_WINDOW + i + MEL_HISTORY_FRAMES) % MEL_HISTORY_FRAMES
-            embeddingInput.put(melFramePool[idx])
+        // 2 native bulk copies into direct embedding buffer (zero allocations, zero loops)
+        val headOffset = melFrameHead * MEL_BINS
+        val slice1Len = MEL_TOTAL_FLOATS - headOffset
+        embeddingInput.put(melFlatPool, headOffset, slice1Len)
+        if (headOffset > 0) {
+            embeddingInput.put(melFlatPool, 0, headOffset)
         }
         embeddingInput.rewind()
+
         val embedded = embeddingOutputBuffer ?: return
         embedded.clear()
         embedding.run(embeddingInput, embedded)
         embedded.rewind()
 
-        // Fast zero-allocation bulk copy into circular feature embedding pool
-        val targetFrame = embeddingFramePool[embeddingFrameHead]
-        val embedFloatBuffer = embedded.asFloatBuffer()
-        embedFloatBuffer.get(targetFrame, 0, EMBEDDING_SIZE)
+        // Fast zero-allocation bulk copy into circular feature embedding pool (single native copy)
+        val targetOffset = embeddingFrameHead * EMBEDDING_SIZE
+        val embedFloatBuffer = embeddingOutputFloatBuffer ?: return
+        embedFloatBuffer.rewind()
+        embedFloatBuffer.get(embeddingFlatPool, targetOffset, EMBEDDING_SIZE)
         embeddingFrameHead = (embeddingFrameHead + 1) % FEATURE_HISTORY_FRAMES
         realEmbeddingCount = minOf(FEATURE_HISTORY_FRAMES, realEmbeddingCount + 1)
     }
@@ -374,10 +381,12 @@ class OpenWakeWordDetector(
     private fun flattenLastFeatures(): FloatBuffer? {
         val buffer = headInputBuffer ?: return null
         buffer.clear()
-        // Vectorized bulk copy of 16 embedding frames into direct head input buffer (zero allocations)
-        for (i in 0 until FEATURE_WINDOW) {
-            val idx = (embeddingFrameHead - FEATURE_WINDOW + i + FEATURE_HISTORY_FRAMES) % FEATURE_HISTORY_FRAMES
-            buffer.put(embeddingFramePool[idx])
+        // 2 native bulk copies into direct head buffer (zero allocations, zero loops)
+        val headOffset = embeddingFrameHead * EMBEDDING_SIZE
+        val slice1Len = FEATURE_TOTAL_FLOATS - headOffset
+        buffer.put(embeddingFlatPool, headOffset, slice1Len)
+        if (headOffset > 0) {
+            buffer.put(embeddingFlatPool, 0, headOffset)
         }
         buffer.rewind()
         return buffer
@@ -412,37 +421,27 @@ class OpenWakeWordDetector(
         heads = emptyList()
         melInterpreter?.close(); melInterpreter = null
         embeddingInterpreter?.close(); embeddingInterpreter = null
-        melInputBuffer = null; melOutputBuffer = null
-        embeddingInputBuffer = null; embeddingOutputBuffer = null
+        melInputBuffer = null; melOutputBuffer = null; melOutputFloatBuffer = null
+        embeddingInputBuffer = null; embeddingOutputBuffer = null; embeddingOutputFloatBuffer = null
         headInputBuffer = null; headOutputBuffer = null
     }
 
     @Synchronized override fun resetDetectorState() {
-        rawPcm.fill(0)
         rawPcmIndex = 0
         rawPcmFilled = false
         rawPcmFloats.fill(0f)
         rawMelFloats.fill(0f)
         audioChunk.fill(0)
         audioChunkIndex = 0
-        melFramePool.forEach { it.fill(0f) }
+        melFlatPool.fill(0f)
         melFrameHead = 0
         melFrameCount = 0
-        embeddingFramePool.forEach { it.fill(0f) }
+        embeddingFlatPool.fill(0f)
         embeddingFrameHead = 0
         latestScore = 0f; detectedPhrase = null; realEmbeddingCount = 0
         heads.forEach { it.confirmation.reset() }
         latestEnergyGatePassed = null
         consecutiveSilenceFrames = 0
-    }
-
-    private fun calculateRms(samples: ShortArray): Double {
-        var sumSquares = 0L
-        for (i in 0 until FRAME_SAMPLES) {
-            val s = samples[i].toLong()
-            sumSquares += s * s
-        }
-        return kotlin.math.sqrt(sumSquares.toDouble() / FRAME_SAMPLES) / 32768.0
     }
 
     @Synchronized override fun close() {
@@ -460,9 +459,11 @@ class OpenWakeWordDetector(
         private const val MEL_FRAME_COUNT = 8
         private const val MEL_WINDOW = 76
         private const val MEL_HISTORY_FRAMES = MEL_WINDOW
+        private const val MEL_TOTAL_FLOATS = MEL_HISTORY_FRAMES * MEL_BINS
         private const val EMBEDDING_SIZE = 96
         private const val FEATURE_WINDOW = 16
         private const val FEATURE_HISTORY_FRAMES = FEATURE_WINDOW
+        private const val FEATURE_TOTAL_FLOATS = FEATURE_HISTORY_FRAMES * EMBEDDING_SIZE
         private const val TAG = "OpenWakeWord"
     }
 }
