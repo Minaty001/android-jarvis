@@ -53,6 +53,8 @@ class JarvisForegroundService : Service() {
         private set
     private var wakeLock: android.os.PowerManager.WakeLock? = null
     private var guardianJob: kotlinx.coroutines.Job? = null
+    @Volatile
+    private var userRequestedStop = false
     private var isListeningSuspended = false
 
     private fun acquireWakeLock() {
@@ -156,6 +158,7 @@ class JarvisForegroundService : Service() {
     }
 
     fun startEngine(onStarted: (() -> Unit)? = null) {
+        userRequestedStop = false
         acquireWakeLock()
         ensureActiveScope().launch {
             if (voiceEngine == null) {
@@ -391,6 +394,7 @@ class JarvisForegroundService : Service() {
     }
 
     fun stopEngine() {
+        userRequestedStop = true
         scoObserverJob?.cancel()
         scoObserverJob = null
         guardianJob?.cancel()
@@ -430,6 +434,11 @@ class JarvisForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        if (userRequestedStop) {
+            Log.i(TAG, "Jarvis service stopped by user, skipping watchdog revival onTaskRemoved")
+            super.onTaskRemoved(rootIntent)
+            return
+        }
         Log.i(TAG, "Jarvis task removed from recents; scheduling auto-revival watchdog")
         try {
             val restartServiceIntent = Intent(applicationContext, JarvisForegroundService::class.java).apply {

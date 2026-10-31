@@ -51,6 +51,8 @@ __pycache__/
 .kotlin/
 app/jarvis-db/
 jarvis-db/
+app/jarvis/
+jarvis/
 .venv-kws/
 
 # Private wake-word recordings are local training data and must stay out of Git.

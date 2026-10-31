@@ -139,8 +139,8 @@ object JarvisNotificationManager {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .addAction(android.R.drawable.ic_btn_speak_now, "🎙 Talk", talkPendingIntent)
-            .addAction(android.R.drawable.ic_media_pause, "🛑 Sleep", stopPendingIntent)
+            .addAction(android.R.drawable.ic_btn_speak_now, "Talk", talkPendingIntent)
+            .addAction(android.R.drawable.ic_media_pause, "Stop Service", stopPendingIntent)
             .build()
     }
 

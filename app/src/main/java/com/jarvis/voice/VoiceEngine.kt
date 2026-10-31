@@ -935,9 +935,13 @@ class VoiceEngine(
                 _status.value = _status.value.copy(lastResponse = finalResponse)
             }
 
-            // Continuous conversation / Open-Mic mode: enter follow-up window unless an exit phrase was received
-            if ((isAmbientOpenMicActive || isContinuousConversationEnabled) && !conversationManager.isExitUtterance(cleanCommand, configuredWakeWord)) {
-                Log.i(TAG, "Continuous conversation / open-mic active — entering follow-up window")
+            // Continuous conversation / Open-Mic / Clarification mode: enter follow-up window unless an exit phrase was received
+            val isAwaitingAnswer = conversationManager.currentStateValue == VoiceState.WAITING_FOR_USER ||
+                    finalResponse.trimEnd().endsWith("?") ||
+                    result.spokenResponse.trimEnd().endsWith("?")
+
+            if ((isAmbientOpenMicActive || isContinuousConversationEnabled || isAwaitingAnswer) && !conversationManager.isExitUtterance(cleanCommand, configuredWakeWord)) {
+                Log.i(TAG, "Continuous conversation active (awaitingAnswer=$isAwaitingAnswer) — entering follow-up window")
                 // Restore media volume during the follow-up silence window so background
                 // music is audible between turns. Ducking re-applies on next command.
                 mediaDuckingManager.restoreVolume()

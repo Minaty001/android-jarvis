@@ -48,6 +48,7 @@ class DashboardScreen(
     private val statusText = TextView(context)
     private val activityDetail = TextView(context)
     private val serviceBadge = Ui.hudBadge(context, "● READY", Ui.SUCCESS)
+    private val masterStopBtn = TextView(context)
     private val waveform = JarvisWaveformView(context)
 
     // Conversation feed
@@ -123,6 +124,32 @@ class DashboardScreen(
             }
         }
         header.addView(serviceBadge, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+
+        masterStopBtn.apply {
+            text = "STOP"
+            textSize = 10f
+            typeface = Typeface.DEFAULT_BOLD
+            letterSpacing = 0.04f
+            setTextColor(Ui.ERROR)
+            background = Ui.rounded(context, Ui.SURFACE_2, 0x44EF4444.toInt(), 6)
+            setPadding(Ui.dp(context, 8), Ui.dp(context, 4), Ui.dp(context, 8), Ui.dp(context, 4))
+            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                marginStart = Ui.dp(context, 6)
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                val state = boundService?.voiceEngine?.status?.value?.voiceState
+                if (state == VoiceState.IDLE || boundService == null) {
+                    startEngine()
+                    Toast.makeText(context, "Jarvis service started", Toast.LENGTH_SHORT).show()
+                } else {
+                    stopEngine()
+                    Toast.makeText(context, "Jarvis background service stopped", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        header.addView(masterStopBtn)
 
         val settingsBtn = ImageView(context).apply {
             setImageResource(R.drawable.ic_nav_settings)
@@ -593,6 +620,11 @@ class DashboardScreen(
             text = "● READY"
             setTextColor(Ui.SUCCESS)
         }
+        masterStopBtn.apply {
+            text = "STOP"
+            setTextColor(Ui.ERROR)
+            background = Ui.rounded(context, Ui.SURFACE_2, 0x44EF4444.toInt(), 6)
+        }
         activityDetail.text = "Listening for wake word"
         waveform.setState(VoiceState.WAITING_FOR_WAKE)
         currentVoiceState = VoiceState.WAITING_FOR_WAKE
@@ -606,7 +638,12 @@ class DashboardScreen(
             text = "● HALTED"
             setTextColor(Ui.ERROR)
         }
-        activityDetail.text = "Tap badge to resume"
+        masterStopBtn.apply {
+            text = "START"
+            setTextColor(Ui.SUCCESS)
+            background = Ui.rounded(context, Ui.SURFACE_2, 0x4410B981.toInt(), 6)
+        }
+        activityDetail.text = "Tap START to resume"
         waveform.setState(VoiceState.IDLE)
         currentVoiceState = VoiceState.IDLE
         protocolCard.visibility = View.GONE
@@ -634,10 +671,20 @@ class DashboardScreen(
                             text = "● HALTED"
                             setTextColor(Ui.ERROR)
                         }
+                        masterStopBtn.apply {
+                            text = "START"
+                            setTextColor(Ui.SUCCESS)
+                            background = Ui.rounded(context, Ui.SURFACE_2, 0x4410B981.toInt(), 6)
+                        }
                     } else {
                         serviceBadge.apply {
                             text = "● READY"
                             setTextColor(Ui.SUCCESS)
+                        }
+                        masterStopBtn.apply {
+                            text = "STOP"
+                            setTextColor(Ui.ERROR)
+                            background = Ui.rounded(context, Ui.SURFACE_2, 0x44EF4444.toInt(), 6)
                         }
                     }
 

@@ -66,6 +66,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
+        com.jarvis.storage.JarvisStorageHub.initStorage(this)
         store = UiPreferencesStore(this)
         apiManager = ApiManager(store, SecureCredentialStore(this))
         setContentView(buildRoot())

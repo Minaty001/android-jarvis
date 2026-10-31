@@ -65,7 +65,8 @@ class DatabaseContext(base: Context, private val dbDirectory: File) : ContextWra
 
 object JarvisStorageHub {
     private const val TAG = "JarvisStorageHub"
-    const val ROOT_DIR_NAME = "jarvis-db"
+    const val ROOT_DIR_NAME = "jarvis"
+    const val LEGACY_ROOT_DIR_NAME = "jarvis-db"
 
     @Volatile
     private var isInitialized = false
@@ -144,6 +145,15 @@ object JarvisStorageHub {
         return File("/storage/emulated/0", ROOT_DIR_NAME)
     }
 
+    fun getMemoryDirectory(context: Context? = null): File =
+        File(getRootDirectory(context), "memory").apply { if (!exists()) mkdirs() }
+
+    fun getAudioDirectory(context: Context? = null): File =
+        File(getRootDirectory(context), "audio").apply { if (!exists()) mkdirs() }
+
+    fun getSkillsDirectory(context: Context? = null): File =
+        File(getRootDirectory(context), "skills").apply { if (!exists()) mkdirs() }
+
     fun getDatabasesDirectory(context: Context? = null): File =
         File(getRootDirectory(context), "databases").apply { if (!exists()) mkdirs() }
 
@@ -173,12 +183,16 @@ object JarvisStorageHub {
 
         try {
             val root = getRootDirectory(context)
+            getMemoryDirectory(context)
+            getAudioDirectory(context)
+            getLogsDirectory(context)
+            getSkillsDirectory(context)
             getDatabasesDirectory(context)
             getVectorDbDirectory(context)
             getReportsDirectory(context)
             getVaultDirectory(context)
-            getLogsDirectory(context)
 
+            migrateLegacyDirectoryIfNeeded(context)
             migrateInternalDatabasesIfNeeded(context)
             try {
                 updateManifest(context)
@@ -190,6 +204,24 @@ object JarvisStorageHub {
             Log.i(TAG, "JarvisStorageHub initialized successfully at: ${root.absolutePath}")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize JarvisStorageHub: ${e.message}", e)
+        }
+    }
+
+    private fun migrateLegacyDirectoryIfNeeded(context: Context) {
+        try {
+            val legacyDirect = File("/storage/emulated/0", LEGACY_ROOT_DIR_NAME)
+            val currentRoot = getRootDirectory(context)
+            if (legacyDirect.exists() && legacyDirect.isDirectory && legacyDirect.absolutePath != currentRoot.absolutePath) {
+                legacyDirect.listFiles()?.forEach { file ->
+                    val dest = File(currentRoot, file.name)
+                    if (!dest.exists()) {
+                        file.copyRecursively(dest, overwrite = false)
+                    }
+                }
+                Log.i(TAG, "Migrated legacy storage from $LEGACY_ROOT_DIR_NAME to $ROOT_DIR_NAME")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Legacy storage migration notice: ${e.message}")
         }
     }
 

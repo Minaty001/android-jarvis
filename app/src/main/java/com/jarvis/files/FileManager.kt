@@ -53,7 +53,7 @@ class FileManager(private val context: Context? = null) {
             val cleanPath = trimmed.removePrefix("file://")
             return File(cleanPath)
         }
-        if (trimmed.startsWith("jarvis-db/") || trimmed.startsWith("jarvis_db/")) {
+        if (trimmed.startsWith("jarvis/") || trimmed.startsWith("jarvis-db/") || trimmed.startsWith("jarvis_db/")) {
             val root = com.jarvis.storage.JarvisStorageHub.getRootDirectory(context)
             val subPath = trimmed.substringAfter("/")
             return File(root, subPath)
