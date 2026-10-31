@@ -19,13 +19,36 @@ class ClockTool(private val context: Context) : Tool {
 
     override val name: String = "CLOCK"
     override val description: String =
-        "Sets countdown timers and checks world clock time in major cities. Actions: 'set_timer' (minutes/seconds, label), 'world_clock' (city or timezone), 'show_timers'."
+        "Checks current time, sets alarms, countdown timers, and checks world clock time. Actions: 'current_time', 'set_timer' (minutes/seconds, label), 'set_alarm' (hour, minutes, message), 'world_clock' (city or timezone), 'show_timers'."
     override val policy: ToolPolicy = ToolPolicy(idempotent = false, retryable = true, riskLevel = RiskLevel.LOW)
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
-        val action = params["action"]?.trim()?.lowercase() ?: "set_timer"
+        val action = params["action"]?.trim()?.lowercase() ?: "current_time"
 
         return when (action) {
+            "current_time", "get_time", "time", "now", "clock", "world_clock", "time_in" -> {
+                val query = params["city"] ?: params["timezone"] ?: params["location"]
+                val isLocal = query.isNullOrBlank() ||
+                    query.equals("local", ignoreCase = true) ||
+                    query.equals("here", ignoreCase = true) ||
+                    query.equals("current", ignoreCase = true)
+                val tz = if (isLocal) TimeZone.getDefault() else resolveTimeZone(query!!)
+                val sdf = SimpleDateFormat("h:mm a, EEEE, MMM d", Locale.getDefault()).apply {
+                    timeZone = tz
+                }
+                val formattedTime = sdf.format(Date())
+                val summary = if (isLocal) {
+                    "The current time is $formattedTime."
+                } else {
+                    "Current time in $query is $formattedTime."
+                }
+                Log.i(TAG, "Clock query (local=$isLocal, tz=${tz.id}): $summary")
+                ToolResult.Success(
+                    message = summary,
+                    data = mapOf("time" to formattedTime, "timezone" to tz.id, "isLocal" to isLocal.toString())
+                )
+            }
+
             "set_timer", "timer" -> {
                 val mins = params["minutes"]?.toIntOrNull() ?: params["min"]?.toIntOrNull() ?: 0
                 val secs = params["seconds"]?.toIntOrNull() ?: params["sec"]?.toIntOrNull() ?: 0
@@ -55,6 +78,26 @@ class ClockTool(private val context: Context) : Tool {
                 }
             }
 
+            "set_alarm", "alarm" -> {
+                val hour = params["hour"]?.toIntOrNull() ?: 7
+                val minutes = params["minutes"]?.toIntOrNull() ?: params["min"]?.toIntOrNull() ?: 0
+                val label = params["message"] ?: params["label"] ?: "Jarvis Alarm"
+                try {
+                    val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+                        putExtra(AlarmClock.EXTRA_HOUR, hour)
+                        putExtra(AlarmClock.EXTRA_MINUTES, minutes)
+                        putExtra(AlarmClock.EXTRA_MESSAGE, label)
+                        putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                    val formatted = String.format(Locale.getDefault(), "%02d:%02d", hour, minutes)
+                    ToolResult.Success("Alarm set for $formatted ($label).")
+                } catch (e: Exception) {
+                    ToolResult.Failed("Could not set alarm: ${e.message}")
+                }
+            }
+
             "show_timers", "list_timers" -> {
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -69,21 +112,6 @@ class ClockTool(private val context: Context) : Tool {
                 } catch (e: Exception) {
                     ToolResult.Failed("Could not show timers: ${e.message}")
                 }
-            }
-
-            "world_clock", "time", "time_in" -> {
-                val query = params["city"] ?: params["timezone"] ?: params["location"] ?: "London"
-                val tz = resolveTimeZone(query)
-                val sdf = SimpleDateFormat("h:mm a, EEEE, MMM d", Locale.getDefault()).apply {
-                    timeZone = tz
-                }
-                val formattedTime = sdf.format(Date())
-                val summary = "Current time in $query is $formattedTime."
-                Log.i(TAG, "World clock for $query (${tz.id}): $summary")
-                ToolResult.Success(
-                    message = summary,
-                    data = mapOf("city" to query, "time" to formattedTime, "timezone" to tz.id)
-                )
             }
 
             else -> ToolResult.Failed("Unknown clock action '$action'")

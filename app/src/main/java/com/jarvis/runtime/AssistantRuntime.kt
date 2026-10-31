@@ -681,6 +681,9 @@ class AssistantRuntime(
         toolRegistry.registerLazy("ROUTINE_MANAGE", "Routine creation: call action=prepare_create with name, trigger_type, trigger_parameter, and actions_json (JSON array of ordered actions). Allowed triggers: TIME_SCHEDULE (daily HH:mm), WIFI_CONNECTED (SSID), WIFI_DISCONNECTED, BATTERY_LEVEL_DROPS_BELOW (1-99), BATTERY_FULL, CHARGER_CONNECTED, CHARGER_DISCONNECTED. Allowed actions: SPEAK text; DEVICE_SETTINGS set_volume/set_ringer; MEDIA_CONTROL action=stop; SYSTEM_SWITCHBOARD action=wifi|bt|led with target=on|off. The user must confirm aloud before save. Never use another tool to satisfy a routine creation request.") {
             com.jarvis.tools.RoutineManageTool(smartRoutineEngine)
         }
+        toolRegistry.registerLazy("HABIT_LIST", "Inspects and suggests learned user habits and daily patterns") {
+            com.jarvis.tools.HabitTool(habitManager)
+        }
         toolRegistry.registerLazy("MACRO_WORKFLOW", "Runs recorded autonomous UI macro workflows") {
             com.jarvis.tools.MacroWorkflowTool(macroWorkflowEngine)
         }
@@ -848,11 +851,11 @@ class AssistantRuntime(
             )
         }
 
-        // If there is a pending task waiting for user clarification, route to task resumption.
-        // Only for a bounded number of unanswered re-asks; after that the clarification is
-        // considered abandoned and new utterances run as fresh tasks instead of being eaten.
+        // If there is a pending task waiting for user clarification, route to task resumption
+        // UNLESS the user is giving a new independent command.
         if (pendingClarificationTaskId != null) {
-            if (pendingResumeStrikes < MAX_CLARIFICATION_RESUMES) {
+            val isDirectNewCommand = resolvedIntent?.directPlan != null || resolvedIntent?.intent != null
+            if (!isDirectNewCommand && pendingResumeStrikes < MAX_CLARIFICATION_RESUMES) {
                 Log.i(TAG, "Routing utterance '$utterance' to resume pending task $pendingClarificationTaskId")
                 val explicitConfirmation = userApprovalGranted &&
                     com.jarvis.agent.AgentKernel.isExplicitApprovalReply(utterance)
@@ -862,8 +865,8 @@ class AssistantRuntime(
             pendingClarificationTaskId = null
             pendingResumeStrikes = 0
             if (stale != null) {
-                taskStateManager.updateTaskStatus(stale, "CANCELLED", "Not clarified after repeated asks; superseded by new command")
-                Log.i(TAG, "Pending task $stale abandoned (clarification unanswered twice); running new command fresh")
+                taskStateManager.updateTaskStatus(stale, "CANCELLED", "Superseded by new command: $utterance")
+                Log.i(TAG, "Pending task $stale superseded; running new command '$utterance' fresh")
             }
         }
 

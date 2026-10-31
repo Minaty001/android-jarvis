@@ -25,8 +25,16 @@ class QuickNotesTool(
     override val policy: ToolPolicy = ToolPolicy(idempotent = false, retryable = true, riskLevel = RiskLevel.LOW)
 
     private val notesFile: File by lazy {
-        val parent = context?.filesDir ?: File(System.getProperty("java.io.tmpdir") ?: "/tmp")
-        File(parent, "quick_notes.json")
+        val vaultDir = runCatching {
+            val root = com.jarvis.storage.JarvisStorageHub.getRootDirectory(context)
+            File(root, "vault").apply { if (!exists()) mkdirs() }
+        }.getOrNull()
+        if (vaultDir != null && vaultDir.exists() && vaultDir.canWrite()) {
+            File(vaultDir, "quick_notes.json")
+        } else {
+            val parent = context?.filesDir ?: File(System.getProperty("java.io.tmpdir") ?: "/tmp")
+            File(parent, "quick_notes.json")
+        }
     }
 
     private data class NoteItem(

@@ -58,7 +58,22 @@ class SystemSwitchboardTool(private val context: Context) : Tool {
             return DeviceSettingsTool(context).execute(params)
         }
 
+        val normalizedAction = when {
+            action == "wifi" || action == "set_wifi" || action.contains("wifi") -> "wifi"
+            action == "bt" || action == "bluetooth" || action == "set_bluetooth" || action.contains("bluetooth") -> "bt"
+            action == "dnd" || action.contains("dnd") || action.contains("do_not_disturb") -> "dnd"
+            action == "hotspot" || action.contains("hotspot") -> "hotspot"
+            action == "led" || action == "flashlight" || action == "torch" -> "led"
+            else -> action
+        }
+
         val target = params["target"]?.trim()?.lowercase()
+            ?: params["state"]?.trim()?.lowercase()
+            ?: params["mode"]?.trim()?.lowercase()
+            ?: params["status"]?.trim()?.lowercase()
+            ?: params["value"]?.trim()?.lowercase()
+            ?: if (action.endsWith("_on") || action.endsWith("on")) "on" else if (action.endsWith("_off") || action.endsWith("off")) "off" else null
+
         val routineMode = params["routine_mode"] == "true"
         val on = when (target) {
             "on", "enable", "1", "true" -> true
@@ -70,13 +85,13 @@ class SystemSwitchboardTool(private val context: Context) : Tool {
             return ToolResult.Failed("Missing target for '$action'. Say 'turn wifi on' or 'wifi off'.")
         }
 
-        val decision = SystemCapability.decide(Build.VERSION.SDK_INT, action)
-        return when (action) {
+        val decision = SystemCapability.decide(Build.VERSION.SDK_INT, normalizedAction)
+        return when (normalizedAction) {
             "wifi" -> toggleWifi(on, decision, routineMode)
-            "bt", "bluetooth" -> toggleBluetooth(on, decision, routineMode)
+            "bt" -> toggleBluetooth(on, decision, routineMode)
             "dnd" -> toggleDnd(on, decision)
             "hotspot" -> blocked(decision, "hotspot")
-            "led", "flashlight" -> toggleTorch(on)
+            "led" -> toggleTorch(on)
             else -> ToolResult.Failed("Unknown action '$action'.")
         }
     }

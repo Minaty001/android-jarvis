@@ -17,8 +17,18 @@ class DynamicPersistedSkill(
 
     override suspend fun canHandle(goal: String, context: SkillContext): Boolean {
         if (persisted.steps.any { it.actionType == "TOOL" || it.actionType.isBlank() }) return false
-        val lower = goal.lowercase()
-        return triggers.any { trigger -> lower.contains(trigger.lowercase()) }
+        val lower = goal.lowercase().trim()
+        return triggers.any { rawTrigger ->
+            val trigger = rawTrigger.lowercase().trim()
+            if (trigger.isBlank()) return@any false
+            if (trigger.length <= 4) {
+                // Short triggers must match as an isolated word to prevent false positive substring collisions
+                val pattern = Regex("\\b${Regex.escape(trigger)}\\b")
+                pattern.containsMatchIn(lower)
+            } else {
+                lower.contains(trigger)
+            }
+        }
     }
 
     override suspend fun execute(goal: String, context: SkillContext): SkillResult {

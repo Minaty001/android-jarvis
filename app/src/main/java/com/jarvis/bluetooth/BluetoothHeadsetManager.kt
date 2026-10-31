@@ -272,10 +272,7 @@ class BluetoothHeadsetManager(
                 val commDevices = am.availableCommunicationDevices
                 val targetDevice = commDevices.firstOrNull {
                     it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                    it.type == AudioDeviceInfo.TYPE_BLE_HEADSET ||
-                    it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                    it.type == AudioDeviceInfo.TYPE_USB_HEADSET ||
-                    it.type == AudioDeviceInfo.TYPE_HEARING_AID
+                    (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && it.type == AudioDeviceInfo.TYPE_BLE_HEADSET)
                 }
                 if (targetDevice == null) {
                     Log.i(TAG, "No SCO-capable communication device available; leaving Bluetooth media routing untouched")

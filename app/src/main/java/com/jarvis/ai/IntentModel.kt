@@ -1336,7 +1336,7 @@ object IntentResolver {
                 if (match != null) {
                     var query = if (match.groupValues.size > 1) match.groupValues[1].trim() else ""
                     query = query.replace(Regex("\\b(directly|on youtube|in youtube|pe|par|chalao|bajao|play)\\b", RegexOption.IGNORE_CASE), "").trim()
-                    if (query.isBlank() || query.equals("song", ignoreCase = true) || query.equals("gaana", ignoreCase = true)) {
+                    if (query.isBlank() || query.equals("song", ignoreCase = true) || query.equals("gaana", ignoreCase = true) || query.equals("music", ignoreCase = true)) {
                         query = "trending songs"
                     }
                     return ResolvedIntent(
@@ -1347,6 +1347,27 @@ object IntentResolver {
                     )
                 }
             }
+        }
+
+        // 3.9 Calculator & Math ("calculate 45 times 8 plus 120", "what is 25 * 4", "compute 100 / 5")
+        if (text.startsWith("calculate ") || text.startsWith("compute ") || text.startsWith("solve ") ||
+            (text.startsWith("what is ") && text.any { it.isDigit() } &&
+                (text.contains("+") || text.contains("-") || text.contains("*") || text.contains("/") ||
+                 text.contains("times") || text.contains("plus") || text.contains("minus") || text.contains("divided")))) {
+            val rawExpr = text.substringAfter(" ").trim()
+            val expr = rawExpr
+                .replace(Regex("(?i)\\bmultiplied by\\b"), "*")
+                .replace(Regex("(?i)\\bdivided by\\b"), "/")
+                .replace(Regex("(?i)\\btimes\\b"), "*")
+                .replace(Regex("(?i)\\binto\\b"), "*")
+                .replace(Regex("(?i)\\bplus\\b"), "+")
+                .replace(Regex("(?i)\\bminus\\b"), "-")
+            return ResolvedIntent(
+                intent = AssistantIntent.SEARCH_WEB,
+                confidence = 0.95f,
+                params = mapOf("expression" to expr),
+                directPlan = ExecutionPlan("Calculating math expression.", listOf(ActionPlan("CALCULATE", mapOf("expression" to expr))))
+            )
         }
 
         // 4. Memory store / Note ("remember that my key is X", "yaad rakhna mera favourite X hai")
@@ -1424,6 +1445,54 @@ object IntentResolver {
             }
         }
 
+        // Quick notes search / list ("search notes for X", "show my notes", "list notes")
+        if (text.startsWith("search notes") || text.startsWith("search note")) {
+            val q = text.replace(Regex("^(search notes for|search notes|search note for|search note)\\s*"), "").trim()
+            return ResolvedIntent(
+                intent = AssistantIntent.REMEMBER_FACT,
+                confidence = 0.94f,
+                params = mapOf("action" to "search", "query" to q),
+                directPlan = ExecutionPlan("Searching saved notes.", listOf(ActionPlan("QUICK_NOTES", mapOf("action" to "search", "query" to q))))
+            )
+        }
+        if (text == "show notes" || text == "show my notes" || text == "list notes" || text == "my notes") {
+            return ResolvedIntent(
+                intent = AssistantIntent.REMEMBER_FACT,
+                confidence = 0.94f,
+                params = mapOf("action" to "list"),
+                directPlan = ExecutionPlan("Listing saved notes.", listOf(ActionPlan("QUICK_NOTES", mapOf("action" to "list"))))
+            )
+        }
+
+        // Weather query ("weather in tokyo", "what is the weather in delhi", "delhi weather")
+        val weatherMatch = Regex("^(?:what is the weather in|weather in|weather of|check weather for|weather)\\s+([a-zA-Z\\s]+)$", RegexOption.IGNORE_CASE).find(text)
+        if (weatherMatch != null) {
+            val city = weatherMatch.groupValues[1].trim()
+            if (city.isNotBlank() && !city.equals("report", ignoreCase = true)) {
+                return ResolvedIntent(
+                    intent = AssistantIntent.SEARCH_WEB,
+                    confidence = 0.94f,
+                    params = mapOf("city" to city),
+                    directPlan = ExecutionPlan("Checking weather for $city.", listOf(ActionPlan("WEATHER", mapOf("city" to city))))
+                )
+            }
+        }
+
+        // Voice Translation ("translate hello to spanish", "translate how are you in hindi")
+        val translateVoiceMatch = Regex("^(?:translate)\\s+(.+?)\\s+(?:to|in|into)\\s+([a-zA-Z]+)$", RegexOption.IGNORE_CASE).find(text)
+        if (translateVoiceMatch != null) {
+            val textToTranslate = translateVoiceMatch.groupValues[1].trim()
+            val targetLang = translateVoiceMatch.groupValues[2].trim()
+            if (!textToTranslate.equals("screen", ignoreCase = true) && !textToTranslate.equals("this page", ignoreCase = true)) {
+                return ResolvedIntent(
+                    intent = AssistantIntent.SEARCH_WEB,
+                    confidence = 0.95f,
+                    params = mapOf("text" to textToTranslate, "target_lang" to targetLang),
+                    directPlan = ExecutionPlan("Translating text.", listOf(ActionPlan("TRANSLATOR", mapOf("text" to textToTranslate, "target_lang" to targetLang))))
+                )
+            }
+        }
+
         // 6. Web search ("search weather in delhi", "google search openai")
         if ((text.startsWith("search ") || text.startsWith("google ")) &&
             !text.startsWith("search document") &&
@@ -1441,6 +1510,17 @@ object IntentResolver {
                     directPlan = ExecutionPlan("Searching for $query.", listOf(ActionPlan("SEARCH_WEB", mapOf("query" to query))))
                 )
             }
+        }
+
+        // Storage Hub & Local Database Inspection ("storage stats", "database stats", "jarvis storage stats")
+        if (text.contains("storage stats") || text.contains("storage status") || text.contains("database stats") || text.contains("jarvis storage") || text == "storage") {
+            val params = mapOf("action" to "stats")
+            return ResolvedIntent(
+                intent = AssistantIntent.AUTONOMOUS_CONTROL,
+                confidence = 0.95f,
+                params = params,
+                directPlan = ExecutionPlan("Inspecting central JARVIS storage hub.", listOf(ActionPlan("JARVIS_DB", params)))
+            )
         }
 
         // 6c. Screen Translation Fast Path ("translate screen to hindi", "translate this page to english", etc.)
@@ -1736,11 +1816,10 @@ object IntentResolver {
             )
         }
 
-        // 12. Habit List ("what are my habits", "my habits", "list habits", "meri habits", "routines")
+        // 12. Habit List ("what are my habits", "my habits", "list habits", "meri habits", "learned habits")
         val habitListTriggers = listOf(
             "what are my habits", "my habits", "list habits", "show habits", "learned habits",
-            "meri habits", "meri kya habits hain", "aadatein", "mera routine", "routine batao",
-            "routines", "my routines", "list routines", "show routines"
+            "meri habits", "meri kya habits hain", "aadatein", "habits"
         )
         if (habitListTriggers.any { text.contains(it) }) {
             return ResolvedIntent(
@@ -1773,10 +1852,11 @@ object IntentResolver {
             }
         }
 
-        // 14. Smart Routine List ("list automations", "show automations", "kya automations hain")
+        // 14. Smart Routine List ("list automations", "show automations", "kya automations hain", "show routines", "list routines")
         val routineListTriggers = listOf(
             "list automations", "show automations", "active automations", "kya automations hain",
-            "automations dikhao", "list smart routines", "smart routines"
+            "automations dikhao", "list smart routines", "smart routines",
+            "routines", "my routines", "list routines", "show routines", "routine batao", "mera routine"
         )
         if (routineListTriggers.any { text.contains(it) }) {
             val params = mapOf("action" to "list")

@@ -10,7 +10,12 @@ class CalculatorTool(private val context: Context? = null) : Tool {
     override val description: String = "Evaluates mathematical expressions accurately. Parameter: expression (math string like '25 * 4 + 10' or 'sqrt(144)')."
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
-        val expression = params["expression"] ?: return ToolResult(false, "Expression missing")
+        val expression = params["expression"]
+            ?: params["expr"]
+            ?: params["query"]
+            ?: params["input"]
+            ?: params["math"]
+            ?: return ToolResult(false, "Expression missing")
 
         return try {
             // Decode URL-encoded input (e.g., %2B -> +) safely without destroying '+' symbols

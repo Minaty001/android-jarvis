@@ -8,8 +8,18 @@ class NoteTool(private val memoryStore: MemoryStore? = null) : Tool {
     override val description: String = "Saves facts, notes, or user preferences to local persistent memory. Parameters: key (identifier/topic), value (content to remember)."
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
-        val key = params["key"]?.trim().orEmpty()
-        val value = params["value"]?.trim().orEmpty()
+        var key = params["key"]?.trim().orEmpty()
+        var value = params["value"]?.trim().orEmpty()
+        if (value.isBlank()) {
+            value = params["content"]?.trim().orEmpty()
+                .ifBlank { params["note"]?.trim().orEmpty() }
+                .ifBlank { params["fact"]?.trim().orEmpty() }
+                .ifBlank { params["text"]?.trim().orEmpty() }
+        }
+        if (key.isBlank()) {
+            key = params["title"]?.trim().orEmpty()
+                .ifBlank { params["topic"]?.trim().orEmpty() }
+        }
         if (key.isBlank()) return ToolResult(false, "Note key missing")
         if (value.isBlank()) return ToolResult(false, "Note value missing")
         if (com.jarvis.foundation.SensitiveTerms.contains(key) || com.jarvis.foundation.SensitiveTerms.contains(value)) {

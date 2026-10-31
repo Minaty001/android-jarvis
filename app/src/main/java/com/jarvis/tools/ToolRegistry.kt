@@ -294,6 +294,13 @@ class ToolRegistry {
         "ENABLE_ROUTINE" to "ROUTINE_MANAGE",
         "DISABLE_ROUTINE" to "ROUTINE_MANAGE",
         "ROUTINES" to "ROUTINE_MANAGE",
+        // Habits & Daily Patterns
+        "HABIT_SUGGEST" to "HABIT_LIST",
+        "HABITS" to "HABIT_LIST",
+        "USER_HABITS" to "HABIT_LIST",
+        "LEARNED_HABITS" to "HABIT_LIST",
+        "LIST_HABITS" to "HABIT_LIST",
+        "SHOW_HABITS" to "HABIT_LIST",
         // Autonomous UI Macros & Workflows
         "RUN_MACRO" to "MACRO_WORKFLOW",
         "EXECUTE_WORKFLOW" to "MACRO_WORKFLOW",

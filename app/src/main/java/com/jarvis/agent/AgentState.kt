@@ -34,6 +34,7 @@ data class AgentState(
     var failureCount: Int = 0,
     var completedSteps: Int = 0,
     var pendingApproval: PendingApproval? = null,
+    var pendingRecoveryAction: AgentAction? = null,
     val satisfiedCriteria: MutableSet<String> = mutableSetOf(),
     val executedActs: MutableMap<String, ExecutedAct> = mutableMapOf()
 )

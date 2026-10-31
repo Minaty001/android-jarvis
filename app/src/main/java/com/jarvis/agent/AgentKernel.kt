@@ -235,6 +235,15 @@ import java.util.Locale
                         action = AgentAction(pending.type, pending.params),
                         reasonCode = "user_approved_confirmation"
                     )
+                } else if (state.pendingRecoveryAction != null) {
+                    val recoveryAction = state.pendingRecoveryAction!!
+                    state.pendingRecoveryAction = null
+                    Log.i(TAG, "[RECOVERY] Replaying alternate/recovery action ${recoveryAction.type} with params ${recoveryAction.params}")
+                    AgentDecision(
+                        type = DecisionType.ACT,
+                        action = recoveryAction,
+                        reasonCode = "recovery_alternate_action"
+                    )
                 } else {
                     // Deterministic local planning wins for patterns it knows (compound
                     // open+play, skills, "open X", "play Y", flashlight...): cheaper, and not
@@ -484,6 +493,7 @@ import java.util.Locale
                                 onEvent(AgentEvent.Failed(failMsg))
                                 return AgentResult(AgentResultStatus.FAILED, failMsg, taskId, state.iteration, stepObservations, toolResult.message)
                             } else if (recoveryPlan.modifiedAction != null) {
+                                state.pendingRecoveryAction = recoveryPlan.modifiedAction
                                 state.lastAction = recoveryPlan.modifiedAction
                             }
                             continue
