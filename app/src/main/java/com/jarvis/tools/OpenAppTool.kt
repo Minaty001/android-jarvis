@@ -52,7 +52,7 @@ class OpenAppTool(private val context: Context? = null) : Tool {
     }
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
-        val appKey = params["app"]?.lowercase()?.trim() ?: return ToolResult(false, "App name missing")
+        val appKey = (params["app"] ?: params["name"] ?: params["package"])?.lowercase()?.trim() ?: return ToolResult(false, "App name missing")
         val query = params["query"]?.trim()
         val pkgName = AppRegistry.ALLOWED_PACKAGES[appKey]
             ?: (if (context != null) AppRegistry.resolvePackage(context, appKey) else null)
@@ -119,7 +119,7 @@ class CloseAppTool(private val context: Context? = null) : Tool {
 
     @Suppress("DEPRECATION")
     override suspend fun execute(params: Map<String, String>): ToolResult {
-        val appKey = params["app"]?.lowercase()?.trim() ?: return ToolResult(false, "App name missing")
+        val appKey = (params["app"] ?: params["name"] ?: params["package"])?.lowercase()?.trim() ?: return ToolResult(false, "App name missing")
         val pkgName = AppRegistry.ALLOWED_PACKAGES[appKey]
             ?: (if (context != null) AppRegistry.resolvePackage(context, appKey) else null)
             ?: return ToolResult(false, "App '$appKey' not in allowlist")

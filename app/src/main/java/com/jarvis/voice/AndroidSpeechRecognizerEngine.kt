@@ -125,9 +125,11 @@ open class AndroidSpeechRecognizerEngine(private val context: Context? = null) {
                     return@post
                 }
 
-                try {
-                    recognizer.cancel()
-                } catch (_: Exception) {}
+                if (_state.value == AsrState.LISTENING) {
+                    try {
+                        recognizer.cancel()
+                    } catch (_: Exception) {}
+                }
                 recognizer.startListening(buildRecognizerIntent())
                 _state.value = AsrState.LISTENING
                 Log.i(TAG, "SpeechRecognizer (session $session) started listening for command (reused instance)")

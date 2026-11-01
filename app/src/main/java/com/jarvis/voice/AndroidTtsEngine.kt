@@ -254,7 +254,7 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         }
 
         val wordCount = text.split("\\s+".toRegex()).size
-        val timeoutMs = (wordCount * 500L + 5000L).coerceAtLeast(5000L).coerceAtMost(60000L)
+        val timeoutMs = (wordCount * 500L + 15000L).coerceAtLeast(15000L).coerceAtMost(60000L)
 
         return withTimeoutOrNull(timeoutMs) {
             deferred.await()

@@ -66,7 +66,7 @@ class AgentPlanner:
                 action_request=ActionRequest(
                     action_id=f"act_{uuid.uuid4().hex[:8]}",
                     action="FLASHLIGHT",
-                    params={"state": state},
+                    params={"state": state, "mode": state.lower()},
                     speech_preamble=preamble.strip()
                 )
             )

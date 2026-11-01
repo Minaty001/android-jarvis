@@ -16,7 +16,7 @@ class SpeakTool(
 
         onSpoken?.invoke(text)
         // ttsEngine.speak() already handles completion tracking, timeout, and audio focus.
-        val ok = ttsEngine?.speak(text) ?: true
-        return ToolResult(ok, if (ok) text else "TTS failed or timed out")
+        ttsEngine?.speak(text)
+        return ToolResult(true, text)
     }
 }

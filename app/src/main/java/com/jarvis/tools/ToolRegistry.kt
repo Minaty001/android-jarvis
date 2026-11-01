@@ -63,6 +63,8 @@ class ToolRegistry {
         "GET_APPS" to "APPS_LIST",
         "ALL_APPS" to "APPS_LIST",
         // Music & Media Playback
+        "MEDIA_PLAY" to "MUSIC_PLAY",
+        "PLAY_MEDIA" to "MUSIC_PLAY",
         "PLAY_MUSIC" to "MUSIC_PLAY",
         "MUSIC" to "MUSIC_PLAY",
         "PLAY_SONG" to "MUSIC_PLAY",
@@ -538,6 +540,17 @@ class ToolRegistry {
             "CLOSE_ALL_APPS", "CLOSE_ALL", "ALL_APPS_CLOSE" -> if (!mutable.containsKey("action")) mutable["action"] = "close_all"
             "MUTE" -> if (!mutable.containsKey("action")) mutable["action"] = "mute"
             "UNMUTE" -> if (!mutable.containsKey("action")) mutable["action"] = "unmute"
+            "FLASHLIGHT" -> if (!mutable.containsKey("mode") && mutable.containsKey("state")) mutable["mode"] = mutable["state"]!!.lowercase()
+            "OPEN_APP", "APP_OPEN", "LAUNCH_APP" -> {
+                if (!mutable.containsKey("app") && mutable.containsKey("name")) mutable["app"] = mutable["name"]!!
+                if (!mutable.containsKey("name") && mutable.containsKey("app")) mutable["name"] = mutable["app"]!!
+            }
+            "TELEPHONY_CONTROL" -> {
+                if (!mutable.containsKey("recipient") && mutable.containsKey("target")) mutable["recipient"] = mutable["target"]!!
+            }
+            "MEDIA_PLAY", "PLAY_MEDIA", "MUSIC_PLAY" -> {
+                if (!mutable.containsKey("query") && mutable.containsKey("song")) mutable["query"] = mutable["song"]!!
+            }
         }
         return mutable
     }

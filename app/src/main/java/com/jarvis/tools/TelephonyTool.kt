@@ -30,7 +30,7 @@ class TelephonyTool(
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
         val action = params["action"]?.trim()?.lowercase() ?: "call"
-        val rawTarget = params["recipient"] ?: params["contact"] ?: params["number"] ?: params["name"] ?: ""
+        val rawTarget = params["target"] ?: params["recipient"] ?: params["contact"] ?: params["number"] ?: params["name"] ?: ""
         val message = params["message"] ?: params["body"] ?: params["text"] ?: ""
 
         val agent = callAndSmsAgent ?: CallAndSmsAgent.instance ?: CallAndSmsAgent(context, contactResolver)

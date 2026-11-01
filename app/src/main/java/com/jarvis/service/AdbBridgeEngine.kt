@@ -116,7 +116,7 @@ object AdbBridgeEngine {
 
                 // Handle simulated wake trigger for ADB end-to-end testing
                 if (toolName == "trigger_wake") {
-                    val phrase = params["phrase"] ?: "Hey Jarvis"
+                    val phrase = intent.getStringExtra("phrase") ?: params["phrase"] ?: "Hey Jarvis"
                     service.voiceEngine?.onWakeDetectedDirect(phrase)
                     val result = formatToolExecutionResult(true, "Simulated wake phrase '$phrase' dispatched")
                     Log.i(TAG, "trigger_wake result: $result")

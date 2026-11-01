@@ -13,12 +13,15 @@ class FlashlightTool(private val context: Context? = null) : Tool {
     val metadata = ToolMetadata(
         name = name,
         description = description,
-        parameters = listOf(ParameterSchema("mode", "string", "on or off", required = true)),
+        parameters = listOf(
+            ParameterSchema("mode", "string", "on or off", required = false),
+            ParameterSchema("state", "string", "on or off", required = false)
+        ),
         riskLevel = RiskLevel.LOW
     )
 
     override suspend fun execute(params: Map<String, String>): ToolResult {
-        val raw = params["mode"]?.trim()?.lowercase()
+        val raw = (params["mode"] ?: params["state"])?.trim()?.lowercase()
         val on = when (raw) {
             "on", "true", "1" -> true
             "off", "false", "0" -> false

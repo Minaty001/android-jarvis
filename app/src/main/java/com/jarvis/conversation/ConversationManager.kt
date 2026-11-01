@@ -40,7 +40,7 @@ class ConversationManager(private val memoryStore: com.jarvis.memory.MemoryStore
         return when (from) {
             VoiceState.IDLE -> to == VoiceState.WAITING_FOR_WAKE || to == VoiceState.OFFLINE
             VoiceState.WAITING_FOR_WAKE -> true
-            VoiceState.WAKE_DETECTED -> to == VoiceState.LISTENING || to == VoiceState.WAITING_FOR_WAKE || to == VoiceState.UNDERSTANDING || to == VoiceState.THINKING
+            VoiceState.WAKE_DETECTED -> to == VoiceState.LISTENING || to == VoiceState.WAITING_FOR_WAKE || to == VoiceState.UNDERSTANDING || to == VoiceState.THINKING || to == VoiceState.EXECUTING || to == VoiceState.SPEAKING
             VoiceState.LISTENING -> to == VoiceState.THINKING || to == VoiceState.UNDERSTANDING || to == VoiceState.WAITING_FOR_WAKE
             VoiceState.UNDERSTANDING,
             VoiceState.CHECKING_MEMORY,
