@@ -997,7 +997,13 @@ class SettingsScreen(
             setTextColor(Ui.MUTED)
             setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 6))
         }
-        val pingBtn = Ui.button(context, "TEST SERVER CONNECTION (PING)") {
+
+        val actionRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, Ui.dp(context, 8), 0, Ui.dp(context, 4))
+        }
+
+        val pingBtn = Ui.button(context, "TEST PING") {
             val url = backendServerUrlField.text.toString().trim()
             val token = backendAuthTokenField.text.toString().trim()
             val targetUrl = if (url.isBlank()) "https://android-jarvis.onrender.com" else url
@@ -1012,7 +1018,7 @@ class SettingsScreen(
                             pingBadge.text = "🟢 Connected to JARVIS Backend"
                             pingBadge.setTextColor(Color.parseColor("#00E676"))
                         } else {
-                            pingBadge.text = "🔴 Server Unreachable (Check Network / URL)"
+                            pingBadge.text = "🔴 Server Unreachable (Check Network / URL / PIN)"
                             pingBadge.setTextColor(Color.parseColor("#FF5252"))
                         }
                     }
@@ -1023,9 +1029,39 @@ class SettingsScreen(
                     }
                 }
             }
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = Ui.dp(context, 8)
+            }
         }
-        backendInner.addView(pingBtn)
+
+        val saveBtn = Ui.button(context, "💾 SAVE SETTINGS") {
+            save()
+            pingBadge.text = "✅ Saved! PIN & Backend URL stored."
+            pingBadge.setTextColor(Color.parseColor("#00E676"))
+            android.widget.Toast.makeText(context, "Backend Settings & Pairing PIN Saved!", android.widget.Toast.LENGTH_SHORT).show()
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+
+        actionRow.addView(pingBtn)
+        actionRow.addView(saveBtn)
+        backendInner.addView(actionRow)
         backendInner.addView(pingBadge)
+
+        // Real-time auto-save listeners on PIN, URL and switches
+        backendServerSwitch.setOnCheckedChangeListener { _, _ -> markDirty() }
+        backendFallbackSwitch.setOnCheckedChangeListener { _, _ -> markDirty() }
+        backendServerUrlField.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { markDirty() }
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
+        backendAuthTokenField.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { markDirty() }
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
 
         backendCard.addView(backendInner)
         root.addView(backendCard)
