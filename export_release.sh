@@ -22,15 +22,27 @@ echo "=== Building Production Release APK ==="
 
 echo "=== Exporting Release Artifacts ==="
 mkdir -p dist release
-cp -f app/build/outputs/apk/release/app-release.apk dist/jarvis-v1.1-release.apk
+RELEASE_SRC="app/build/outputs/apk/release/jarvis-ai.apk"
+if [ ! -f "$RELEASE_SRC" ]; then
+    RELEASE_SRC="app/build/outputs/apk/release/app-release.apk"
+fi
+
+cp -f "$RELEASE_SRC" jarvis-ai.apk
+sha256sum jarvis-ai.apk > jarvis-ai.apk.sha256
+
+cp -f "$RELEASE_SRC" dist/jarvis-ai.apk
+sha256sum dist/jarvis-ai.apk > dist/jarvis-ai.apk.sha256
+
+cp -f "$RELEASE_SRC" dist/jarvis-v1.1-release.apk
 sha256sum dist/jarvis-v1.1-release.apk > dist/jarvis-v1.1-release.apk.sha256
 
-cp -f app/build/outputs/apk/release/app-release.apk release/jarvis-v1.1-release.apk
+cp -f "$RELEASE_SRC" release/jarvis-v1.1-release.apk
 sha256sum release/jarvis-v1.1-release.apk > release/jarvis-v1.1-release.apk.sha256
 
 echo "================================================="
 echo " Production APK successfully exported to:"
+echo " -> jarvis-ai.apk ($(du -h jarvis-ai.apk | cut -f1))"
+echo " -> dist/jarvis-ai.apk ($(du -h dist/jarvis-ai.apk | cut -f1))"
 echo " -> dist/jarvis-v1.1-release.apk ($(du -h dist/jarvis-v1.1-release.apk | cut -f1))"
-echo " -> release/jarvis-v1.1-release.apk ($(du -h release/jarvis-v1.1-release.apk | cut -f1))"
-echo " -> Checksum: $(cat dist/jarvis-v1.1-release.apk.sha256)"
+echo " -> Checksum: $(cat jarvis-ai.apk.sha256)"
 echo "================================================="

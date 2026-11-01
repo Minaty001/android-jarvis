@@ -93,6 +93,12 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+
+    applicationVariants.all {
+        outputs.all {
+            (this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl)?.outputFileName = "jarvis-ai.apk"
+        }
+    }
 }
 
 dependencies {

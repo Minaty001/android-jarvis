@@ -83,7 +83,11 @@ run_test "8. Smart Financial & Expense Tracker" "" "how much money did I spend?"
 
 # 9. Icon Optimization (APK Size check)
 echo "## 9. Icon Optimization & Build Verification" >> $REPORT
-APK_SIZE=$(ls -lh jarvis-app.apk | awk '{print $5}')
+APK_FILE="jarvis-ai.apk"
+if [ ! -f "$APK_FILE" ]; then
+    APK_FILE="jarvis-app.apk"
+fi
+APK_SIZE=$(ls -lh "$APK_FILE" | awk '{print $5}')
 echo "**Result:** ✅ PASSED" >> $REPORT
 echo "Legacy PNGs removed. New WebP APK size is: $APK_SIZE" >> $REPORT
 

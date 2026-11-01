@@ -23,7 +23,11 @@ APK_PATH="${1:-}"
 
 if [ -z "$APK_PATH" ]; then
     for candidate in \
+        "$DIR/jarvis-ai.apk" \
         "$DIR/jarvis-app.apk" \
+        "$DIR/app/build/outputs/apk/debug/jarvis-ai.apk" \
+        "$DIR/app/build/outputs/apk/release/jarvis-ai.apk" \
+        "$DIR/dist/jarvis-ai.apk" \
         "$DIR/dist/jarvis-v1.1-release.apk" \
         "$DIR/dist/jarvis-v1.1-debug.apk" \
         "$DIR/app/build/outputs/apk/release/app-release.apk" \
