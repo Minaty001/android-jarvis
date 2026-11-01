@@ -54,17 +54,6 @@ object AssistantSettingsHelper {
      * Creates an [Intent] to open Android's Default Digital Assistant settings screen.
      */
     fun createDefaultAssistantSettingsIntent(context: Context): Intent {
-        // Try RoleManager on Android 10+ (Q+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val roleManager = context.getSystemService(Context.ROLE_SERVICE) as? RoleManager
-            if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT) && !roleManager.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
-                return roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            }
-        }
-
-        // Fall back to Voice Input settings
         return Intent(Settings.ACTION_VOICE_INPUT_SETTINGS).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -74,22 +63,61 @@ object AssistantSettingsHelper {
      * Opens Android's Default Digital Assistant settings screen.
      */
     fun openDefaultAssistantSettings(context: Context): Boolean {
-        return try {
-            val intent = createDefaultAssistantSettingsIntent(context)
+        // Priority 1: If an Activity context, attempt RoleManager with startActivityForResult
+        if (context is android.app.Activity && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val roleManager = context.getSystemService(Context.ROLE_SERVICE) as? RoleManager
+                if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_ASSISTANT) && !roleManager.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
+                    val roleIntent = roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)
+                    context.startActivityForResult(roleIntent, 1001)
+                    return true
+                }
+            } catch (roleEx: Exception) {
+                Log.w(TAG, "RoleManager.createRequestRoleIntent failed: ${roleEx.message}")
+            }
+        }
+
+        // Priority 2: Direct Voice Input / Assistant Settings intent
+        try {
+            val intent = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
             context.startActivity(intent)
+            return true
+        } catch (e: Exception) {
+            Log.w(TAG, "ACTION_VOICE_INPUT_SETTINGS failed: ${e.message}")
+        }
+
+        // Priority 3: Manage Default Apps
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                val fallback = Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(fallback)
+                return true
+            } catch (fallbackEx: Exception) {
+                Log.w(TAG, "ACTION_MANAGE_DEFAULT_APPS_SETTINGS failed: ${fallbackEx.message}")
+            }
+        }
+
+        // Priority 4: Application details or General Settings
+        return try {
+            val appDetails = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = android.net.Uri.fromParts("package", context.packageName, null)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(appDetails)
             true
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to launch voice input settings; falling back to manage default apps", e)
             try {
-                val fallback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
-                } else {
-                    Intent(Settings.ACTION_SETTINGS)
-                }.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-                context.startActivity(fallback)
+                val mainSettings = Intent(Settings.ACTION_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(mainSettings)
                 true
-            } catch (fallbackEx: Exception) {
-                Log.e(TAG, "Failed all default assistant settings intents: ${fallbackEx.message}")
+            } catch (finalEx: Exception) {
+                Log.e(TAG, "All assistant settings intents failed: ${finalEx.message}")
                 false
             }
         }

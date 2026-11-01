@@ -21,34 +21,68 @@ import com.google.android.material.textfield.TextInputLayout
 
 /**
  * Modern, Human-Crafted Material Design System Tokens & View Factories.
- * Replaces amateurish sci-fi neon pastiches with a sleek, premium, high-contrast dark palette.
+ * Dynamically supports both sleek Dark Slate and crisp, high-contrast Light themes.
  */
 object Ui {
-    // Professional Zinc & Slate Theme Tokens
-    const val BG = 0xFF0A0D14.toInt()
-    const val SURFACE = 0xFF121722.toInt()
-    const val SURFACE_2 = 0xFF181F2E.toInt()
-    const val SURFACE_CONTAINER = 0xFF1E2638.toInt()
-    const val SURFACE_CONTAINER_HIGH = 0xFF263045.toInt()
+    @JvmStatic
+    var isDark: Boolean = true
 
-    const val BORDER = 0xFF242E42.toInt()
-    const val BORDER_SUBTLE = 0xFF1B2332.toInt()
-    const val BORDER_GLOW = 0xFF334155.toInt()
+    @JvmStatic
+    fun updateTheme(context: Context, themePreference: String? = null) {
+        isDark = when (themePreference) {
+            "dark" -> true
+            "light" -> false
+            else -> {
+                val nightFlags = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                nightFlags == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            }
+        }
+    }
 
-    const val PRIMARY = 0xFF3B82F6.toInt() // Electric Cobalt Blue
-    const val PRIMARY_ACCENT = 0xFF3B82F6.toInt()
-    const val BLUE_PRIMARY = 0xFF3B82F6.toInt()
+    // Professional Zinc & Slate Theme Tokens (Dynamic for Light and Dark)
+    @JvmStatic
+    val BG: Int get() = if (isDark) 0xFF0A0D14.toInt() else 0xFFF8FAFC.toInt()
+    @JvmStatic
+    val SURFACE: Int get() = if (isDark) 0xFF121722.toInt() else 0xFFFFFFFF.toInt()
+    @JvmStatic
+    val SURFACE_2: Int get() = if (isDark) 0xFF181F2E.toInt() else 0xFFF1F5F9.toInt()
+    @JvmStatic
+    val SURFACE_CONTAINER: Int get() = if (isDark) 0xFF1E2638.toInt() else 0xFFE2E8F0.toInt()
+    @JvmStatic
+    val SURFACE_CONTAINER_HIGH: Int get() = if (isDark) 0xFF263045.toInt() else 0xFFCBD5E1.toInt()
 
-    const val CYAN = 0xFF06B6D4.toInt() // Refined Teal for voice/audio state
-    const val CYAN_DIM = 0xFF0891B2.toInt()
+    @JvmStatic
+    val BORDER: Int get() = if (isDark) 0xFF242E42.toInt() else 0xFFE2E8F0.toInt()
+    @JvmStatic
+    val BORDER_SUBTLE: Int get() = if (isDark) 0xFF1B2332.toInt() else 0xFFF1F5F9.toInt()
+    @JvmStatic
+    val BORDER_GLOW: Int get() = if (isDark) 0xFF334155.toInt() else 0xFF94A3B8.toInt()
 
-    const val TEXT = 0xFFF1F5F9.toInt() // Slate 100
-    const val TEXT_SECONDARY = 0xFFCBD5E1.toInt() // Slate 300
-    const val MUTED = 0xFF94A3B8.toInt() // Slate 400
+    @JvmStatic
+    val PRIMARY: Int get() = if (isDark) 0xFF3B82F6.toInt() else 0xFF2563EB.toInt() // Electric Cobalt Blue / Royal Blue
+    @JvmStatic
+    val PRIMARY_ACCENT: Int get() = if (isDark) 0xFF3B82F6.toInt() else 0xFF2563EB.toInt()
+    @JvmStatic
+    val BLUE_PRIMARY: Int get() = if (isDark) 0xFF3B82F6.toInt() else 0xFF2563EB.toInt()
 
-    const val SUCCESS = 0xFF10B981.toInt() // Emerald
-    const val WARNING = 0xFFF59E0B.toInt() // Amber
-    const val ERROR = 0xFFEF4444.toInt() // Crimson
+    @JvmStatic
+    val CYAN: Int get() = if (isDark) 0xFF06B6D4.toInt() else 0xFF0284C7.toInt() // Refined Teal for voice/audio state
+    @JvmStatic
+    val CYAN_DIM: Int get() = if (isDark) 0xFF0891B2.toInt() else 0xFF0369A1.toInt()
+
+    @JvmStatic
+    val TEXT: Int get() = if (isDark) 0xFFF1F5F9.toInt() else 0xFF0F172A.toInt() // Slate 100 in Dark, Slate 900 in Light
+    @JvmStatic
+    val TEXT_SECONDARY: Int get() = if (isDark) 0xFFCBD5E1.toInt() else 0xFF334155.toInt() // Slate 300 in Dark, Slate 700 in Light
+    @JvmStatic
+    val MUTED: Int get() = if (isDark) 0xFF94A3B8.toInt() else 0xFF64748B.toInt() // Slate 400 in Dark, Slate 500 in Light
+
+    @JvmStatic
+    val SUCCESS: Int get() = if (isDark) 0xFF10B981.toInt() else 0xFF059669.toInt() // Emerald
+    @JvmStatic
+    val WARNING: Int get() = if (isDark) 0xFFF59E0B.toInt() else 0xFFD97706.toInt() // Amber
+    @JvmStatic
+    val ERROR: Int get() = if (isDark) 0xFFEF4444.toInt() else 0xFFDC2626.toInt() // Crimson
 
     @JvmStatic
     fun dp(context: Context, value: Int): Int = (value * context.resources.displayMetrics.density).toInt()

@@ -82,4 +82,9 @@ class ResponsiveNav(context: Context, private val onSelect: (String) -> Unit) : 
             views.third.setTextColor(if (selected) Ui.TEXT else Ui.MUTED)
         }
     }
+
+    fun refreshTheme() {
+        setBackgroundColor(Ui.SURFACE)
+        setRoute(selectedRoute)
+    }
 }

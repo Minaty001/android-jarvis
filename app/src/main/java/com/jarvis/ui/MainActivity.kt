@@ -33,6 +33,7 @@ import com.jarvis.ui.screens.SkillsScreen
 import com.jarvis.ui.security.SecureCredentialStore
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var rootView: LinearLayout
     private lateinit var container: FrameLayout
     private lateinit var nav: ResponsiveNav
     private lateinit var store: UiPreferencesStore
@@ -69,8 +70,8 @@ class MainActivity : AppCompatActivity() {
         com.jarvis.storage.JarvisStorageHub.initStorage(this)
         store = UiPreferencesStore(this)
         apiManager = ApiManager(store, SecureCredentialStore(this))
-        setContentView(buildRoot())
         applyTheme(store.loadSettings().theme)
+        setContentView(buildRoot())
         requestPermissionsIfNeeded()
         startAndBindService()
 
@@ -89,10 +90,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildRoot(): View {
-        val root = LinearLayout(this).apply {
+        rootView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(com.jarvis.ui.components.Ui.BG)
         }
+        val root = rootView
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.setPadding(view.paddingLeft, bars.top, view.paddingRight, bars.bottom)
@@ -129,7 +131,13 @@ class MainActivity : AppCompatActivity() {
             "Brain" -> ApiManagerScreen(this, this, apiManager, service?.voiceEngine) { service?.reloadConfig() }
             "Settings" -> SettingsScreen(
                 this, store, store.loadSettings(),
-                { dirty = it }, { service?.reloadConfig() }, service?.voiceEngine,
+                { dirty = it },
+                {
+                    service?.reloadConfig()
+                    applyTheme(store.loadSettings().theme)
+                    showRoute("Settings")
+                },
+                service?.voiceEngine,
                 onOpenBrain = { showRoute("Brain") },
                 onOpenMemory = { showRoute("Memory") },
                 onOpenLogs = { showRoute("Logs") }
@@ -148,8 +156,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyTheme(theme: String) {
-        val mode = when (theme) { "dark" -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES; "light" -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO; else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM }
-        if (androidx.appcompat.app.AppCompatDelegate.getDefaultNightMode() != mode) androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
+        val mode = when (theme) {
+            "dark" -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+            "light" -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+            else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        }
+        com.jarvis.ui.components.Ui.updateTheme(this, theme)
+        if (androidx.appcompat.app.AppCompatDelegate.getDefaultNightMode() != mode) {
+            androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
+        }
+        val isLight = !com.jarvis.ui.components.Ui.isDark
+        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        controller.isAppearanceLightStatusBars = isLight
+        controller.isAppearanceLightNavigationBars = isLight
+        if (::rootView.isInitialized) {
+            rootView.setBackgroundColor(com.jarvis.ui.components.Ui.BG)
+        }
+        if (::nav.isInitialized) {
+            nav.refreshTheme()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        applyTheme(store.loadSettings().theme)
+        (container.getChildAt(0) as? SettingsScreen)?.refreshAssistantStatus()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1001) {
+            (container.getChildAt(0) as? SettingsScreen)?.refreshAssistantStatus()
+        }
     }
 
     private fun startAndBindService() {

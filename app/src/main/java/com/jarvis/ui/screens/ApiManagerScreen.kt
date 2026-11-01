@@ -315,7 +315,7 @@ class ApiManagerScreen(
         val name = Ui.input(context, "API name"); val url = Ui.input(context, "Endpoint URL"); val keyHeader = Ui.input(context, "API-key header (default Authorization)"); val secret = Ui.input(context, secretHint(existing?.authMethod ?: AuthMethod.API_KEY))
         container.addView(name.first); container.addView(url.first)
         val auth = Spinner(context).apply { adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, AuthMethod.entries.map { it.name }) }
-        container.addView(TextView(context).apply { text = "Authentication"; setTextColor(Color.WHITE) }); container.addView(auth)
+        container.addView(TextView(context).apply { text = "Authentication"; setTextColor(Ui.TEXT) }); container.addView(auth)
         container.addView(keyHeader.first); container.addView(secret.first)
         val active = MaterialSwitch(context).apply { text = "Active"; isChecked = existing?.active ?: true }
         container.addView(active)

@@ -214,7 +214,7 @@ class LogsScreen(
             text = store.logs().joinToString("\n").ifBlank { "No diagnostic traces recorded." }
             textSize = 11f
             typeface = Typeface.MONOSPACE
-            setTextColor(0xFFD5DEE8.toInt())
+            setTextColor(Ui.TEXT)
         }
         diagInner.addView(diagTextView)
         diagCard.addView(diagInner)

@@ -309,31 +309,7 @@ class JarvisVoiceInteractionSession(context: Context) : VoiceInteractionSession(
         super.onShow(args, showFlags)
         Log.i(TAG, "JarvisVoiceInteractionSession onShow with flags: $showFlags")
 
-        // 1. If SYSTEM_ALERT_WINDOW permission is granted, immediately launch the interactive Floating Orb overlay!
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(context)) {
-            try {
-                val overlayIntent = Intent(context, com.jarvis.overlay.JarvisFloatingOverlayService::class.java).apply {
-                    action = com.jarvis.overlay.JarvisFloatingOverlayService.ACTION_TALK
-                }
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    context.startForegroundService(overlayIntent)
-                } else {
-                    context.startService(overlayIntent)
-                }
-                // Seamlessly hide the system session bottom sheet window so the floating orb directly appears
-                hide()
-                return
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed launching floating overlay on assist show: ${e.message}")
-            }
-        }
-
-        transcriptText?.text = "Overlay permission required to enable Floating Orb. Tap below to grant."
-        responseText?.visibility = View.GONE
-        statusBadge?.text = "GRANT OVERLAY"
-        orbView?.setState(VoiceState.LISTENING)
-
-        // Ensure Jarvis foreground service is active
+        // 1. Ensure Jarvis foreground service is active
         try {
             val serviceIntent = Intent(context, JarvisForegroundService::class.java).apply {
                 action = JarvisForegroundService.ACTION_START
@@ -347,9 +323,18 @@ class JarvisVoiceInteractionSession(context: Context) : VoiceInteractionSession(
             Log.w(TAG, "Failed ensuring foreground service: ${e.message}")
         }
 
-        // Trigger manual listening
+        // 2. Setup session bottom sheet UI state
+        transcriptText?.text = ""
+        responseText?.visibility = View.GONE
+        responseText?.text = ""
+        statusBadge?.text = "● LISTENING"
+        statusBadge?.setTextColor(Color.parseColor("#00E5FF"))
+        orbView?.setState(VoiceState.LISTENING)
+
+        // 3. Trigger manual listening so Jarvis actively listens to user speech
         JarvisForegroundService.instance?.voiceEngine?.startManualListening()
 
+        // 4. Start observing conversation state to update orb and text
         startStateObservation()
     }
 
