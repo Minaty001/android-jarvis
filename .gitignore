@@ -59,3 +59,4 @@ __pycache__/
 /data/wakeword/**/*.wav
 /data/wakeword/manifest.json
 server/.venv
+server_memory.db
