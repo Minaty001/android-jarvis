@@ -13,6 +13,7 @@ import com.jarvis.ui.dialogs.VoiceEnrollmentDialog
 import com.jarvis.ui.model.AppSettings
 import com.jarvis.wakeword.UserVoiceProfile
 import com.jarvis.wakeword.WakeWordDatasetStore
+import kotlinx.coroutines.*
 
 class SettingsScreen(
     context: Context,
@@ -40,6 +41,10 @@ class SettingsScreen(
     private val briefingTimeBtn = TextView(context)
     private var currentBriefingTime: String = initial.dailyBriefingTime
     private val floatingOverlaySwitch = MaterialSwitch(context)
+    private val backendServerSwitch = MaterialSwitch(context)
+    private val backendServerUrlField = EditText(context)
+    private val backendAuthTokenField = EditText(context)
+    private val backendFallbackSwitch = MaterialSwitch(context)
     private val customKey = EditText(context)
     private val customValue = EditText(context)
     private val customList = LinearLayout(context)
@@ -50,6 +55,8 @@ class SettingsScreen(
     private var suppressDirty = true
 
     private val logView = TextView(context)
+    private var assistBadgeView: TextView? = null
+    private var assistBtnView: com.google.android.material.button.MaterialButton? = null
 
     init {
         setBackgroundColor(Ui.BG)
@@ -191,6 +198,7 @@ class SettingsScreen(
             if (isDefaultAssist) "DEFAULT ASSISTANT" else "NOT DEFAULT",
             if (isDefaultAssist) Ui.CYAN else Ui.WARNING
         )
+        assistBadgeView = assistBadge
         assistRow.addView(assistBadge)
         assistInner.addView(assistRow)
 
@@ -203,7 +211,10 @@ class SettingsScreen(
 
         val assistBtn = Ui.button(context, if (isDefaultAssist) "MANAGE DEFAULT ASSISTANT SETTINGS" else "SET AS DEFAULT DIGITAL ASSISTANT") {
             com.jarvis.assistant.AssistantSettingsHelper.openDefaultAssistantSettings(context)
+            postDelayed({ refreshAssistantStatus() }, 800)
+            postDelayed({ refreshAssistantStatus() }, 2000)
         }
+        assistBtnView = assistBtn
         assistInner.addView(assistBtn)
 
         val hasOverlay = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(context)
@@ -939,6 +950,86 @@ class SettingsScreen(
         prefCard.addView(prefInner)
         root.addView(prefCard)
 
+        // Backend Server Bridge Card
+        root.addView(Ui.sectionLabel(context, "JARVIS Backend Server Bridge"))
+        val backendCard = Ui.glassCard(context, Ui.BORDER)
+        val backendInner = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(Ui.dp(context, 14), Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 12))
+        }
+
+        backendServerSwitch.text = "Offload AI Reasoning to Backend Server"
+        backendServerSwitch.setTextColor(Ui.TEXT)
+        backendServerSwitch.isChecked = initial.backendServerEnabled
+        backendInner.addView(backendServerSwitch)
+
+        backendInner.addView(TextView(context).apply {
+            text = "Reduces device CPU & battery drain by routing LLM planning, memory, and research to your PC/host machine."
+            textSize = 10f
+            setTextColor(Ui.MUTED)
+            setPadding(0, 0, 0, Ui.dp(context, 8))
+        })
+
+        backendInner.addView(TextView(context).apply { text = "Server WebSocket / REST URL"; textSize = 11f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Ui.TEXT) })
+        backendServerUrlField.setText(initial.backendServerUrl)
+        backendServerUrlField.setTextColor(Ui.TEXT)
+        backendServerUrlField.setBackgroundColor(Color.parseColor("#101923"))
+        backendServerUrlField.setPadding(Ui.dp(context, 10), Ui.dp(context, 8), Ui.dp(context, 10), Ui.dp(context, 8))
+        backendInner.addView(backendServerUrlField)
+
+        backendInner.addView(TextView(context).apply { text = "Pairing PIN / Auth Token"; textSize = 11f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Ui.TEXT); setPadding(0, Ui.dp(context, 8), 0, 0) })
+        backendAuthTokenField.setText(initial.backendAuthToken)
+        backendAuthTokenField.setTextColor(Ui.TEXT)
+        backendAuthTokenField.setBackgroundColor(Color.parseColor("#101923"))
+        backendAuthTokenField.setPadding(Ui.dp(context, 10), Ui.dp(context, 8), Ui.dp(context, 10), Ui.dp(context, 8))
+        backendInner.addView(backendAuthTokenField)
+
+        backendFallbackSwitch.text = "Auto-fallback to On-Device Cloud if Server Offline"
+        backendFallbackSwitch.setTextColor(Ui.TEXT)
+        backendFallbackSwitch.isChecked = initial.backendFallbackToDirect
+        backendInner.addView(backendFallbackSwitch)
+
+        val pingBadge = TextView(context).apply {
+            text = "Status: Ready to Test"
+            textSize = 11f
+            setTextColor(Ui.MUTED)
+            setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 6))
+        }
+        val pingBtn = Ui.button(context, "TEST SERVER CONNECTION (PING)") {
+            val url = backendServerUrlField.text.toString().trim()
+            val token = backendAuthTokenField.text.toString().trim()
+            pingBadge.text = "Pinging $url..."
+            pingBadge.setTextColor(Ui.CYAN)
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                try {
+                    val client = com.jarvis.backend.JarvisBackendClient(serverUrl = url, authToken = token)
+                    client.connect()
+                    kotlinx.coroutines.delay(1000)
+                    val online = client.isConnected
+                    client.disconnect()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (online) {
+                            pingBadge.text = "🟢 Connected to JARVIS Backend"
+                            pingBadge.setTextColor(Color.parseColor("#00E676"))
+                        } else {
+                            pingBadge.text = "🔴 Server Unreachable (Check Wi-Fi / IP)"
+                            pingBadge.setTextColor(Color.parseColor("#FF5252"))
+                        }
+                    }
+                } catch (e: Exception) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        pingBadge.text = "🔴 Error: ${e.message}"
+                        pingBadge.setTextColor(Color.parseColor("#FF5252"))
+                    }
+                }
+            }
+        }
+        backendInner.addView(pingBtn)
+        backendInner.addView(pingBadge)
+
+        backendCard.addView(backendInner)
+        root.addView(backendCard)
+
         root.addView(Ui.sectionLabel(context, "Voice Command Aliases"))
         val aliasCard = Ui.glassCard(context, Ui.BORDER)
         val aliasInner = LinearLayout(context).apply {
@@ -1030,14 +1121,14 @@ class SettingsScreen(
 
     private fun addNumeric(root: LinearLayout, hint: String, field: EditText, value: String) {
         field.setText(value); field.inputType = android.text.InputType.TYPE_CLASS_NUMBER
-        root.addView(TextView(context).apply { text = hint; setTextColor(Color.WHITE) }); root.addView(field)
+        root.addView(TextView(context).apply { text = hint; setTextColor(Ui.TEXT) }); root.addView(field)
     }
 
     private fun addField(root: LinearLayout, hint: String, field: EditText, value: String) {
         field.hint = hint
         field.setText(value)
-        field.setTextColor(Color.WHITE)
-        field.setHintTextColor(0xFF7E8A97.toInt())
+        field.setTextColor(Ui.TEXT)
+        field.setHintTextColor(Ui.MUTED)
         field.setSingleLine(true)
         root.addView(field, LinearLayout.LayoutParams(-1, Ui.dp(context, 52)).apply { bottomMargin = Ui.dp(context, 8) })
     }
@@ -1053,7 +1144,7 @@ class SettingsScreen(
         customList.removeAllViews()
         store.loadCustomVariables().forEach { (key, value) ->
             val row = Ui.row(context)
-            row.addView(TextView(context).apply { text = "$key = $value"; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(TextView(context).apply { text = "$key = $value"; setTextColor(Ui.TEXT) }, LinearLayout.LayoutParams(0, -2, 1f))
             row.addView(Ui.button(context, "Delete") { store.deleteCustomVariable(key); renderCustomVariables(); markDirty() })
             customList.addView(row)
         }
@@ -1078,7 +1169,7 @@ class SettingsScreen(
             val row = Ui.row(context)
             row.addView(TextView(context).apply {
                 text = "$alias → $command"
-                setTextColor(Color.WHITE)
+                setTextColor(Ui.TEXT)
             }, LinearLayout.LayoutParams(0, -2, 1f))
             row.addView(Ui.button(context, "Delete") {
                 store.deleteVoiceCommandAlias(alias)
@@ -1106,7 +1197,11 @@ class SettingsScreen(
             dailyBriefingTime = currentBriefingTime,
             floatingOverlayEnabled = floatingOverlaySwitch.isChecked,
             ttsProvider = if (ttsProviderSpinner.selectedItemPosition == 1) "android" else "groq",
-            ttsVoice = ttsVoiceSpinner.selectedItem?.toString() ?: "Fritz-PlayAI"
+            ttsVoice = ttsVoiceSpinner.selectedItem?.toString() ?: "Fritz-PlayAI",
+            backendServerEnabled = backendServerSwitch.isChecked,
+            backendServerUrl = backendServerUrlField.text.toString().trim(),
+            backendAuthToken = backendAuthTokenField.text.toString().trim(),
+            backendFallbackToDirect = backendFallbackSwitch.isChecked
         )
         store.saveSettings(settings)
 
@@ -1135,10 +1230,14 @@ class SettingsScreen(
         currentBriefingTime = settings.dailyBriefingTime
         updateBriefingTimeBtnText()
         floatingOverlaySwitch.isChecked = settings.floatingOverlayEnabled
+        backendServerSwitch.isChecked = settings.backendServerEnabled
+        backendServerUrlField.setText(settings.backendServerUrl)
+        backendAuthTokenField.setText(settings.backendAuthToken)
+        backendFallbackSwitch.isChecked = settings.backendFallbackToDirect
         com.jarvis.automation.DailyBriefingScheduler.scheduleNextBriefing(context, hour = 8, minute = 0)
         dirty = false; onDirtyChanged(false)
         onSaved?.invoke()
-        removeAllViews(); addView(TextView(context).apply { text = "Settings reset. Re-open Settings to edit."; setTextColor(Color.WHITE) })
+        removeAllViews(); addView(TextView(context).apply { text = "Settings reset. Re-open Settings to edit."; setTextColor(Ui.TEXT) })
     }
 
     private fun formatTimeForDisplay(timeStr: String): String {
@@ -1200,7 +1299,7 @@ class SettingsScreen(
         for ((label, p) in perms) {
             val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(context, p) == android.content.pm.PackageManager.PERMISSION_GRANTED
             val row = Ui.row(context)
-            row.addView(TextView(context).apply { text = label; textSize = 14f; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(TextView(context).apply { text = label; textSize = 14f; setTextColor(Ui.TEXT) }, LinearLayout.LayoutParams(0, -2, 1f))
             row.addView(Ui.hudBadge(context, if (isGranted) "GRANTED" else "MISSING", if (isGranted) Ui.SUCCESS else Ui.ERROR))
             inner.addView(row)
             if (!isGranted) {
@@ -1215,7 +1314,7 @@ class SettingsScreen(
         // 2. Accessibility
         val accEnabled = android.provider.Settings.Secure.getString(context.contentResolver, android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)?.contains(context.packageName) == true
         val accRow = Ui.row(context)
-        accRow.addView(TextView(context).apply { text = "Accessibility Service"; textSize = 14f; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(0, -2, 1f))
+        accRow.addView(TextView(context).apply { text = "Accessibility Service"; textSize = 14f; setTextColor(Ui.TEXT) }, LinearLayout.LayoutParams(0, -2, 1f))
         accRow.addView(Ui.hudBadge(context, if (accEnabled) "GRANTED" else "MISSING", if (accEnabled) Ui.SUCCESS else Ui.ERROR))
         inner.addView(accRow)
         if (!accEnabled) {
@@ -1229,7 +1328,7 @@ class SettingsScreen(
         // 3. Notification Listener
         val notifEnabled = android.provider.Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")?.contains(context.packageName) == true
         val notifRow = Ui.row(context)
-        notifRow.addView(TextView(context).apply { text = "Notification Access"; textSize = 14f; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(0, -2, 1f))
+        notifRow.addView(TextView(context).apply { text = "Notification Access"; textSize = 14f; setTextColor(Ui.TEXT) }, LinearLayout.LayoutParams(0, -2, 1f))
         notifRow.addView(Ui.hudBadge(context, if (notifEnabled) "GRANTED" else "MISSING", if (notifEnabled) Ui.SUCCESS else Ui.ERROR))
         inner.addView(notifRow)
         if (!notifEnabled) {
@@ -1243,7 +1342,7 @@ class SettingsScreen(
         // 4. Draw Over Other Apps
         val canDraw = android.provider.Settings.canDrawOverlays(context)
         val overlayRow = Ui.row(context)
-        overlayRow.addView(TextView(context).apply { text = "Draw Over Apps"; textSize = 14f; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(0, -2, 1f))
+        overlayRow.addView(TextView(context).apply { text = "Draw Over Apps"; textSize = 14f; setTextColor(Ui.TEXT) }, LinearLayout.LayoutParams(0, -2, 1f))
         overlayRow.addView(Ui.hudBadge(context, if (canDraw) "GRANTED" else "MISSING", if (canDraw) Ui.SUCCESS else Ui.ERROR))
         inner.addView(overlayRow)
         if (!canDraw) {
@@ -1277,7 +1376,7 @@ class SettingsScreen(
             for (h in habits) {
                 inner.addView(TextView(context).apply { 
                     text = "${h.category}: ${h.target}\nTime: ${h.timeOfDay} | Confidence: ${h.confidenceScore}"
-                    setTextColor(Color.WHITE)
+                    setTextColor(Ui.TEXT)
                     setPadding(0, 0, 0, Ui.dp(context, 8))
                 })
             }
@@ -1318,6 +1417,24 @@ class SettingsScreen(
             .setNeutralButton("Clear Ledger") { _, _ -> financeEngine.clearTransactions() }
             .setPositiveButton("Close", null)
             .show()
+    }
+
+    fun refreshAssistantStatus() {
+        val isDefault = com.jarvis.assistant.AssistantSettingsHelper.isDefaultAssistant(context)
+        assistBadgeView?.text = if (isDefault) "● DEFAULT ASSISTANT" else "● NOT DEFAULT"
+        val accent = if (isDefault) Ui.CYAN else Ui.WARNING
+        assistBadgeView?.setTextColor(accent)
+        val fillAlpha = if (Ui.isDark) 0x18000000 else 0x14000000
+        val strokeAlpha = if (Ui.isDark) 0x40000000 else 0x30000000
+        assistBadgeView?.background = Ui.rounded(context, fillAlpha or (accent and 0x00FFFFFF), strokeAlpha or (accent and 0x00FFFFFF), 6)
+        assistBtnView?.text = if (isDefault) "MANAGE DEFAULT ASSISTANT SETTINGS" else "SET AS DEFAULT DIGITAL ASSISTANT"
+    }
+
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        if (hasWindowFocus) {
+            refreshAssistantStatus()
+        }
     }
 
     private fun simpleSpinnerListener(action: () -> Unit) = object : android.widget.AdapterView.OnItemSelectedListener {
