@@ -940,26 +940,51 @@ class AssistantRuntime(
         val appSettings = UiPreferencesStore(context).loadSettings()
         if (appSettings.backendServerEnabled && backendClient?.isConnected == true) {
             Log.i(TAG, "Offloading query '$commandUtterance' to dedicated backend server...")
+
+            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            val isWifi = cm?.getNetworkCapabilities(cm.activeNetwork)?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ?: true
+
+            // Real-time SentenceChunker for sub-400ms time-to-first-sound
+            var hasStreamedAudio = false
+            val chunker = com.jarvis.voice.SentenceChunker { chunk ->
+                hasStreamedAudio = true
+                ensureActiveScope().launch {
+                    ttsEngine.speak(chunk)
+                }
+            }
+
+            val originalTokenCallback = backendClient!!.onTokenReceived
+            backendClient!!.onTokenReceived = { token ->
+                chunker.appendToken(token)
+                originalTokenCallback?.invoke(token)
+            }
+
             val backendJob = ensureActiveScope().async {
                 backendClient!!.sendQuery(
                     utterance = commandUtterance,
                     sessionId = currentSessionId,
                     battery = if (currentWorldState.batteryPercent >= 0) currentWorldState.batteryPercent else 100,
                     isCharging = currentWorldState.isCharging,
-                    wifiConnected = true
+                    wifiConnected = isWifi
                 )
             }
             activeTaskJob = backendJob
             val backendRes = try {
-                backendJob.await()
+                val res = backendJob.await()
+                chunker.flush()
+                res
             } catch (e: Exception) {
                 Result.failure<String>(e)
             } finally {
+                backendClient?.onTokenReceived = originalTokenCallback
                 activeTaskJob = null
             }
 
             if (backendRes.isSuccess) {
                 val spoken = backendRes.getOrThrow()
+                if (hasStreamedAudio) {
+                    recordSpokenUtterance(spoken)
+                }
                 augmentedMemoryPipeline.rememberUserTurn(currentSessionId, utterance)
                 augmentedMemoryPipeline.rememberAssistantTurn(currentSessionId, spoken)
                 conversationManager.addMessage("assistant", spoken)

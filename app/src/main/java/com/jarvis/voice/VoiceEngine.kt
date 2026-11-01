@@ -146,7 +146,7 @@ class VoiceEngine(
 
     var isContinuousConversationEnabled: Boolean = true
     var isBargeInEnabled: Boolean = true
-    var followUpTimeoutMs: Long = 6000L
+    var followUpTimeoutMs: Long = 7000L
     @Volatile var configuredWakeWord: String = com.jarvis.wakeword.WakeWordModelMetadata.ACTIVE_OPEN_WAKE_PHRASE
     @Volatile var isAmbientOpenMicActive: Boolean = false
 
@@ -557,14 +557,14 @@ class VoiceEngine(
                     partialTranscript = partial,
                     statusMessage = if (isFollowUp) "Listening... (say 'bye' to finish)" else "Listening..."
                 )
-                scheduleListeningTimeout(1500L, "silence post-speech")
+                scheduleListeningTimeout(450L, "silence post-speech")
             }
         }
 
         // Wire VAD events into VoiceRouter callbacks (for raw-audio engines)
         voiceRouter.onSpeechActivity = {
             if (lastCapturedTranscript.isNotBlank()) {
-                scheduleListeningTimeout(1500L, "silence post-speech")
+                scheduleListeningTimeout(450L, "silence post-speech")
             }
         }
         voiceRouter.onSpeechEnd = {
@@ -624,7 +624,7 @@ class VoiceEngine(
             }
         }
 
-        val initialTimeout = if (isFollowUp) followUpTimeoutMs.coerceIn(3000L, 5000L) else 5000L
+        val initialTimeout = if (isFollowUp) followUpTimeoutMs.coerceIn(3000L, 8000L) else 5000L
         scheduleListeningTimeout(initialTimeout, if (isFollowUp) "follow-up silence" else "initial silence")
 
         conversationManager.transitionTo(VoiceState.LISTENING)

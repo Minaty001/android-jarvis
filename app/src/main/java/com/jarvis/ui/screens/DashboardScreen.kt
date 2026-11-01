@@ -691,7 +691,7 @@ class DashboardScreen(
                     statusText.text = when (s.voiceState) {
                         VoiceState.WAITING_FOR_WAKE -> if (s.wakeModelAvailable) "LISTENING FOR ${wakePhrase.uppercase()}…" else "WAKE MODEL UNAVAILABLE • TAP TO TALK"
                         VoiceState.WAKE_DETECTED -> "WAKE WORD DETECTED"
-                        VoiceState.LISTENING -> "LISTENING…"
+                        VoiceState.LISTENING -> if (s.isLiveConversationActive || s.statusMessage.contains("bye")) "LIVE CONVERSATION 🎙️" else "LISTENING…"
                         VoiceState.THINKING -> "THINKING…"
                         VoiceState.EXECUTING -> "EXECUTING…"
                         VoiceState.VERIFYING -> "VERIFYING…"
@@ -703,7 +703,7 @@ class DashboardScreen(
 
                     activityDetail.text = when (s.voiceState) {
                         VoiceState.WAITING_FOR_WAKE -> "Tap to speak"
-                        VoiceState.LISTENING -> "Listening… Speak now"
+                        VoiceState.LISTENING -> if (s.isLiveConversationActive || s.statusMessage.contains("bye")) "Continuous Voice • Say 'bye' to finish" else "Listening… Speak now"
                         VoiceState.THINKING -> "Analyzing request…"
                         VoiceState.EXECUTING -> "Running: ${s.lastTaskGoal?.take(22) ?: "Automation"}"
                         VoiceState.VERIFYING -> "Verifying outcome…"

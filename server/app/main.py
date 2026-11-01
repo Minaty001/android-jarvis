@@ -142,16 +142,29 @@ async def websocket_jarvis(
                         **decision.action_request.model_dump()
                     })
                 else:
-                    # Conversational response stream
-                    tokens = (decision.spoken_response or "").split(" ")
-                    for t in tokens:
-                        await websocket.send_json({
-                            "type": ServerMessageType.TOKEN.value,
-                            "token": t + " "
-                        })
-                        await asyncio.sleep(0.01)
-                    
-                    full_resp = decision.spoken_response or "Understood."
+                    # Conversational response stream (real-time LLM or counter-question)
+                    if decision.decision_type == "CLARIFY" or not (llm_router.groq_key or llm_router.gemini_key or llm_router.openrouter_key):
+                        tokens = (decision.spoken_response or "").split(" ")
+                        for t in tokens:
+                            await websocket.send_json({
+                                "type": ServerMessageType.TOKEN.value,
+                                "token": t + " "
+                            })
+                            await asyncio.sleep(0.01)
+                        full_resp = decision.spoken_response or "Understood."
+                    else:
+                        # Full conversational banter & dynamic cognitive response from LLM
+                        system_prompt = agent_planner.build_conversational_system_prompt(device_state=device_state)
+                        messages = [{"role": "system", "content": system_prompt}]
+                        messages.extend(memory_vault.get_history(session_id))
+                        full_chunks = []
+                        async for token in llm_router.chat_stream(messages):
+                            full_chunks.append(token)
+                            await websocket.send_json({
+                                "type": ServerMessageType.TOKEN.value,
+                                "token": token
+                            })
+                        full_resp = "".join(full_chunks).strip() or "Understood."
                     memory_vault.remember_turn(session_id, "assistant", full_resp)
                     await websocket.send_json({
                         "type": ServerMessageType.COMPLETED.value,
