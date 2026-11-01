@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: jarvis-brain-server
+    runtime: docker
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    plan: free
+    region: oregon
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: JARVIS_DEFAULT_PROVIDER
+        value: groq
+      - key: DEFAULT_MODEL
+        value: llama3-70b-8192
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: JARVIS_AUTH_TOKEN
+        sync: false

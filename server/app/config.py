@@ -7,7 +7,7 @@ load_dotenv()
 
 class ServerConfig(BaseModel):
     HOST: str = os.getenv("JARVIS_HOST", "0.0.0.0")
-    PORT: int = int(os.getenv("JARVIS_PORT", "8000"))
+    PORT: int = int(os.getenv("PORT", os.getenv("JARVIS_PORT", "8000")))
     AUTH_TOKEN: str = os.getenv("JARVIS_AUTH_TOKEN", "")
     DEFAULT_PROVIDER: str = os.getenv("JARVIS_DEFAULT_PROVIDER", "groq") # 'groq', 'gemini', 'ollama', 'openrouter'
     
