@@ -1012,6 +1012,14 @@ class SettingsScreen(
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                 try {
                     val client = com.jarvis.backend.JarvisBackendClient(serverUrl = targetUrl, authToken = token)
+                    if (token.isBlank()) {
+                        val autoPin = client.autoPairIfAvailable()
+                        if (!autoPin.isNullOrBlank()) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                backendAuthTokenField.setText(autoPin)
+                            }
+                        }
+                    }
                     val online = client.testConnection(4000L)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (online) {

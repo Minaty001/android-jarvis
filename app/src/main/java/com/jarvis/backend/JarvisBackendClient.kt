@@ -83,9 +83,30 @@ class JarvisBackendClient(
         }
     }
 
+    suspend fun autoPairIfAvailable(): String? = withContext(Dispatchers.IO) {
+        val httpUrl = serverUrl.replace("wss://", "https://").replace("ws://", "http://").substringBefore("/ws")
+        try {
+            val req = Request.Builder().url("$httpUrl/api/pairing-info").build()
+            val resp = okHttpClient.newCall(req).execute()
+            if (resp.isSuccessful) {
+                val body = resp.body?.string() ?: ""
+                val json = org.json.JSONObject(body)
+                val pin = json.optString("pairing_pin", "")
+                if (pin.isNotBlank()) {
+                    authToken = pin
+                    return@withContext pin
+                }
+            }
+        } catch (_: Exception) {}
+        null
+    }
+
     suspend fun testConnection(timeoutMs: Long = 4000L): Boolean = withContext(Dispatchers.IO) {
         val normalized = normalizeServerUrl(serverUrl)
         if (normalized.isBlank()) return@withContext false
+        if (authToken.isBlank()) {
+            autoPairIfAvailable()
+        }
         val completer = CompletableDeferred<Boolean>()
         val tempClient = JarvisBackendClient(
             serverUrl = normalized,
