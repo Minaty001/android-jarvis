@@ -6,8 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.config import settings
-from app.models import ClientMessageType, ServerMessageType, QueryPayload, ActionResult
+from app.models import ClientMessageType, ServerMessageType, QueryPayload, ActionResult, DeviceState
 from app.tools_catalog import CANONICAL_TOOLS
+from app.memory_vault import MemoryVault
+from app.agent_planner import AgentPlanner
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("JarvisServer")
@@ -45,6 +47,8 @@ class ConnectionManager:
             await self.active_connections[device_id].send_json(message)
 
 manager = ConnectionManager()
+memory_vault = MemoryVault()
+agent_planner = AgentPlanner()
 
 @app.get("/api/health")
 async def health_check():
@@ -62,12 +66,28 @@ async def get_tools_catalog():
 
 @app.post("/api/chat")
 async def chat_endpoint(payload: QueryPayload):
-    # Standard REST fallback endpoint
-    return {
-        "success": True,
-        "spoken_response": f"Processed query: {payload.utterance}",
-        "session_id": payload.session_id
-    }
+    decision = await agent_planner.decide_next_step(
+        utterance=payload.utterance,
+        history=memory_vault.get_history(payload.session_id),
+        device_state=payload.device_state
+    )
+    memory_vault.remember_turn(payload.session_id, "user", payload.utterance)
+    
+    if decision.action_request:
+        return {
+            "success": True,
+            "action_request": decision.action_request.model_dump(),
+            "spoken_response": decision.action_request.speech_preamble,
+            "session_id": payload.session_id
+        }
+    else:
+        resp = decision.spoken_response or "Processed successfully."
+        memory_vault.remember_turn(payload.session_id, "assistant", resp)
+        return {
+            "success": True,
+            "spoken_response": resp,
+            "session_id": payload.session_id
+        }
 
 @app.websocket("/ws/jarvis")
 async def websocket_jarvis(
@@ -80,6 +100,8 @@ async def websocket_jarvis(
         return
 
     await manager.connect(device_id, websocket)
+    active_session_id = f"sess_{device_id}"
+    
     try:
         # Handshake greeting
         await websocket.send_json({
@@ -100,56 +122,67 @@ async def websocket_jarvis(
 
             elif msg_type == ClientMessageType.QUERY.value:
                 utterance = data.get("utterance", "")
-                session_id = data.get("session_id", "default")
-                device_state = data.get("device_state", {})
+                session_id = data.get("session_id", active_session_id)
+                raw_state = data.get("device_state") or {}
+                device_state = DeviceState(**raw_state) if isinstance(raw_state, dict) and raw_state else None
                 
-                logger.info(f"Received query from {device_id}: '{utterance}'")
+                logger.info(f"Query from {device_id}: '{utterance}'")
+                memory_vault.remember_turn(session_id, "user", utterance)
                 
-                # Check for fast hardware commands or dispatch
-                lower = utterance.lower()
-                if "torch" in lower or "flashlight" in lower:
-                    state = "ON" if "on" in lower or "chalu" in lower or "jal" in lower else "OFF"
+                decision = await agent_planner.decide_next_step(
+                    utterance=utterance,
+                    history=memory_vault.get_history(session_id),
+                    device_state=device_state
+                )
+                
+                if decision.action_request:
+                    # Device action execution needed on Android
                     await websocket.send_json({
                         "type": ServerMessageType.ACTION_REQUEST.value,
-                        "action_id": f"act_{asyncio.get_event_loop().time()}",
-                        "action": "FLASHLIGHT",
-                        "params": {"state": state},
-                        "speech_preamble": f"Turning flashlight {state.lower()}."
-                    })
-                elif "call" in lower or "phone" in lower or "dial" in lower:
-                    target = utterance.split()[-1]
-                    await websocket.send_json({
-                        "type": ServerMessageType.ACTION_REQUEST.value,
-                        "action_id": f"act_{asyncio.get_event_loop().time()}",
-                        "action": "TELEPHONY_CONTROL",
-                        "params": {"action": "call", "target": target},
-                        "speech_preamble": f"Calling {target}."
+                        **decision.action_request.model_dump()
                     })
                 else:
-                    # Echo / basic conversational response stream
-                    tokens = ["I ", "received ", "your ", "command: ", utterance]
+                    # Conversational response stream
+                    tokens = (decision.spoken_response or "").split(" ")
                     for t in tokens:
                         await websocket.send_json({
                             "type": ServerMessageType.TOKEN.value,
-                            "token": t
+                            "token": t + " "
                         })
                         await asyncio.sleep(0.01)
                     
+                    full_resp = decision.spoken_response or "Understood."
+                    memory_vault.remember_turn(session_id, "assistant", full_resp)
                     await websocket.send_json({
                         "type": ServerMessageType.COMPLETED.value,
-                        "spoken_response": f"Understood: {utterance}",
+                        "spoken_response": full_resp,
                         "success": True
                     })
 
             elif msg_type == ClientMessageType.ACTION_RESULT.value:
-                action_id = data.get("action_id")
+                action_id = data.get("action_id", "")
                 success = data.get("success", False)
                 output = data.get("output", "")
-                logger.info(f"Action {action_id} completed: success={success}, output={output}")
+                error_msg = data.get("error_message")
+                
+                logger.info(f"Action {action_id} result: success={success}, output={output}")
+                action_res = ActionResult(
+                    action_id=action_id,
+                    success=success,
+                    output=output,
+                    error_message=error_msg
+                )
+                
+                spoken_final = await agent_planner.finalize_action(
+                    original_goal="",
+                    action_name="Action",
+                    action_result=action_res
+                )
+                memory_vault.remember_turn(active_session_id, "assistant", spoken_final)
                 
                 await websocket.send_json({
                     "type": ServerMessageType.COMPLETED.value,
-                    "spoken_response": output or "Action executed successfully.",
+                    "spoken_response": spoken_final,
                     "success": success
                 })
 
