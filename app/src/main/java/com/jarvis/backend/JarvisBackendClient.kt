@@ -259,6 +259,7 @@ class JarvisBackendClient(
         battery: Int = 100,
         isCharging: Boolean = false,
         wifiConnected: Boolean = true,
+        apiKey: String? = null,
         timeoutMs: Long = 20_000L
     ): Result<String> = withContext(Dispatchers.IO) {
         if (!isConnected) {
@@ -273,7 +274,8 @@ class JarvisBackendClient(
             utterance = utterance,
             battery = battery,
             isCharging = isCharging,
-            wifiConnected = wifiConnected
+            wifiConnected = wifiConnected,
+            apiKey = apiKey
         )
 
         val sent = sendRaw(payload)

@@ -959,13 +959,25 @@ class AssistantRuntime(
                 originalTokenCallback?.invoke(token)
             }
 
+            val secureStore = com.jarvis.ui.security.SecureCredentialStore(context)
+            val uiStore = com.jarvis.ui.data.UiPreferencesStore(context)
+            val effectiveApiKey: String? = (secureStore.get("groq_api_key") ?: secureStore.get("groq") ?: com.jarvis.BuildConfig.GROQ_API_KEY)
+                ?.ifBlank { null }
+                ?: (secureStore.get("openrouter_api_key") ?: secureStore.get("openrouter") ?: com.jarvis.BuildConfig.OPENROUTER_API_KEY)
+                    ?.ifBlank { null }
+                ?: (secureStore.get("gemini_api_key") ?: secureStore.get("gemini") ?: com.jarvis.BuildConfig.GEMINI_API_KEY)
+                    ?.ifBlank { null }
+                ?: uiStore.loadApis().firstOrNull { it.active }?.let { api ->
+                    api.credentialId?.let { secureStore.get(it) }
+                }
             val backendJob = ensureActiveScope().async {
                 backendClient!!.sendQuery(
                     utterance = commandUtterance,
                     sessionId = currentSessionId,
                     battery = if (currentWorldState.batteryPercent >= 0) currentWorldState.batteryPercent else 100,
                     isCharging = currentWorldState.isCharging,
-                    wifiConnected = isWifi
+                    wifiConnected = isWifi,
+                    apiKey = effectiveApiKey
                 )
             }
             activeTaskJob = backendJob

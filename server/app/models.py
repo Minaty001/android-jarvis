@@ -23,6 +23,7 @@ class DeviceState(BaseModel):
     foreground_app: Optional[str] = None
     wifi_connected: bool = True
     active_network: str = "WIFI"
+    api_key: Optional[str] = None
 
 class ActionRequest(BaseModel):
     action_id: str

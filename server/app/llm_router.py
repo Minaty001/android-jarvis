@@ -17,21 +17,27 @@ class LlmRouter:
     async def chat_stream(
         self,
         messages: List[Dict[str, str]],
-        provider: Optional[str] = None
+        provider: Optional[str] = None,
+        client_api_key: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
         prov = (provider or settings.DEFAULT_PROVIDER).lower()
+        effective_groq = client_api_key or self.groq_key
+        effective_openrouter = client_api_key or self.openrouter_key
 
         if prov == "ollama":
             async for token in self._stream_ollama(messages):
                 yield token
-        elif prov == "groq" and self.groq_key:
-            async for token in self._stream_openai_compatible("https://api.groq.com/openai/v1", self.groq_key, settings.DEFAULT_MODEL, messages):
+        elif prov == "groq" and effective_groq:
+            async for token in self._stream_openai_compatible("https://api.groq.com/openai/v1", effective_groq, settings.DEFAULT_MODEL, messages):
                 yield token
         elif prov == "gemini" and self.gemini_key:
             async for token in self._stream_gemini(messages):
                 yield token
-        elif prov == "openrouter" and self.openrouter_key:
-            async for token in self._stream_openai_compatible("https://openrouter.ai/api/v1", self.openrouter_key, "meta-llama/llama-3.1-8b-instruct", messages):
+        elif prov == "openrouter" and effective_openrouter:
+            async for token in self._stream_openai_compatible("https://openrouter.ai/api/v1", effective_openrouter, "meta-llama/llama-3.1-8b-instruct", messages):
+                yield token
+        elif effective_groq:
+            async for token in self._stream_openai_compatible("https://api.groq.com/openai/v1", effective_groq, settings.DEFAULT_MODEL, messages):
                 yield token
         else:
             # Fallback deterministic token emission if no cloud keys or ollama is active

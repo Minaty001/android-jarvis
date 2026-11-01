@@ -69,7 +69,8 @@ object BackendParser {
         utterance: String,
         battery: Int = 100,
         isCharging: Boolean = false,
-        wifiConnected: Boolean = true
+        wifiConnected: Boolean = true,
+        apiKey: String? = null
     ): String {
         val root = JSONObject()
         root.put("type", "query")
@@ -80,6 +81,9 @@ object BackendParser {
         state.put("battery", battery)
         state.put("is_charging", isCharging)
         state.put("wifi_connected", wifiConnected)
+        if (!apiKey.isNullOrBlank()) {
+            state.put("api_key", apiKey)
+        }
         root.put("device_state", state)
 
         return root.toString()

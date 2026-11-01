@@ -154,7 +154,10 @@ async def websocket_jarvis(
                     })
                 else:
                     # Conversational response stream (real-time LLM or counter-question)
-                    if decision.decision_type == "CLARIFY" or not (llm_router.groq_key or llm_router.gemini_key or llm_router.openrouter_key):
+                    client_api_key = device_state.api_key if device_state else None
+                    has_cloud_llm = bool(client_api_key or llm_router.groq_key or llm_router.gemini_key or llm_router.openrouter_key)
+
+                    if decision.decision_type == "CLARIFY" or not has_cloud_llm:
                         tokens = (decision.spoken_response or "").split(" ")
                         for t in tokens:
                             await websocket.send_json({
@@ -169,7 +172,7 @@ async def websocket_jarvis(
                         messages = [{"role": "system", "content": system_prompt}]
                         messages.extend(memory_vault.get_history(session_id))
                         full_chunks = []
-                        async for token in llm_router.chat_stream(messages):
+                        async for token in llm_router.chat_stream(messages, client_api_key=client_api_key):
                             full_chunks.append(token)
                             await websocket.send_json({
                                 "type": ServerMessageType.TOKEN.value,
