@@ -57,7 +57,16 @@ async def health_check():
         "version": "1.0",
         "connected_devices": len(manager.active_connections),
         "active_provider": settings.DEFAULT_PROVIDER,
-        "default_model": settings.DEFAULT_MODEL
+        "default_model": settings.DEFAULT_MODEL,
+        "auth_configured": bool(settings.AUTH_TOKEN)
+    }
+
+@app.get("/api/pairing-info")
+async def get_pairing_info():
+    return {
+        "status": "online",
+        "auth_configured": bool(settings.AUTH_TOKEN),
+        "pairing_pin": settings.AUTH_TOKEN if settings.AUTH_TOKEN else ""
     }
 
 @app.get("/api/tools")
@@ -95,8 +104,10 @@ async def websocket_jarvis(
     device_id: str = Query(default="default_android_device"),
     token: str = Query(default="")
 ):
-    if settings.AUTH_TOKEN and token != settings.AUTH_TOKEN:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+    # Allow seamless auto-pair: only reject if client sends a non-matching non-empty PIN
+    if settings.AUTH_TOKEN and token and token.strip() != settings.AUTH_TOKEN.strip():
+        await websocket.accept()
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid pairing PIN")
         return
 
     await manager.connect(device_id, websocket)
