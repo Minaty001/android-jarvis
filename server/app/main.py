@@ -150,6 +150,7 @@ async def websocket_jarvis(
                     # Device action execution needed on Android
                     await websocket.send_json({
                         "type": ServerMessageType.ACTION_REQUEST.value,
+                        "session_id": session_id,
                         **decision.action_request.model_dump()
                     })
                 else:
@@ -157,7 +158,7 @@ async def websocket_jarvis(
                     client_api_key = device_state.api_key if device_state else None
                     has_cloud_llm = bool(client_api_key or llm_router.groq_key or llm_router.gemini_key or llm_router.openrouter_key)
 
-                    if decision.decision_type == "CLARIFY" or not has_cloud_llm:
+                    if decision.decision_type in ["CLARIFY", "SPEAK"] or not has_cloud_llm:
                         tokens = (decision.spoken_response or "").split(" ")
                         for t in tokens:
                             await websocket.send_json({
@@ -182,12 +183,14 @@ async def websocket_jarvis(
                     memory_vault.remember_turn(session_id, "assistant", full_resp)
                     await websocket.send_json({
                         "type": ServerMessageType.COMPLETED.value,
+                        "session_id": session_id,
                         "spoken_response": full_resp,
                         "success": True
                     })
 
             elif msg_type == ClientMessageType.ACTION_RESULT.value:
                 action_id = data.get("action_id", "")
+                session_id = data.get("session_id", active_session_id)
                 success = data.get("success", False)
                 output = data.get("output", "")
                 error_msg = data.get("error_message")
@@ -205,10 +208,11 @@ async def websocket_jarvis(
                     action_name="Action",
                     action_result=action_res
                 )
-                memory_vault.remember_turn(active_session_id, "assistant", spoken_final)
+                memory_vault.remember_turn(session_id, "assistant", spoken_final)
                 
                 await websocket.send_json({
                     "type": ServerMessageType.COMPLETED.value,
+                    "session_id": session_id,
                     "spoken_response": spoken_final,
                     "success": success
                 })

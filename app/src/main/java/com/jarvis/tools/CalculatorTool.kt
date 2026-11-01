@@ -26,14 +26,16 @@ class CalculatorTool(private val context: Context? = null) : Tool {
                 expression
             }
             val result = evaluate(decoded)
-            ToolResult(true, "Result: $result")
+            ToolResult(true, "Result: $result", mapOf("result" to result.toString()))
         } catch (e: Exception) {
             ToolResult(false, "Cannot calculate: ${e.message}")
         }
     }
 
     private fun evaluate(expr: String): Double {
-        val sanitized = expr.replace(" ", "").replace("x", "*").replace("×", "*").replace("÷", "/")
+        // Strip leading non-mathematical words (e.g. "what is", "is", "calculate", "kitna hua")
+        val cleanExpr = expr.replace(Regex("^(?:what\\s+is|is|calculate|evaluate|kitna\\s+hai|kitna\\s+hua)?\\s*", RegexOption.IGNORE_CASE), "").trim()
+        val sanitized = cleanExpr.replace(" ", "").replace("x", "*").replace("×", "*").replace("÷", "/")
 
         if (sanitized.contains("(") || sanitized.contains("sqrt", ignoreCase = true) || sanitized.contains("abs", ignoreCase = true)) {
             return evaluateWithParens(sanitized)

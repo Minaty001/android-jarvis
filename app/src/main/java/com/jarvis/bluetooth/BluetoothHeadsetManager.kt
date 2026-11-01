@@ -278,6 +278,11 @@ class BluetoothHeadsetManager(
                     Log.i(TAG, "No SCO-capable communication device available; leaving Bluetooth media routing untouched")
                     return false
                 }
+                try {
+                    am.mode = AudioManager.MODE_IN_COMMUNICATION
+                } catch (e: Exception) {
+                    Log.d(TAG, "Audio mode configuration notice: ${e.message}")
+                }
                 val success = am.setCommunicationDevice(targetDevice)
                 Log.i(TAG, "Set communication device to ${targetDevice.productName} (type ${targetDevice.type}): $success")
                 if (!success) {

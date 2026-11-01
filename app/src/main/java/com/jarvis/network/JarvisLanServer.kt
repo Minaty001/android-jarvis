@@ -42,16 +42,31 @@ class JarvisLanServer(
     private val serverScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var acceptJob: Job? = null
 
-    val pairingPin: String by lazy {
-        val prefs = try { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) } catch (_: Exception) { null }
-        var pin = prefs?.getString(KEY_PIN, null)
-        if (pin.isNullOrBlank()) {
-            pin = String.format("%04d", Random.nextInt(1000, 9999))
-            try {
-                prefs?.edit()?.putString(KEY_PIN, pin)?.apply()
-            } catch (_: Exception) {}
+    val pairingPin: String
+        get() {
+            val prefs = try { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) } catch (_: Exception) { null }
+            var pin = prefs?.getString(KEY_PIN, null)
+            if (pin.isNullOrBlank()) {
+                pin = String.format("%04d", Random.nextInt(1000, 9999))
+                try {
+                    prefs?.edit()?.putString(KEY_PIN, pin)?.apply()
+                } catch (_: Exception) {}
+            }
+            return pin
         }
-        pin
+
+    fun savePairingPin(newPin: String): Boolean {
+        val cleanPin = newPin.trim()
+        if (cleanPin.isBlank()) return false
+        val prefs = try { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) } catch (_: Exception) { null }
+        prefs?.edit()?.putString(KEY_PIN, cleanPin)?.apply()
+        return true
+    }
+
+    fun regeneratePairingPin(): String {
+        val newPin = String.format("%04d", Random.nextInt(1000, 9999))
+        savePairingPin(newPin)
+        return newPin
     }
 
     fun getLocalIpAddress(): String {

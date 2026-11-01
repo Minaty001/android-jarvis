@@ -67,7 +67,7 @@ class JarvisBackendClient(
     var onActionReceived: (suspend (ServerEvent.ActionRequest) -> Unit)? = null
     var onStateChanged: ((Boolean) -> Unit)? = null
 
-    private var activeQueryCompleter: CompletableDeferred<String>? = null
+    private val activeQueryCompleters = java.util.concurrent.ConcurrentHashMap<String, CompletableDeferred<String>>()
     private var pingJob: Job? = null
     private var reconnectJob: Job? = null
     private val sendMutex = Mutex()
@@ -196,8 +196,9 @@ class JarvisBackendClient(
     private fun onDisconnected() {
         isConnectedFlag.set(false)
         onStateChanged?.invoke(false)
-        activeQueryCompleter?.completeExceptionally(IllegalStateException("Backend disconnected"))
-        activeQueryCompleter = null
+        val waiting = activeQueryCompleters.values.toList()
+        activeQueryCompleters.clear()
+        waiting.forEach { it.completeExceptionally(IllegalStateException("Backend disconnected")) }
     }
 
     private fun scheduleReconnect() {
@@ -235,17 +236,24 @@ class JarvisBackendClient(
                 onActionReceived?.invoke(event)
             }
             is ServerEvent.Completed -> {
-                Log.i(TAG, "Server query completed: '${event.spokenResponse}'")
-                activeQueryCompleter?.complete(event.spokenResponse)
-                activeQueryCompleter = null
+                Log.i(TAG, "Server query completed: '${event.spokenResponse}' (session=${event.sessionId})")
+                val target = if (!event.sessionId.isNullOrBlank()) {
+                    activeQueryCompleters.remove(event.sessionId)
+                } else null
+                if (target != null) {
+                    target.complete(event.spokenResponse)
+                } else {
+                    val fallback = activeQueryCompleters.keys.firstOrNull()?.let { activeQueryCompleters.remove(it) }
+                    fallback?.complete(event.spokenResponse)
+                }
             }
             is ServerEvent.Pong -> {
                 // Heartbeat acknowledged
             }
             is ServerEvent.Error -> {
                 Log.e(TAG, "Server reported error: ${event.message}")
-                activeQueryCompleter?.completeExceptionally(IllegalStateException(event.message))
-                activeQueryCompleter = null
+                val fallback = activeQueryCompleters.keys.firstOrNull()?.let { activeQueryCompleters.remove(it) }
+                fallback?.completeExceptionally(IllegalStateException(event.message))
             }
             is ServerEvent.Unknown -> {
                 Log.d(TAG, "Unknown message received: ${event.raw}")
@@ -267,7 +275,7 @@ class JarvisBackendClient(
         }
 
         val completer = CompletableDeferred<String>()
-        activeQueryCompleter = completer
+        activeQueryCompleters[sessionId] = completer
 
         val payload = BackendParser.buildQueryMessage(
             session_id = sessionId,
@@ -280,7 +288,7 @@ class JarvisBackendClient(
 
         val sent = sendRaw(payload)
         if (!sent) {
-            activeQueryCompleter = null
+            activeQueryCompleters.remove(sessionId)
             return@withContext Result.failure(IllegalStateException("Failed to transmit query to backend"))
         }
 
@@ -290,10 +298,10 @@ class JarvisBackendClient(
                 Result.success(response)
             }
         } catch (e: TimeoutCancellationException) {
-            activeQueryCompleter = null
+            activeQueryCompleters.remove(sessionId)
             Result.failure(IllegalStateException("Backend query timed out after ${timeoutMs}ms"))
         } catch (e: Exception) {
-            activeQueryCompleter = null
+            activeQueryCompleters.remove(sessionId)
             Result.failure(e)
         }
     }

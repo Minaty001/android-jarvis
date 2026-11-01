@@ -1354,7 +1354,11 @@ object IntentResolver {
             (text.startsWith("what is ") && text.any { it.isDigit() } &&
                 (text.contains("+") || text.contains("-") || text.contains("*") || text.contains("/") ||
                  text.contains("times") || text.contains("plus") || text.contains("minus") || text.contains("divided")))) {
-            val rawExpr = text.substringAfter(" ").trim()
+            val rawExpr = if (text.startsWith("what is ", ignoreCase = true)) {
+                text.substringAfter("what is ").trim()
+            } else {
+                text.substringAfter(" ").trim()
+            }
             val expr = rawExpr
                 .replace(Regex("(?i)\\bmultiplied by\\b"), "*")
                 .replace(Regex("(?i)\\bdivided by\\b"), "/")

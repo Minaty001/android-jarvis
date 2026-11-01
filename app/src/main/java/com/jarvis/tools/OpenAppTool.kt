@@ -28,9 +28,11 @@ class OpenAppTool(private val context: Context? = null) : Tool {
         val intent = ctx.packageManager.getLaunchIntentForPackage(pkgName)
         if (intent != null) return intent
 
-        // BUG-010 fix: Ensure we query for activities that specifically handle the LAUNCHER category
-        // instead of blindly picking arbitrary exported activities (which may be internal/settings screens)
         return try {
+            val pmIntent = ctx.packageManager.getLaunchIntentForPackage(pkgName)
+            if (pmIntent != null) {
+                return pmIntent.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            }
             val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)
                 setPackage(pkgName)

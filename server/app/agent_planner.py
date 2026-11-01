@@ -169,6 +169,47 @@ class AgentPlanner:
                 )
             )
 
+        # 6. Battery Status Query
+        if any(w in lower for w in ["battery", "charge kitna"]):
+            if device_state and device_state.battery is not None:
+                charging_str = "aur phone charge ho raha hai." if device_state.is_charging else "hai."
+                return PlannerDecision(
+                    decision_type="SPEAK",
+                    spoken_response=f"Sir, battery {device_state.battery}% {charging_str}"
+                )
+            return PlannerDecision(
+                decision_type="ACT",
+                action_request=ActionRequest(
+                    action_id=f"act_{uuid.uuid4().hex[:8]}",
+                    action="BATTERY_CHECK",
+                    params={"action": "check"},
+                    speech_preamble="Checking battery status."
+                )
+            )
+
+        # 7. Volume Control
+        if any(w in lower for w in ["volume", "awaaz", "sound"]):
+            if any(w in lower for w in ["badhao", "up", "increase", "raise", "tez", "louder"]):
+                return PlannerDecision(
+                    decision_type="ACT",
+                    action_request=ActionRequest(
+                        action_id=f"act_{uuid.uuid4().hex[:8]}",
+                        action="DEVICE_SETTINGS",
+                        params={"action": "volume_up"},
+                        speech_preamble="Increasing volume."
+                    )
+                )
+            if any(w in lower for w in ["kam", "down", "decrease", "lower", "dheeme", "quieter"]):
+                return PlannerDecision(
+                    decision_type="ACT",
+                    action_request=ActionRequest(
+                        action_id=f"act_{uuid.uuid4().hex[:8]}",
+                        action="DEVICE_SETTINGS",
+                        params={"action": "volume_down"},
+                        speech_preamble="Decreasing volume."
+                    )
+                )
+
         # Default conversational Q&A / Banter
         return PlannerDecision(
             decision_type="ANSWER",

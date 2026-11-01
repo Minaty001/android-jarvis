@@ -635,12 +635,59 @@ class SkillsScreen(
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.CYAN)
         })
+
         detailsInner.addView(TextView(context).apply {
-            text = "Pairing PIN: $pin"
-            textSize = 11.5f
+            text = "Desktop Pairing PIN:"
+            textSize = 11f
+            typeface = Typeface.DEFAULT_BOLD
             setTextColor(Ui.TEXT)
-            setPadding(0, Ui.dp(context, 4), 0, 0)
+            setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 2))
         })
+
+        val pinEditRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, Ui.dp(context, 4), 0, Ui.dp(context, 4))
+        }
+
+        val pinInput = EditText(context).apply {
+            setText(lanServer.pairingPin)
+            setTextColor(Ui.TEXT)
+            textSize = 13f
+            setBackgroundColor(Color.parseColor("#101923"))
+            setPadding(Ui.dp(context, 8), Ui.dp(context, 6), Ui.dp(context, 8), Ui.dp(context, 6))
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+
+        val savePinBtn = Ui.button(context, "💾 SAVE PIN") {
+            val newPin = pinInput.text.toString().trim()
+            if (newPin.isNotBlank()) {
+                lanServer.savePairingPin(newPin)
+                Toast.makeText(context, "Pairing PIN saved: $newPin", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "PIN cannot be empty", Toast.LENGTH_SHORT).show()
+            }
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = Ui.dp(context, 6)
+            }
+        }
+
+        val regenPinBtn = Ui.button(context, "🔄") {
+            val freshPin = lanServer.regeneratePairingPin()
+            pinInput.setText(freshPin)
+            Toast.makeText(context, "New PIN generated & saved: $freshPin", Toast.LENGTH_SHORT).show()
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = Ui.dp(context, 4)
+            }
+        }
+
+        pinEditRow.addView(pinInput)
+        pinEditRow.addView(savePinBtn)
+        pinEditRow.addView(regenPinBtn)
+        detailsInner.addView(pinEditRow)
         detailsCard.addView(detailsInner)
         inner.addView(detailsCard)
 

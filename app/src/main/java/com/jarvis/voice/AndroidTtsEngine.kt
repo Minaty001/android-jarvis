@@ -223,6 +223,7 @@ class AndroidTtsEngine(private val context: Context) : TtsEngine {
         val utteranceId = UUID.randomUUID().toString()
         val deferred = CompletableDeferred<Boolean>()
         pendingUtterances[utteranceId] = deferred
+        Log.i(TAG, "Speaking: \"$text\" (id=$utteranceId)")
         audioFocus.requestDuckFocus()
 
         tts?.setSpeechRate(currentSpeechRate)

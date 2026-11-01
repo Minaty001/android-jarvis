@@ -98,7 +98,8 @@ class DeviceSettingsTool(private val context: Context? = null) : Tool {
                         else -> AudioManager.STREAM_MUSIC
                     }
                     val maxVolume = audioManager.getStreamMaxVolume(stream)
-                    val targetVolume = Math.round((percent / 100f) * maxVolume)
+                    val targetVolume = Math.round((percent / 100f) * maxVolume).coerceIn(0, maxVolume)
+                    audioManager.setStreamVolume(stream, targetVolume, AudioManager.FLAG_SHOW_UI)
                     val streamName = params["stream"]?.lowercase() ?: "media"
                     ToolResult.Success(
                         message = "${streamName.replaceFirstChar { it.uppercase() }} volume set to $percent%.",

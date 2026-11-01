@@ -11,7 +11,11 @@ sealed class ServerEvent {
         val params: Map<String, String>,
         val speechPreamble: String? = null
     ) : ServerEvent()
-    data class Completed(val spokenResponse: String, val success: Boolean) : ServerEvent()
+    data class Completed(
+        val spokenResponse: String,
+        val success: Boolean = true,
+        val sessionId: String? = null
+    ) : ServerEvent()
     data class Pong(val timestamp: Long) : ServerEvent()
     data class Error(val message: String) : ServerEvent()
     data class Unknown(val raw: String) : ServerEvent()
@@ -49,7 +53,8 @@ object BackendParser {
                 }
                 "completed" -> ServerEvent.Completed(
                     spokenResponse = json.optString("spoken_response", ""),
-                    success = json.optBoolean("success", true)
+                    success = json.optBoolean("success", true),
+                    sessionId = if (json.has("session_id")) json.optString("session_id") else null
                 )
                 "pong" -> ServerEvent.Pong(
                     timestamp = json.optLong("timestamp", 0L)

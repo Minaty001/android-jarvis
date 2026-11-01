@@ -426,11 +426,8 @@ class AssistantRuntime(
             }
         }
 
-        if (appSettings.backendServerEnabled && backendClient != null) {
-            val backendLlm = com.jarvis.backend.BackendLlmClient(backendClient!!)
-            providers.add(0, ProviderEntry("JARVIS-Backend", backendLlm, priority = -10, isEnabled = true))
-            strongProviders.add(0, ProviderEntry("JARVIS-Backend-Strong", backendLlm, priority = -10, isEnabled = true))
-        }
+        // Backend offloading is handled directly in executeCommand via streaming WebSocket
+
 
         val client: LlmClient? = if (providers.isNotEmpty()) MultiProviderLlmClient(providers) else null
         val strongClient: LlmClient? = if (strongProviders.isNotEmpty()) MultiProviderLlmClient(strongProviders) else null
@@ -910,28 +907,29 @@ class AssistantRuntime(
                 }
             }
 
+            val dynamicOutput = stepResults.lastOrNull { it.success && it.message.isNotBlank() && (it.message.startsWith("Result:") || it.message.startsWith("The answer is") || it.message.contains("battery", ignoreCase = true)) }?.message
+            val finalSpokenResponse = dynamicOutput ?: directPlan.response
+
             augmentedMemoryPipeline.rememberUserTurn(currentSessionId, utterance)
-            augmentedMemoryPipeline.rememberAssistantTurn(currentSessionId, directPlan.response)
-            conversationManager.addMessage("assistant", directPlan.response)
-            onEvent(AgentEvent.Completed(directPlan.response))
+            augmentedMemoryPipeline.rememberAssistantTurn(currentSessionId, finalSpokenResponse)
+            conversationManager.addMessage("assistant", finalSpokenResponse)
+            onEvent(AgentEvent.Completed(finalSpokenResponse))
 
             if (overallSuccess) {
-                emotionalAdapter.onTaskCompleted("fast_path_$now", verified = false, message = directPlan.response)
+                emotionalAdapter.onTaskCompleted("fast_path_$now", verified = false, message = finalSpokenResponse)
                 when (resolvedIntent.intent) {
                     AssistantIntent.APP_OPEN -> habitManager.recordAppUsage(resolvedIntent.params["app"].orEmpty())
                     AssistantIntent.PLAY_MEDIA -> habitManager.recordMediaPlayback(resolvedIntent.params["query"].orEmpty())
                     else -> Unit
                 }
             } else {
-                emotionalAdapter.onTaskFailed("fast_path_$now", reason = directPlan.response)
+                emotionalAdapter.onTaskFailed("fast_path_$now", reason = finalSpokenResponse)
             }
 
             return RuntimeExecutionResult(
                 success = overallSuccess,
-                spokenResponse = directPlan.response,
+                spokenResponse = finalSpokenResponse,
                 stepResults = stepResults,
-                // 'verified' means a real-world outcome was confirmed, NOT just that the tool call returned success.
-                // Dispatching is not verification. The VerificationEngine is the only authoritative source of verified=true.
                 verified = false
             )
         }
