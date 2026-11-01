@@ -978,7 +978,8 @@ class SettingsScreen(
         backendServerUrlField.setPadding(Ui.dp(context, 10), Ui.dp(context, 8), Ui.dp(context, 10), Ui.dp(context, 8))
         backendInner.addView(backendServerUrlField)
 
-        backendInner.addView(TextView(context).apply { text = "Pairing PIN / Auth Token"; textSize = 11f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Ui.TEXT); setPadding(0, Ui.dp(context, 8), 0, 0) })
+        backendInner.addView(TextView(context).apply { text = "Pairing PIN / Auth Token (Optional)"; textSize = 11f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Ui.TEXT); setPadding(0, Ui.dp(context, 8), 0, 0) })
+        backendAuthTokenField.hint = "Optional (leave blank if no PIN)"
         backendAuthTokenField.setText(initial.backendAuthToken)
         backendAuthTokenField.setTextColor(Ui.TEXT)
         backendAuthTokenField.setBackgroundColor(Color.parseColor("#101923"))
