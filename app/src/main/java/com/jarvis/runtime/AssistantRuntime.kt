@@ -348,6 +348,8 @@ class AssistantRuntime(
 
     private var currentLlmClient: LlmClient? = null
     private var currentStrongClient: LlmClient? = null
+    var backendClient: com.jarvis.backend.JarvisBackendClient? = null
+    var remoteActionDispatcher: com.jarvis.backend.RemoteActionDispatcher? = null
 
     private fun initPlannerAndKernel() {
         (currentLlmClient as? java.io.Closeable)?.close()
@@ -355,6 +357,18 @@ class AssistantRuntime(
 
         val secureStore = com.jarvis.ui.security.SecureCredentialStore(context)
         val uiStore = com.jarvis.ui.data.UiPreferencesStore(context)
+        val appSettings = uiStore.loadSettings()
+
+        if (appSettings.backendServerEnabled) {
+            val backend = backendClient ?: com.jarvis.backend.JarvisBackendClient(
+                serverUrl = appSettings.backendServerUrl,
+                authToken = appSettings.backendAuthToken
+            ).also { client ->
+                backendClient = client
+                remoteActionDispatcher = com.jarvis.backend.RemoteActionDispatcher(toolExecutor, client)
+                client.connect()
+            }
+        }
 
         val effectiveGroqKey = groqApiKey.ifBlank {
             secureStore.get("groq_api_key") ?: secureStore.get("groq") ?: com.jarvis.BuildConfig.GROQ_API_KEY
@@ -409,6 +423,12 @@ class AssistantRuntime(
                     strongProviders.add(ProviderEntry("Groq-Strong", GroqLlm(key, model = LlmConfig.STRONG_MODEL), priority = 0))
                 }
             }
+        }
+
+        if (appSettings.backendServerEnabled && backendClient != null) {
+            val backendLlm = com.jarvis.backend.BackendLlmClient(backendClient!!)
+            providers.add(0, ProviderEntry("JARVIS-Backend", backendLlm, priority = -10, isEnabled = true))
+            strongProviders.add(0, ProviderEntry("JARVIS-Backend-Strong", backendLlm, priority = -10, isEnabled = true))
         }
 
         val client: LlmClient? = if (providers.isNotEmpty()) MultiProviderLlmClient(providers) else null
@@ -913,6 +933,46 @@ class AssistantRuntime(
                 // Dispatching is not verification. The VerificationEngine is the only authoritative source of verified=true.
                 verified = false
             )
+        }
+
+        // 1.5. Offload to dedicated backend server if enabled and connected
+        val appSettings = UiPreferencesStore(context).loadSettings()
+        if (appSettings.backendServerEnabled && backendClient?.isConnected == true) {
+            Log.i(TAG, "Offloading query '$commandUtterance' to dedicated backend server...")
+            val backendJob = ensureActiveScope().async {
+                backendClient!!.sendQuery(
+                    utterance = commandUtterance,
+                    sessionId = currentSessionId,
+                    battery = if (currentWorldState.batteryPercent >= 0) currentWorldState.batteryPercent else 100,
+                    isCharging = currentWorldState.isCharging,
+                    wifiConnected = true
+                )
+            }
+            activeTaskJob = backendJob
+            val backendRes = try {
+                backendJob.await()
+            } catch (e: Exception) {
+                Result.failure<String>(e)
+            } finally {
+                activeTaskJob = null
+            }
+
+            if (backendRes.isSuccess) {
+                val spoken = backendRes.getOrThrow()
+                augmentedMemoryPipeline.rememberUserTurn(currentSessionId, utterance)
+                augmentedMemoryPipeline.rememberAssistantTurn(currentSessionId, spoken)
+                conversationManager.addMessage("assistant", spoken)
+                onEvent(AgentEvent.Completed(spoken))
+                emotionalAdapter.onTaskCompleted("backend_$now", verified = true, message = spoken)
+                return RuntimeExecutionResult(
+                    success = true,
+                    spokenResponse = spoken,
+                    stepResults = emptyList(),
+                    verified = true
+                )
+            } else {
+                Log.w(TAG, "Backend query failed (${backendRes.exceptionOrNull()?.message}); falling back to on-device AgentKernel.")
+            }
         }
 
         // 2. Delegate to closed-loop AgentKernel on a tracked job so it is cancellable.

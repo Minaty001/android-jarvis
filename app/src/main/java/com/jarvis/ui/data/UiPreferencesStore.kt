@@ -204,6 +204,10 @@ class UiPreferencesStore(context: Context) {
         put("jciEnabled", jciEnabled)
         put("jciShadow", jciShadow)
         put("jciProactive", jciProactive)
+        put("backendServerEnabled", backendServerEnabled)
+        put("backendServerUrl", backendServerUrl)
+        put("backendAuthToken", backendAuthToken)
+        put("backendFallbackToDirect", backendFallbackToDirect)
     }
 
     private fun jsonToAppSettings(json: JSONObject): AppSettings {
@@ -258,7 +262,11 @@ class UiPreferencesStore(context: Context) {
             reducedMotionEnabled = json.optBoolean("reducedMotionEnabled", d.reducedMotionEnabled),
             jciEnabled = json.optBoolean("jciEnabled", d.jciEnabled),
             jciShadow = json.optBoolean("jciShadow", d.jciShadow),
-            jciProactive = json.optBoolean("jciProactive", d.jciProactive)
+            jciProactive = json.optBoolean("jciProactive", d.jciProactive),
+            backendServerEnabled = json.optBoolean("backendServerEnabled", d.backendServerEnabled),
+            backendServerUrl = json.optString("backendServerUrl", d.backendServerUrl),
+            backendAuthToken = json.optString("backendAuthToken", d.backendAuthToken),
+            backendFallbackToDirect = json.optBoolean("backendFallbackToDirect", d.backendFallbackToDirect)
         )
     }
 

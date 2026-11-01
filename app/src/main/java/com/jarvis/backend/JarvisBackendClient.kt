@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class JarvisBackendClient(
     private var serverUrl: String,
     private var authToken: String = "",
-    private val deviceId: String = "android_jarvis_${android.os.Build.MODEL.replace(" ", "_")}",
+    private val deviceId: String = "android_jarvis_${(android.os.Build.MODEL ?: "device").replace(" ", "_")}",
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
     companion object {
