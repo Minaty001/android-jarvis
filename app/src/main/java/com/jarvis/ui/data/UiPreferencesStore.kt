@@ -264,7 +264,10 @@ class UiPreferencesStore(context: Context) {
             jciShadow = json.optBoolean("jciShadow", d.jciShadow),
             jciProactive = json.optBoolean("jciProactive", d.jciProactive),
             backendServerEnabled = json.optBoolean("backendServerEnabled", d.backendServerEnabled),
-            backendServerUrl = json.optString("backendServerUrl", d.backendServerUrl),
+            backendServerUrl = run {
+                val s = json.optString("backendServerUrl", d.backendServerUrl)
+                if (s.isBlank() || s.contains("192.168.1.100")) d.backendServerUrl else s
+            },
             backendAuthToken = json.optString("backendAuthToken", d.backendAuthToken),
             backendFallbackToDirect = json.optBoolean("backendFallbackToDirect", d.backendFallbackToDirect)
         )

@@ -74,8 +74,8 @@ data class AppSettings(
     val jciEnabled: Boolean = false,
     val jciShadow: Boolean = true,
     val jciProactive: Boolean = false,
-    val backendServerEnabled: Boolean = false,
-    val backendServerUrl: String = "ws://192.168.1.100:8000/ws/jarvis",
+    val backendServerEnabled: Boolean = true,
+    val backendServerUrl: String = "https://android-jarvis.onrender.com",
     val backendAuthToken: String = "",
     val backendFallbackToDirect: Boolean = true
 )

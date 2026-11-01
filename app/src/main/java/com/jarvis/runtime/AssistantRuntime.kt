@@ -368,6 +368,7 @@ class AssistantRuntime(
                 remoteActionDispatcher = com.jarvis.backend.RemoteActionDispatcher(toolExecutor, client)
                 client.connect()
             }
+            backend.updateConfig(appSettings.backendServerUrl, appSettings.backendAuthToken)
         }
 
         val effectiveGroqKey = groqApiKey.ifBlank {

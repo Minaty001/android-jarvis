@@ -27,4 +27,11 @@ class UiPreferencesStoreBackendTest {
         assertEquals("secret123", json.getString("backendAuthToken"))
         assertTrue(json.getBoolean("backendFallbackToDirect"))
     }
+
+    @Test
+    fun testDefaultSettingsHasRenderUrl() {
+        val settings = AppSettings()
+        assertTrue(settings.backendServerEnabled)
+        assertEquals("https://android-jarvis.onrender.com", settings.backendServerUrl)
+    }
 }

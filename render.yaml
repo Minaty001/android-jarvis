@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: jarvis-brain-server
+    name: android-jarvis
     runtime: docker
     dockerfilePath: ./server/Dockerfile
     dockerContext: ./server

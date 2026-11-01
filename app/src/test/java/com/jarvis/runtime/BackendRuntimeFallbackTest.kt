@@ -13,8 +13,8 @@ class BackendRuntimeFallbackTest {
     @Test
     fun testAppSettingsBackendDefaults() {
         val settings = AppSettings()
-        assertFalse(settings.backendServerEnabled)
-        assertTrue(settings.backendServerUrl.isNotBlank())
+        assertTrue(settings.backendServerEnabled)
+        assertEquals("https://android-jarvis.onrender.com", settings.backendServerUrl)
         assertTrue(settings.backendFallbackToDirect)
     }
 

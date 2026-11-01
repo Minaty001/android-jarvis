@@ -94,4 +94,28 @@ class JarvisBackendClientTest {
         assertEquals(true, json.getBoolean("success"))
         assertEquals("Flashlight turned on", json.getString("output"))
     }
+
+    @Test
+    fun testNormalizeServerUrlVariants() {
+        assertEquals(
+            "wss://android-jarvis.onrender.com/ws/jarvis",
+            JarvisBackendClient.normalizeServerUrl("https://android-jarvis.onrender.com")
+        )
+        assertEquals(
+            "wss://android-jarvis.onrender.com/ws/jarvis",
+            JarvisBackendClient.normalizeServerUrl("wss://android-jarvis.onrender.com/ws/jarvis")
+        )
+        assertEquals(
+            "wss://android-jarvis.onrender.com/ws/jarvis",
+            JarvisBackendClient.normalizeServerUrl("android-jarvis.onrender.com")
+        )
+        assertEquals(
+            "ws://192.168.1.50:8000/ws/jarvis",
+            JarvisBackendClient.normalizeServerUrl("http://192.168.1.50:8000")
+        )
+        assertEquals(
+            "ws://192.168.1.50:8000/ws/jarvis",
+            JarvisBackendClient.normalizeServerUrl("ws://192.168.1.50:8000/ws/jarvis")
+        )
+    }
 }

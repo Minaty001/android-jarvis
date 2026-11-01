@@ -9,14 +9,49 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class JarvisBackendClient(
-    private var serverUrl: String,
+    serverUrl: String,
     private var authToken: String = "",
     private val deviceId: String = "android_jarvis_${(android.os.Build.MODEL ?: "device").replace(" ", "_")}",
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
+    private var serverUrl: String = normalizeServerUrl(serverUrl)
+
     companion object {
         private const val TAG = "JarvisBackendClient"
         private const val PING_INTERVAL_MS = 15_000L
+
+        /**
+         * Normalizes any input URL (e.g. "https://android-jarvis.onrender.com",
+         * "http://192.168.1.50:8000", "wss://...") into a valid WebSocket URL
+         * ending with "/ws/jarvis".
+         */
+        fun normalizeServerUrl(rawUrl: String): String {
+            var url = rawUrl.trim()
+            if (url.isBlank()) return url
+
+            if (url.startsWith("http://", ignoreCase = true)) {
+                url = "ws://" + url.substring(7)
+            } else if (url.startsWith("https://", ignoreCase = true)) {
+                url = "wss://" + url.substring(8)
+            } else if (!url.startsWith("ws://", ignoreCase = true) && !url.startsWith("wss://", ignoreCase = true)) {
+                url = if (url.contains("onrender.com", ignoreCase = true) || url.startsWith("//")) {
+                    "wss://${url.trimStart('/')}"
+                } else {
+                    "ws://$url"
+                }
+            }
+
+            val base = if (url.contains("?")) url.substringBefore("?") else url
+            val query = if (url.contains("?")) "?" + url.substringAfter("?") else ""
+
+            val normalizedBase = if (!base.endsWith("/ws/jarvis")) {
+                base.trimEnd('/') + "/ws/jarvis"
+            } else {
+                base
+            }
+
+            return normalizedBase + query
+        }
     }
 
     private val okHttpClient = OkHttpClient.Builder()
@@ -38,12 +73,39 @@ class JarvisBackendClient(
     private val sendMutex = Mutex()
 
     fun updateConfig(url: String, token: String) {
-        val changed = this.serverUrl != url || this.authToken != token
-        this.serverUrl = url
+        val normalized = normalizeServerUrl(url)
+        val changed = this.serverUrl != normalized || this.authToken != token
+        this.serverUrl = normalized
         this.authToken = token
         if (changed && isConnected) {
             disconnect()
             connect()
+        }
+    }
+
+    suspend fun testConnection(timeoutMs: Long = 4000L): Boolean = withContext(Dispatchers.IO) {
+        val normalized = normalizeServerUrl(serverUrl)
+        if (normalized.isBlank()) return@withContext false
+        val completer = CompletableDeferred<Boolean>()
+        val tempClient = JarvisBackendClient(
+            serverUrl = normalized,
+            authToken = authToken,
+            deviceId = "test_${deviceId}"
+        )
+        tempClient.onStateChanged = { connected ->
+            if (connected && !completer.isCompleted) {
+                completer.complete(true)
+            }
+        }
+        tempClient.connect()
+        try {
+            withTimeout(timeoutMs) {
+                completer.await()
+            }
+        } catch (e: Exception) {
+            false
+        } finally {
+            tempClient.disconnect()
         }
     }
 

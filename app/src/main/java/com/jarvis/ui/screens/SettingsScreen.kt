@@ -971,6 +971,7 @@ class SettingsScreen(
         })
 
         backendInner.addView(TextView(context).apply { text = "Server WebSocket / REST URL"; textSize = 11f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Ui.TEXT) })
+        backendServerUrlField.hint = "https://android-jarvis.onrender.com"
         backendServerUrlField.setText(initial.backendServerUrl)
         backendServerUrlField.setTextColor(Ui.TEXT)
         backendServerUrlField.setBackgroundColor(Color.parseColor("#101923"))
@@ -998,21 +999,19 @@ class SettingsScreen(
         val pingBtn = Ui.button(context, "TEST SERVER CONNECTION (PING)") {
             val url = backendServerUrlField.text.toString().trim()
             val token = backendAuthTokenField.text.toString().trim()
-            pingBadge.text = "Pinging $url..."
+            val targetUrl = if (url.isBlank()) "https://android-jarvis.onrender.com" else url
+            pingBadge.text = "Pinging $targetUrl..."
             pingBadge.setTextColor(Ui.CYAN)
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                 try {
-                    val client = com.jarvis.backend.JarvisBackendClient(serverUrl = url, authToken = token)
-                    client.connect()
-                    kotlinx.coroutines.delay(1000)
-                    val online = client.isConnected
-                    client.disconnect()
+                    val client = com.jarvis.backend.JarvisBackendClient(serverUrl = targetUrl, authToken = token)
+                    val online = client.testConnection(4000L)
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         if (online) {
                             pingBadge.text = "🟢 Connected to JARVIS Backend"
                             pingBadge.setTextColor(Color.parseColor("#00E676"))
                         } else {
-                            pingBadge.text = "🔴 Server Unreachable (Check Wi-Fi / IP)"
+                            pingBadge.text = "🔴 Server Unreachable (Check Network / URL)"
                             pingBadge.setTextColor(Color.parseColor("#FF5252"))
                         }
                     }
