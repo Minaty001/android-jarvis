@@ -236,6 +236,8 @@ class TelephonyTool(
                     "on" to com.jarvis.messaging.AutoReplyMode.DRIVING, "enable" to com.jarvis.messaging.AutoReplyMode.DRIVING
                 )[modeStr] ?: com.jarvis.messaging.AutoReplyMode.OFF
 
+                com.jarvis.messaging.AutoReplyPolicyManager.setMode(targetMode, template)
+
                 return if (targetMode == com.jarvis.messaging.AutoReplyMode.OFF) {
                     ToolResult.Success("SMS and Calls auto-reply has been turned off.")
                 } else {

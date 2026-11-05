@@ -66,14 +66,25 @@ class WhatsAppTool(
                 }
 
                 "reply", "reply_message", "respond" -> {
-                    if (recipient.isNullOrBlank()) {
+                    var targetRecipient = recipient
+                    if (targetRecipient.isNullOrBlank() && !message.isNullOrBlank()) {
+                        val recentItems = com.jarvis.notification.NotificationStore.getRecentNotifications(limit = 10)
+                            .filter { it.packageName == "com.whatsapp" || it.packageName == "com.whatsapp.w4b" }
+                        val lastSender = recentItems.firstOrNull { it.title.isNotBlank() && !it.title.equals("WhatsApp", ignoreCase = true) }?.title
+                        if (!lastSender.isNullOrBlank()) {
+                            targetRecipient = lastSender.trim()
+                            Log.i(TAG, "Inferred reply recipient '$targetRecipient' from recent notification")
+                        }
+                    }
+
+                    if (targetRecipient.isNullOrBlank()) {
                         val recent = engine.readRecentMessages(limit = 5, platformFilter = platform)
                         ToolResult.Success("Who would you like me to reply to? ${recent.message}")
                     } else if (message.isNullOrBlank()) {
-                        ToolResult.Success("What would you like me to say to $recipient?")
+                        ToolResult.Success("What would you like me to say to $targetRecipient?")
                     } else {
-                        WhatsAppSessionManager.recordChat(recipient, message = message, isOutbound = true)
-                        engine.sendMessage(recipient, message, platform)
+                        WhatsAppSessionManager.recordChat(targetRecipient, message = message, isOutbound = true)
+                        engine.sendMessage(targetRecipient, message, platform)
                     }
                 }
 

@@ -1,15 +1,18 @@
 package com.jarvis.notification
 
 import android.app.Notification
+import android.app.RemoteInput
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
+import java.util.Locale
 
 class JarvisNotificationListenerService : NotificationListenerService() {
 
@@ -34,22 +37,49 @@ class JarvisNotificationListenerService : NotificationListenerService() {
         }
     }
 
-    fun triggerNotificationAction(index: Int, actionQuery: String? = null): Boolean {
+    fun triggerNotificationAction(index: Int, actionQuery: String? = null, replyText: String? = null): Boolean {
         try {
             val active = activeNotifications ?: return false
             val sbn = active.getOrNull(index - 1) ?: return false
             val notif = sbn.notification ?: return false
             val actions = notif.actions ?: return false
-            if (actions.isEmpty()) return false
+            val actionList = actions.filterNotNull()
+            if (actionList.isEmpty()) return false
 
-            val targetAction = if (!actionQuery.isNullOrBlank()) {
-                val query = actionQuery.trim().lowercase()
-                actions.firstOrNull { it.title?.toString()?.lowercase()?.contains(query) == true } ?: actions.firstOrNull()
+            val textToSend = replyText?.trim()?.ifBlank { null }
+                ?: (if (actionList.any { !it.remoteInputs.isNullOrEmpty() } && !actionQuery.isNullOrBlank() &&
+                    actionList.none { it.title?.toString()?.contains(actionQuery, ignoreCase = true) == true }) {
+                    actionQuery.trim()
+                } else null)
+
+            // If we have text to send via direct reply, prefer action with RemoteInputs or titled "reply"
+            val targetAction: Notification.Action = if (!textToSend.isNullOrBlank()) {
+                actionList.firstOrNull { !it.remoteInputs.isNullOrEmpty() }
+                    ?: actionList.firstOrNull { it.title?.toString()?.contains("reply", ignoreCase = true) == true }
+                    ?: actionList.first()
+            } else if (!actionQuery.isNullOrBlank()) {
+                val query = actionQuery.trim().lowercase(Locale.ROOT)
+                actionList.firstOrNull { it.title?.toString()?.lowercase(Locale.ROOT)?.contains(query) == true }
+                    ?: actionList.first()
             } else {
-                actions.firstOrNull()
-            } ?: return false
+                actionList.first()
+            }
+
+            val remoteInputs = targetAction.remoteInputs
+            if (!textToSend.isNullOrBlank() && !remoteInputs.isNullOrEmpty()) {
+                val fillInIntent = Intent()
+                val bundle = Bundle()
+                for (input in remoteInputs) {
+                    bundle.putCharSequence(input.resultKey, textToSend)
+                }
+                RemoteInput.addResultsToIntent(remoteInputs, fillInIntent, bundle)
+                targetAction.actionIntent.send(this, 0, fillInIntent)
+                Log.i(TAG, "Successfully sent RemoteInput direct reply to notification $index: '$textToSend'")
+                return true
+            }
 
             targetAction.actionIntent.send()
+            Log.i(TAG, "Triggered action '${targetAction.title}' on notification $index")
             return true
         } catch (e: Exception) {
             Log.w(TAG, "Failed to trigger notification action at index $index: ${e.message}")
@@ -153,13 +183,16 @@ class JarvisNotificationListenerService : NotificationListenerService() {
         val replyAction = notif.actions?.firstOrNull { action ->
             !action.remoteInputs.isNullOrEmpty()
         }
+        val messagingEngine = com.jarvis.messaging.UniversalMessagingEngine.instance
+            ?: com.jarvis.messaging.UniversalMessagingEngine(applicationContext)
+
         if (replyAction != null && title.isNotBlank()) {
             val notifId = "${pkg}:${sbn.id}"
-            com.jarvis.messaging.UniversalMessagingEngine.instance?.registerReplyAction(notifId, title.trim(), replyAction)
+            messagingEngine.registerReplyAction(notifId, title.trim(), replyAction)
         }
 
         // Evaluate contextual auto-reply
-        com.jarvis.messaging.UniversalMessagingEngine.instance?.processIncomingNotification(sbn, item)
+        messagingEngine.processIncomingNotification(sbn, item)
 
         if (pkg.contains("whatsapp", ignoreCase = true)) {
             val platformLabel = if (pkg == "com.whatsapp.w4b") "WhatsApp Business" else "WhatsApp"

@@ -186,7 +186,8 @@ class IntentModel(private val llmClient: LlmClient? = null) {
 
 private val COMPOUND_SPLIT_REGEX = Regex("\\s+(?:and|then|aur|fir)\\s+")
 private val NOTIF_READ_ITEM_REGEX = Regex("^(?:read|check|open)\\s+notification\\s+(\\d+)")
-private val NOTIF_REPLY_REGEX = Regex("^(?:reply|respond)\\s+to\\s+notification\\s+(\\d+)(?:\\s+(?:with|saying)\\s+(.+))?")
+private val NOTIF_REPLY_REGEX = Regex("^(?:reply|respond)(?:\\s+to)?\\s+notification\\s+(\\d+)(?:\\s*(?:with|saying|:)?\\s*(.+))?$", RegexOption.IGNORE_CASE)
+private val NOTIF_REPLY_HINGLISH_REGEX = Regex("^notification\\s+(\\d+)\\s+(?:ko\\s+)?(?:reply\\s+(?:karo|do)|jawab\\s+do)\\s*(?:ki|with)?\\s*(.+)?$", RegexOption.IGNORE_CASE)
 private val NOTIF_ACTION_REGEX = Regex("^(?:trigger|press|click)\\s+notification\\s+(\\d+)(?:\\s+action\\s+(.+))?")
 private val NOTIF_DISMISS_ITEM_REGEX = Regex("^(?:clear|dismiss|remove)\\s+notification\\s+(\\d+)")
 private val NOTIF_DISMISS_ALL_REGEX = Regex("^(?:clear|dismiss|remove)\\s+(?:all\\s+notifications|notifications)")
@@ -1728,10 +1729,10 @@ object IntentResolver {
             )
         }
 
-        val replyMatch = NOTIF_REPLY_REGEX.find(text)
+        val replyMatch = NOTIF_REPLY_REGEX.find(utterance.trim()) ?: NOTIF_REPLY_HINGLISH_REGEX.find(utterance.trim())
         if (replyMatch != null) {
             val idx = replyMatch.groupValues[1]
-            val replyText = replyMatch.groupValues.getOrNull(2).orEmpty()
+            val replyText = replyMatch.groupValues.getOrNull(2)?.trim().orEmpty()
             val params = mutableMapOf("action" to "trigger_action", "index" to idx)
             if (replyText.isNotBlank()) params["text"] = replyText
             return ResolvedIntent(
@@ -2250,6 +2251,58 @@ object IntentResolver {
                         )
                     }
                 }
+            }
+        }
+
+        // 31.2 WhatsApp & Messaging Quick Reply
+        // e.g. "reply to Rahul saying I am on the way", "reply to John Doe that I'll be late", "reply to Alice: okay",
+        //      "reply that I am driving", "reply saying I am busy", "reply I will be late", "Rahul ko reply karo call you soon"
+        if (text.startsWith("reply ") || text.contains(" ko reply karo") || text.contains(" ko reply do") || text.startsWith("respond ")) {
+            val replyToPattern = Regex("^(?:reply|respond)\\s+to\\s+(.+?)(?:\\s+(?:saying|that|with)|[:,]\\s*|\\s+[:,]\\s*)(.+)$", RegexOption.IGNORE_CASE)
+            val replyToColonPattern = Regex("^(?:reply|respond)\\s+to\\s+(.+?):\\s*(.+)$", RegexOption.IGNORE_CASE)
+            val replyHinglishPattern = Regex("^(.+?)\\s+ko\\s+reply\\s+(?:karo|do)\\s*(?:ki|saying)?\\s*(.+)$", RegexOption.IGNORE_CASE)
+            val replyContextualPattern = Regex("^(?:reply|respond)\\s+(?:saying|that|with|:)?\\s*(.+)$", RegexOption.IGNORE_CASE)
+
+            val rawUtterance = utterance.trim()
+            val matchA = replyToPattern.find(rawUtterance) ?: replyToColonPattern.find(rawUtterance)
+            val matchB = if (matchA == null) replyHinglishPattern.find(rawUtterance) else null
+            val matchC = if (matchA == null && matchB == null && !text.contains("notification")) replyContextualPattern.find(rawUtterance) else null
+
+            val (recipient, message) = when {
+                matchA != null -> {
+                    val r = matchA.groupValues[1].replace(Regex("^(?:to|mr|mrs|ms)\\s+", RegexOption.IGNORE_CASE), "").trim()
+                    val m = matchA.groupValues[2].trim()
+                    Pair(r, m)
+                }
+                matchB != null -> {
+                    val r = matchB.groupValues[1].trim()
+                    val m = matchB.groupValues[2].trim()
+                    Pair(r, m)
+                }
+                matchC != null -> {
+                    val m = matchC.groupValues[1].trim()
+                    Pair("", m)
+                }
+                else -> Pair(null, null)
+            }
+
+            if (message != null && message.isNotBlank()) {
+                val cleanRecipient = (recipient ?: "").trim().split(" ")
+                    .filter { it.isNotBlank() }
+                    .joinToString(" ") { word ->
+                        word.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+                    }
+                val params = mutableMapOf("action" to "reply", "message" to message)
+                if (cleanRecipient.isNotBlank()) {
+                    params["recipient"] = cleanRecipient
+                }
+                val desc = if (cleanRecipient.isNotBlank()) "Replying to $cleanRecipient: \"$message\"." else "Replying: \"$message\"."
+                return ResolvedIntent(
+                    intent = AssistantIntent.WHATSAPP_SEND,
+                    confidence = 0.97f,
+                    params = params,
+                    directPlan = ExecutionPlan(desc, listOf(ActionPlan("WHATSAPP", params)))
+                )
             }
         }
 

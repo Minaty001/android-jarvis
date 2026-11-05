@@ -86,7 +86,10 @@ class PolicyEngine(
         }
 
         // In manual mode (autonomousFullAuto = false), HIGH risk requires user approval
-        if (!autonomousFullAuto && toolMetadata.riskLevel == RiskLevel.HIGH) {
+        val isSafeWhatsAppSubAction = (toolMetadata.name.equals("WHATSAPP", ignoreCase = true) || toolMetadata.name.equals("WHATSAPP_SEND", ignoreCase = true)) &&
+            params["action"]?.lowercase() in listOf("read_messages", "read", "check_unread", "auto_reply", "set_auto_reply", "open", "reply", "reply_message", "respond")
+
+        if (!autonomousFullAuto && toolMetadata.riskLevel == RiskLevel.HIGH && !isSafeWhatsAppSubAction) {
             return PolicyEvaluationResult(
                 allowed = true,
                 requiresApproval = true,

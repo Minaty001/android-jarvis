@@ -78,8 +78,25 @@ class AutonomyPolicyEngine(
             )
         }
 
-        // 2. External Communications (WhatsApp Send, SMS Send, Outgoing Calls)
+        // 2. External Communications (WhatsApp Send, SMS Send, Outgoing Calls, Reply)
         val isWhatsApp = upper in listOf("WHATSAPP", "WHATSAPP_SEND", "SEND_WHATSAPP")
+        val isReply = (isWhatsApp || upper in listOf("WHATSAPP_REPLY", "REPLY_WHATSAPP")) && (
+            params["action"]?.equals("reply", ignoreCase = true) == true ||
+            params["action"]?.equals("reply_message", ignoreCase = true) == true ||
+            params["action"]?.equals("respond", ignoreCase = true) == true
+        )
+
+        if (isReply) {
+            return ActionRiskProfile(
+                reversibility = Reversibility.MEDIUM,
+                scope = SideEffectScope.EXTERNAL_COMMUNICATION,
+                privacy = PrivacySensitivity.CONTEXTUAL,
+                destructiveness = Destructiveness.ZERO,
+                tier = AutonomyTier.AUTO_GUARDED,
+                rationale = "Direct contextual reply is auto-guarded for immediate hands-free dispatch."
+            )
+        }
+
         val isWhatsAppSend = isWhatsApp && (
             params["action"]?.equals("send_message", ignoreCase = true) == true ||
             (params["action"] == null && (!params["recipient"].isNullOrBlank() || !params["message"].isNullOrBlank()))

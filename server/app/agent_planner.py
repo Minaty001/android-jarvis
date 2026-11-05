@@ -102,35 +102,60 @@ class AgentPlanner:
                 )
             )
 
-        # 3. WhatsApp Pattern Matching
-        if "whatsapp" in lower or "message" in lower:
+        # 3. WhatsApp & Messaging Reply / Send Pattern Matching
+        if "reply" in lower or "whatsapp" in lower or "message" in lower:
             recipient = ""
-            parts = lower.split()
-            if "ko" in parts:
-                idx = parts.index("ko")
-                if idx > 0 and parts[idx - 1] not in ["whatsapp", "message"]:
-                    recipient = parts[idx - 1].capitalize()
+            message = ""
+
+            # Check reply pattern
+            if "reply" in lower:
+                reply_match = re.search(r'(?:reply|respond)(?:\s+to)?\s+([a-zA-Z0-9_\s]+?)\s+(?:saying|that|with|:)\s*(.+)', lower, re.IGNORECASE)
+                if reply_match:
+                    recipient = reply_match.group(1).strip().capitalize()
+                    message = reply_match.group(2).strip()
+                else:
+                    contextual_match = re.search(r'(?:reply|respond)(?:\s+(?:saying|that|with|:))?\s*(.+)', lower, re.IGNORECASE)
+                    if contextual_match:
+                        message = contextual_match.group(1).strip()
             
-            # Ambiguous message command without recipient
-            if not recipient and any(w in lower for w in ["bhejo", "send", "karo", "likho"]):
+            if not recipient:
+                parts = lower.split()
+                if "ko" in parts:
+                    idx = parts.index("ko")
+                    if idx > 0 and parts[idx - 1] not in ["whatsapp", "message", "reply"]:
+                        recipient = parts[idx - 1].capitalize()
+
+            if not message:
+                if "saying" in lower:
+                    message = lower.split("saying")[-1].strip()
+                elif "bol" in lower or "bhejo" in lower:
+                    message = utterance.strip()
+                else:
+                    message = "I am on my way"
+
+            # Ambiguous message command without recipient and no reply context
+            if "reply" not in lower and not recipient and any(w in lower for w in ["bhejo", "send", "karo", "likho"]):
                 return PlannerDecision(
                     decision_type="CLARIFY",
                     spoken_response="Kisko message bhejna hai sir, aur kya message hai?"
                 )
 
-            message = "I am on my way"
-            if "saying" in lower:
-                message = lower.split("saying")[-1].strip()
-            elif "bol" in lower or "bhejo" in lower:
-                message = utterance.strip()
+            action_type = "reply" if "reply" in lower else "send_message"
+            params = {"action": action_type, "message": message}
+            if recipient:
+                params["recipient"] = recipient
+
+            preamble = f"Replying to {recipient}: \"{message}\"." if (recipient and action_type == "reply") else (
+                f"Replying: \"{message}\"." if action_type == "reply" else f"Sending WhatsApp message to {recipient or 'contact'}."
+            )
 
             return PlannerDecision(
                 decision_type="ACT",
                 action_request=ActionRequest(
                     action_id=f"act_{uuid.uuid4().hex[:8]}",
                     action="WHATSAPP",
-                    params={"recipient": recipient or "contact", "message": message},
-                    speech_preamble=f"Sending WhatsApp message to {recipient or 'contact'}."
+                    params=params,
+                    speech_preamble=preamble
                 )
             )
 

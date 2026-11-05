@@ -35,6 +35,7 @@ class NotificationsTool(private val context: Context? = null) : Tool {
         val limit = params["limit"]?.toIntOrNull()?.coerceIn(1, 15) ?: 5
         val index = params["index"]?.toIntOrNull()
         val query = params["query"] ?: params["text"]
+        val replyText = params["reply_text"] ?: params["text"] ?: params["message"] ?: if (action == "reply") params["query"] else null
 
         when (action) {
             "read_item" -> {
@@ -66,19 +67,21 @@ class NotificationsTool(private val context: Context? = null) : Tool {
                 if (service == null) {
                     return ToolResult.Success(
                         message = "Notification service is not currently active to trigger actions.",
-                        data = mapOf("action" to "trigger_action", "index" to idx.toString(), "success" to "false")
+                        data = mapOf("action" to action, "index" to idx.toString(), "success" to "false")
                     )
                 }
-                val success = service.triggerNotificationAction(idx, query)
+                val success = service.triggerNotificationAction(idx, actionQuery = query, replyText = replyText)
                 return if (success) {
+                    val msg = if (!replyText.isNullOrBlank()) "Replied to notification $idx: \"$replyText\""
+                              else "Triggered action on notification $idx."
                     ToolResult.Success(
-                        message = "Triggered action on notification $idx.",
-                        data = mapOf("action" to "trigger_action", "index" to idx.toString(), "success" to "true")
+                        message = msg,
+                        data = mapOf("action" to action, "index" to idx.toString(), "success" to "true", "text" to (replyText ?: ""))
                     )
                 } else {
                     ToolResult.Success(
                         message = "Unable to trigger action on notification $idx. It may not have actionable buttons.",
-                        data = mapOf("action" to "trigger_action", "index" to idx.toString(), "success" to "false")
+                        data = mapOf("action" to action, "index" to idx.toString(), "success" to "false")
                     )
                 }
             }

@@ -124,13 +124,17 @@ open class CommunicationSkill(private val actionTypePrefix: String = "WHATSAPP_S
         }
 
         // 3. Quick Reply pattern
-        val replyMatchA = Regex("^reply\\s+to\\s+([a-zA-Z0-9_+]+)\\s+(?:saying|that)?\\s*(.+)$").find(lower)
+        val rawGoal = goal.trim()
+        val replyMatchA = Regex("^reply\\s+to\\s+(.+?)(?:\\s+(?:saying|that|with)|[:,]\\s*|\\s+[:,]\\s*)(.+)$", RegexOption.IGNORE_CASE).find(rawGoal)
+            ?: Regex("^reply\\s+to\\s+([A-Za-z0-9_.-]+)\\s+(.+)$", RegexOption.IGNORE_CASE).find(rawGoal)
         if (replyMatchA != null) {
-            val recipient = replyMatchA.groupValues[1].trim().replaceFirstChar {
-                if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString()
-            }
+            val recipient = replyMatchA.groupValues[1].trim().split(" ")
+                .filter { it.isNotBlank() }
+                .joinToString(" ") { word ->
+                    word.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+                }
             val message = replyMatchA.groupValues[2].trim()
-            val params = mapOf("action" to "send_message", "recipient" to recipient, "message" to message)
+            val params = mapOf("action" to "reply", "recipient" to recipient, "message" to message)
             return SkillResult(
                 handled = true,
                 proposedAction = AgentAction(
@@ -142,13 +146,15 @@ open class CommunicationSkill(private val actionTypePrefix: String = "WHATSAPP_S
             )
         }
 
-        val replyMatchB = Regex("^(.+?)\\s+ko\\s+reply\\s+karo\\s*(?:ki)?\\s*(.+)$").find(lower)
+        val replyMatchB = Regex("^(.+?)\\s+ko\\s+reply\\s+(?:karo|do)\\s*(?:ki|saying)?\\s*(.+)$", RegexOption.IGNORE_CASE).find(rawGoal)
         if (replyMatchB != null) {
-            val recipient = replyMatchB.groupValues[1].trim().replaceFirstChar {
-                if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString()
-            }
+            val recipient = replyMatchB.groupValues[1].trim().split(" ")
+                .filter { it.isNotBlank() }
+                .joinToString(" ") { word ->
+                    word.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+                }
             val message = replyMatchB.groupValues[2].trim()
-            val params = mapOf("action" to "send_message", "recipient" to recipient, "message" to message)
+            val params = mapOf("action" to "reply", "recipient" to recipient, "message" to message)
             return SkillResult(
                 handled = true,
                 proposedAction = AgentAction(
@@ -158,6 +164,25 @@ open class CommunicationSkill(private val actionTypePrefix: String = "WHATSAPP_S
                 ),
                 explanation = "Prepared direct reply for $recipient"
             )
+        }
+
+        val replyMatchC = if (!lower.contains("notification")) {
+            Regex("^reply\\s+(?:saying|that|with|:)?\\s*(.+)$", RegexOption.IGNORE_CASE).find(rawGoal)
+        } else null
+        if (replyMatchC != null) {
+            val message = replyMatchC.groupValues[1].trim()
+            if (message.isNotBlank() && !message.equals("reply", ignoreCase = true)) {
+                val params = mapOf("action" to "reply", "message" to message)
+                return SkillResult(
+                    handled = true,
+                    proposedAction = AgentAction(
+                        type = "WHATSAPP",
+                        params = params,
+                        expectedOutcome = "Sending reply: \"$message\" on WhatsApp"
+                    ),
+                    explanation = "Prepared contextual direct reply"
+                )
+            }
         }
 
         // 4. Media / Document Attachment goal
