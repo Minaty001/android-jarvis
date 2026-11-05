@@ -8,11 +8,10 @@ def test_kws_temporal_confirmation():
     assert path.exists(), "KwsTemporalConfirmation.kt missing"
     code = path.read_text()
 
-    # Must check for high-confidence spike
-    assert "score >= threshold * 1.25f" in code, "Must trigger on high-confidence spike"
-    # Must return max positive score, not trailing post-utterance silence score
-    assert "positiveScores.maxOrNull() ?: score" in code, "Must return max positive score"
-    print("PASS: KwsTemporalConfirmation peak retention & spike logic verified")
+    # Must check for multi-window confirmation and retain peak score
+    assert "positiveCount >= requiredPositiveWindows" in code, "Must check multi-window confirmation"
+    assert "maxPositiveScore" in code, "Must retain max positive score"
+    print("PASS: KwsTemporalConfirmation peak retention & multi-window logic verified")
 
 
 def test_continuous_audio_stream_routing():

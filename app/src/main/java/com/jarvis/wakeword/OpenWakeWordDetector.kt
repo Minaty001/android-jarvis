@@ -1,5 +1,9 @@
 package com.jarvis.wakeword
 
+import ai.onnxruntime.OnnxTensor
+import ai.onnxruntime.OrtEnvironment
+import ai.onnxruntime.OrtSession
+import ai.onnxruntime.TensorInfo
 import android.content.Context
 import android.util.Log
 import org.json.JSONObject
@@ -18,13 +22,66 @@ class OpenWakeWordDetector(
     private val context: Context,
     private val config: WakeWordConfig = WakeWordConfig()
 ) : WakeWordDetector {
-    private data class Head(
-        val phrase: String,
-        val asset: String,
-        val threshold: Float,
-        val interpreter: Interpreter,
+    private interface ClassifierHead {
+        val phrase: String
+        val asset: String
+        val threshold: Float
         val confirmation: KwsTemporalConfirmation
-    )
+        fun run(features: FloatBuffer): Float
+        fun close()
+    }
+
+    private inner class TfliteHead(
+        override val phrase: String,
+        override val asset: String,
+        override val threshold: Float,
+        val interpreter: Interpreter,
+        override val confirmation: KwsTemporalConfirmation
+    ) : ClassifierHead {
+        override fun run(features: FloatBuffer): Float {
+            val output = headOutputBuffer ?: return 0f
+            output.clear()
+            features.rewind()
+            interpreter.run(features, output)
+            output.rewind()
+            return output.float.coerceIn(0f, 1f)
+        }
+
+        override fun close() {
+            interpreter.close()
+        }
+    }
+
+    private inner class OnnxHead(
+        override val phrase: String,
+        override val asset: String,
+        override val threshold: Float,
+        val session: OrtSession,
+        override val confirmation: KwsTemporalConfirmation
+    ) : ClassifierHead {
+        private val inputName = session.inputNames.iterator().next()
+
+        override fun run(features: FloatBuffer): Float {
+            val env = ortEnvironment ?: return 0f
+            features.rewind()
+            val inputTensor = OnnxTensor.createTensor(
+                env,
+                features,
+                longArrayOf(1, FEATURE_WINDOW.toLong(), EMBEDDING_SIZE.toLong())
+            )
+            return inputTensor.use { tensor ->
+                val result = session.run(mapOf(inputName to tensor))
+                result.use { r ->
+                    val outTensor = r.get(0) as OnnxTensor
+                    outTensor.floatBuffer.get(0).coerceIn(0f, 1f)
+                }
+            }
+        }
+
+        override fun close() {
+            session.close()
+        }
+    }
 
     private val audioChunk = ShortArray(FRAME_SAMPLES)
     private var audioChunkIndex = 0
@@ -48,7 +105,8 @@ class OpenWakeWordDetector(
 
     private var melInterpreter: Interpreter? = null
     private var embeddingInterpreter: Interpreter? = null
-    private var heads: List<Head> = emptyList()
+    private var ortEnvironment: OrtEnvironment? = null
+    private var heads: List<ClassifierHead> = emptyList()
     private var initialized = false
     private var available = false
     private var error: String? = null
@@ -70,7 +128,7 @@ class OpenWakeWordDetector(
     private fun initialize() {
         if (initialized) return
         initialized = true
-        val loadedHeads = ArrayList<Head>()
+        val loadedHeads = ArrayList<ClassifierHead>()
         try {
             val manifest = JSONObject(context.assets.open(MANIFEST).bufferedReader().use { it.readText() })
             val featureModels = manifest.getJSONObject("featureModels")
@@ -91,18 +149,30 @@ class OpenWakeWordDetector(
                 require(sha256Asset(asset).equals(model.getString("sha256"), ignoreCase = true)) {
                     "openWakeWord model SHA-256 mismatch for $asset"
                 }
-                val interpreter = loadInterpreter(asset)
-                try {
-                    validateHead(interpreter)
-                    val confirmation = KwsTemporalConfirmation(
-                        windowCount = config.confirmationWindowCount,
-                        requiredPositiveWindows = config.requiredPositiveWindows
-                    )
-                    loadedHeads += Head(model.getString("phrase"), asset, threshold, interpreter, confirmation)
-                } catch (failure: Throwable) {
-                    interpreter.close()
-                    throw failure
+                val confirmation = KwsTemporalConfirmation(
+                    windowCount = config.confirmationWindowCount,
+                    requiredPositiveWindows = config.requiredPositiveWindows
+                )
+                val head: ClassifierHead = if (asset.endsWith(".onnx", ignoreCase = true)) {
+                    val session = loadOnnxSession(asset)
+                    try {
+                        validateOnnxHead(session)
+                        OnnxHead(model.getString("phrase"), asset, threshold, session, confirmation)
+                    } catch (failure: Throwable) {
+                        session.close()
+                        throw failure
+                    }
+                } else {
+                    val interpreter = loadInterpreter(asset)
+                    try {
+                        validateHead(interpreter)
+                        TfliteHead(model.getString("phrase"), asset, threshold, interpreter, confirmation)
+                    } catch (failure: Throwable) {
+                        interpreter.close()
+                        throw failure
+                    }
                 }
+                loadedHeads += head
             }
             val phrases = loadedHeads.map { it.phrase }
             require(phrases.toSet().size == phrases.size && phrases.all { it == "Jarvis" || it == "Hey Jarvis" }) {
@@ -118,7 +188,7 @@ class OpenWakeWordDetector(
             embeddingOutputBuffer = byteBuffer(embeddingInterpreter!!.getOutputTensor(0).numBytes())
             embeddingOutputFloatBuffer = embeddingOutputBuffer!!.asFloatBuffer()
             headInputBuffer = floatBufferElements(FEATURE_WINDOW * EMBEDDING_SIZE)
-            headOutputBuffer = byteBuffer(loadedHeads.first().interpreter.getOutputTensor(0).numBytes())
+            headOutputBuffer = byteBuffer(1 * Float.SIZE_BYTES)
             melFlatPool.fill(0f)
             melFrameHead = 0
             melFrameCount = 0
@@ -128,11 +198,44 @@ class OpenWakeWordDetector(
             available = true
             Log.i(TAG, "openWakeWord loaded heads=${heads.map { it.phrase }}")
         } catch (failure: Throwable) {
-            loadedHeads.forEach { runCatching { it.interpreter.close() } }
+            loadedHeads.forEach { runCatching { it.close() } }
             closeInterpreters()
             available = false
             error = failure.message ?: failure.javaClass.simpleName
             Log.e(TAG, "openWakeWord unavailable: $error", failure)
+        }
+    }
+
+    private fun loadOnnxSession(asset: String): OrtSession {
+        if (ortEnvironment == null) {
+            ortEnvironment = OrtEnvironment.getEnvironment()
+        }
+        val bytes = context.assets.open(asset).use { it.readBytes() }
+        val sessionOptions = OrtSession.SessionOptions().apply {
+            val threadCount = com.jarvis.device.HardwareProfileManager.getRecommendedTfliteThreads(context)
+            setIntraOpNumThreads(threadCount)
+            setInterOpNumThreads(1)
+        }
+        return ortEnvironment!!.createSession(bytes, sessionOptions)
+    }
+
+    private fun validateOnnxHead(session: OrtSession) {
+        require(session.numInputs == 1L && session.numOutputs == 1L) {
+            "Expected 1 input and 1 output for ONNX wake-word head"
+        }
+        val inputInfo = session.inputInfo.values.first().info
+        val outputInfo = session.outputInfo.values.first().info
+        if (inputInfo is TensorInfo) {
+            val shape = inputInfo.shape
+            require(shape.contentEquals(longArrayOf(1, FEATURE_WINDOW.toLong(), EMBEDDING_SIZE.toLong()))) {
+                "Expected openWakeWord ONNX head input [1,$FEATURE_WINDOW,$EMBEDDING_SIZE], got ${shape.contentToString()}"
+            }
+        }
+        if (outputInfo is TensorInfo) {
+            val shape = outputInfo.shape
+            require(shape.contentEquals(longArrayOf(1, 1))) {
+                "Expected openWakeWord ONNX head output [1,1], got ${shape.contentToString()}"
+            }
         }
     }
 
@@ -259,7 +362,7 @@ class OpenWakeWordDetector(
         var maxRatio = 0f
 
         for (head in heads) {
-            val score = runHead(head.interpreter, featureInput)
+            val score = head.run(featureInput)
             val ratio = score / head.threshold
             if (ratio > maxRatio) {
                 maxRatio = ratio
@@ -392,15 +495,6 @@ class OpenWakeWordDetector(
         return buffer
     }
 
-    private fun runHead(model: Interpreter, features: FloatBuffer): Float {
-        val output = headOutputBuffer ?: return 0f
-        output.clear()
-        features.rewind()
-        model.run(features, output)
-        output.rewind()
-        return output.float.coerceIn(0f, 1f)
-    }
-
     private fun floatBufferElements(elements: Int): FloatBuffer =
         byteBuffer(elements * Float.SIZE_BYTES).asFloatBuffer()
 
@@ -417,10 +511,12 @@ class OpenWakeWordDetector(
     }
 
     private fun closeInterpreters() {
-        heads.forEach { runCatching { it.interpreter.close() } }
+        heads.forEach { runCatching { it.close() } }
         heads = emptyList()
         melInterpreter?.close(); melInterpreter = null
         embeddingInterpreter?.close(); embeddingInterpreter = null
+        runCatching { ortEnvironment?.close() }
+        ortEnvironment = null
         melInputBuffer = null; melOutputBuffer = null; melOutputFloatBuffer = null
         embeddingInputBuffer = null; embeddingOutputBuffer = null; embeddingOutputFloatBuffer = null
         headInputBuffer = null; headOutputBuffer = null

@@ -1,8 +1,8 @@
-openWakeWord Hey Jarvis pretrained model (hey_jarvis_v0.1.tflite)
-Copyright David Scripka, openWakeWord project.
-Licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International:
-https://creativecommons.org/licenses/by-nc-sa/4.0/
-Model source: https://github.com/dscripka/openWakeWord/releases/tag/v0.5.1
+Custom Hey Jarvis wake-word model (hey_jarvis_custom.onnx)
+Architecture: DNN Classifier (32 hidden units, 50,000 steps)
+Trained via openWakeWord with synthetic audio clips, ACAV100M features, and MIT room impulse responses.
+Calibrated threshold: 0.55 | Cooldown: 2.0s
+SHA-256: c18d024b331e663989a63f799cd429bbade28404d4a291eeebb7f8560f807424
 
 The shared melspectrogram and embedding frontend models are from openWakeWord,
 licensed under Apache License 2.0:

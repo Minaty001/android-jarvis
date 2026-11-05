@@ -1,0 +1,59 @@
+{
+  "model_name": "hey_jarvis_custom",
+  "wake_phrase": "Hey Jarvis",
+  "version": "1.0.0",
+  "framework": "openWakeWord",
+  "architecture": "DNN Classifier (32 hidden units)",
+  "training_steps": 50000,
+  "audio_specifications": {
+    "sample_rate_hz": 16000,
+    "channels": 1,
+    "sample_format": "PCM 16-bit or Float32",
+    "frame_chunk_size": 1280,
+    "frame_chunk_duration_ms": 80
+  },
+  "tensor_specifications": {
+    "input_name": "x",
+    "input_shape": [
+      1,
+      16,
+      96
+    ],
+    "input_dtype": "float32",
+    "input_description": "16 frames rolling window of 96-dim Google speech embeddings",
+    "output_name": "sigmoid",
+    "output_shape": [
+      1,
+      1
+    ],
+    "output_dtype": "float32",
+    "output_activation": "Sigmoid (probability in range [0.0, 1.0])"
+  },
+  "performance_metrics": {
+    "target_phrase_recall": "62.8% - 64.8%",
+    "adversarial_negative_rejection": "99.70%",
+    "false_positives_per_hour": 0.088,
+    "target_fpr_requirement": "<= 0.20 / hr (Achieved)"
+  },
+  "recommended_inference_parameters": {
+    "detection_threshold": 0.55,
+    "debounce_cooldown_seconds": 2.0,
+    "refractory_frames": 25,
+    "offline_mode": true,
+    "internet_required": false
+  },
+  "file_checksums": {
+    "hey_jarvis_custom.onnx": {
+      "size_bytes": 214814,
+      "sha256": "c18d024b331e663989a63f799cd429bbade28404d4a291eeebb7f8560f807424"
+    },
+    "melspectrogram.onnx": {
+      "size_bytes": 1087958,
+      "sha256": "ba2b0e0f8b7b875369a2c89cb13360ff53bac436f2895cced9f479fa65eb176f"
+    },
+    "embedding_model.onnx": {
+      "size_bytes": 1326578,
+      "sha256": "70d164290c1d095d1d4ee149bc5e00543250a7316b59f31d056cff7bd3075c1f"
+    }
+  }
+}

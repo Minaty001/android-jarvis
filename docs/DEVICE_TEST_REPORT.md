@@ -1,10 +1,10 @@
 # 📱 JARVIS ADB Autopilot Test Report
 
-> **Automated Run Date:** 2026-10-17 03:20:08  
+> **Automated Run Date:** 2026-11-06 02:30:06  
 **Target Device:** lge LM-K420 (`LMK420CUQOLFLNU8B6`)  
 **Android Version:** 12 (API 31)  
-**Battery Status:** 100% (Full)  
-**JARVIS PID:** 4870  
+**Battery Status:** 60% (Charging)  
+**JARVIS PID:** 16243  
 **Test Harness:** `scripts/test_adb_features.py` via Android Debug Bridge
 
 ---
@@ -13,28 +13,23 @@
 
 | Category | Total Tests | Passed | Partial | Failed | Success Rate |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Voice & Acoustic Engine** | 4 | 4 | 0 | 0 | ✅ 100% |
-| **Offline Utilities** | 1 | 1 | 0 | 0 | ✅ 100% |
-| **TOTAL** | **5** | **5** | **0** | **0** | **100.0%** |
+| **Communications & Messaging** | 6 | 6 | 0 | 0 | ✅ 100% |
+| **TOTAL** | **6** | **6** | **0** | **0** | **100.0%** |
 
 ---
 
 ## 🧪 Detailed Test Matrix
 
-### Voice & Acoustic Engine
+### Communications & Messaging
 
 | ID | Test Name | ADB Command | Result | Duration | Notes & Verifications |
 | :--- | :--- | :--- | :---: | :---: | :--- |
-| **V-01** | Wake Acoustic Diagnostics | `am broadcast -a com.jarvis.action.EXECUTE_TOOL -n com.jarvis/...` | ✅ PASS | 132.8ms | Acoustic stream ready, openWakeWord neural model loaded |
-| **V-02** | Simulated Wake Trigger | `am broadcast -a com.jarvis.action.EXECUTE_TOOL -n com.jarvis/...` | ✅ PASS | 1510.4ms | Simulated wake phrase accepted and dispatched |
-| **V-03** | TTS Voice Playback Engine | `am broadcast -a com.jarvis.action.EXECUTE_COMMAND -n com.jarv...` | ✅ PASS | 2997.5ms | TTS engine synthesized and played voice response |
-| **V-04** | Acoustic Audio Injection & KWS Evaluation | `am broadcast -a com.jarvis.action.EXECUTE_TOOL -n com.jarvis/...` | ✅ PASS | 147.5ms | PCM audio samples injected and processed through WakeWordEngine |
-
-### Offline Utilities
-
-| ID | Test Name | ADB Command | Result | Duration | Notes & Verifications |
-| :--- | :--- | :--- | :---: | :---: | :--- |
-| **U-08** | Smart Voice Memo | `am broadcast -a com.jarvis.action.EXECUTE_COMMAND -n com.jarv...` | ✅ PASS | 3051.9ms | Voice memo capture initialized |
+| **C-01** | Message Reader & Digest | `am broadcast -a com.jarvis.action.EXECUTE_COMMAND -n com.jarv...` | ✅ PASS | 3870.1ms | MessageReader digest reader activated |
+| **C-02** | WhatsApp Automation Routing | `am broadcast -a com.jarvis.action.EXECUTE_COMMAND -n com.jarv...` | ✅ PASS | 2929.0ms | WhatsApp tool recognized and routed command |
+| **C-03** | WhatsApp Auto-Reply Mode | `am broadcast -a com.jarvis.action.EXECUTE_COMMAND -n com.jarv...` | ✅ PASS | 3009.4ms | WhatsApp auto-reply driving mode enabled |
+| **C-04** | Contacts Provider Access | `content query --uri content://com.android.contacts/contacts` | ✅ PASS | 7227.2ms | Contacts provider accessible (651 records returned) |
+| **C-05** | SMS Database Access | `content query --uri content://sms/inbox` | ✅ PASS | 7006.4ms | SMS inbox accessible (2695 records returned) |
+| **C-06** | Telephony Caller & Phone State | `am broadcast -a com.jarvis.action.EXECUTE_COMMAND -n com.jarv...` | ✅ PASS | 3069.4ms | Telecom caller ID query handled |
 
 ---
 

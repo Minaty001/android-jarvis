@@ -15,9 +15,9 @@
   "models": [
     {
       "phrase": "Hey Jarvis",
-      "asset": "hey_jarvis_v0.1.tflite",
-      "threshold": 0.75,
-      "sha256": "14bff778604985e1b5c19f0f7bbe477a69cf281d8db34b232b3b972411f710e2"
+      "asset": "hey_jarvis_custom.onnx",
+      "threshold": 0.55,
+      "sha256": "c18d024b331e663989a63f799cd429bbade28404d4a291eeebb7f8560f807424"
     },
     {
       "phrase": "Jarvis",

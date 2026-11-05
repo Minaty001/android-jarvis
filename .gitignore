@@ -26,6 +26,7 @@ build/
 /apks/
 /apk-optimization/
 *.onnx
+!app/src/main/assets/*.onnx
 *.tar.bz2
 *.apk
 /dist/

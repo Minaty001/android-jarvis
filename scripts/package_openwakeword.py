@@ -12,20 +12,32 @@ import numpy as np
 
 
 def validate_model(path: Path, input_shape: list[int], output_shape: list[int]) -> None:
-    from ai_edge_litert.interpreter import Interpreter
+    if path.suffix.lower() == ".onnx":
+        import onnxruntime as ort
 
-    interpreter = Interpreter(model_path=str(path), num_threads=1)
-    interpreter.allocate_tensors()
-    input_info = interpreter.get_input_details()[0]
-    output_info = interpreter.get_output_details()[0]
-    if input_info["shape"].tolist() != input_shape or output_info["shape"].tolist() != output_shape:
-        raise ValueError(f"Unexpected TFLite contract in {path.name}: {input_info['shape'].tolist()} -> {output_info['shape'].tolist()}")
-    if input_info["dtype"] != np.float32 or output_info["dtype"] != np.float32:
-        raise ValueError(f"Expected float32 TFLite tensors in {path.name}")
-    interpreter.set_tensor(input_info["index"], np.zeros(input_shape, dtype=np.float32))
-    interpreter.invoke()
-    if not np.isfinite(interpreter.get_tensor(output_info["index"])).all():
-        raise ValueError(f"Non-finite TFLite output in {path.name}")
+        sess = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        inp = sess.get_inputs()[0]
+        out = sess.get_outputs()[0]
+        if list(inp.shape) != input_shape or list(out.shape) != output_shape:
+            raise ValueError(f"Unexpected ONNX contract in {path.name}: {inp.shape} -> {out.shape}")
+        test_out = sess.run(None, {inp.name: np.zeros(input_shape, dtype=np.float32)})[0]
+        if not np.isfinite(test_out).all():
+            raise ValueError(f"Non-finite ONNX output in {path.name}")
+    else:
+        from ai_edge_litert.interpreter import Interpreter
+
+        interpreter = Interpreter(model_path=str(path), num_threads=1)
+        interpreter.allocate_tensors()
+        input_info = interpreter.get_input_details()[0]
+        output_info = interpreter.get_output_details()[0]
+        if input_info["shape"].tolist() != input_shape or output_info["shape"].tolist() != output_shape:
+            raise ValueError(f"Unexpected TFLite contract in {path.name}: {input_info['shape'].tolist()} -> {output_info['shape'].tolist()}")
+        if input_info["dtype"] != np.float32 or output_info["dtype"] != np.float32:
+            raise ValueError(f"Expected float32 TFLite tensors in {path.name}")
+        interpreter.set_tensor(input_info["index"], np.zeros(input_shape, dtype=np.float32))
+        interpreter.invoke()
+        if not np.isfinite(interpreter.get_tensor(output_info["index"])).all():
+            raise ValueError(f"Non-finite TFLite output in {path.name}")
 
 
 def validate_frontend(assets: Path) -> None:
@@ -106,8 +118,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jarvis-model", type=Path)
     parser.add_argument("--jarvis-threshold", type=float)
-    parser.add_argument("--hey-jarvis-model", type=Path, default=Path("app/src/main/assets/hey_jarvis_v0.1.tflite"))
-    parser.add_argument("--hey-jarvis-threshold", type=float, default=0.5)
+    parser.add_argument("--hey-jarvis-model", type=Path, default=Path("app/src/main/assets/hey_jarvis_custom.onnx"))
+    parser.add_argument("--hey-jarvis-threshold", type=float, default=0.55)
     parser.add_argument("--assets", type=Path, default=Path("app/src/main/assets"))
     args = parser.parse_args()
 
@@ -115,8 +127,8 @@ def main() -> None:
     if args.jarvis_model is not None:
         if args.jarvis_threshold is None:
             parser.error("--jarvis-threshold is required with --jarvis-model")
-        models.append(("Jarvis", args.jarvis_model, args.jarvis_threshold, "jarvis_openwakeword.tflite"))
-    models.append(("Hey Jarvis", args.hey_jarvis_model, args.hey_jarvis_threshold, "hey_jarvis_v0.1.tflite"))
+        models.append(("Jarvis", args.jarvis_model, args.jarvis_threshold, "jarvis.tflite"))
+    models.append(("Hey Jarvis", args.hey_jarvis_model, args.hey_jarvis_threshold, args.hey_jarvis_model.name))
     for phrase, _, threshold, _ in models:
         if not 0.0 < threshold <= 1.0:
             raise ValueError(f"{phrase} threshold must be in (0, 1]")

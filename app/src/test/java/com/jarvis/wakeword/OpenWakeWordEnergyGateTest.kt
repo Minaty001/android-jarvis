@@ -33,7 +33,7 @@ class OpenWakeWordEnergyGateTest {
         val config = WakeWordConfig()
         assertEquals("Default minEnergyRms should be 0.00200 for ambient room rejection", 0.00200, config.minEnergyRms, 0.00001)
         assertEquals("Default silenceFramesBeforeReset should be 2 (~160ms decay)", 2, config.silenceFramesBeforeReset)
-        assertEquals("Default detectionCooldownMs should be 1500ms", 1500L, config.detectionCooldownMs)
+        assertEquals("Default detectionCooldownMs should be 2000ms", 2000L, config.detectionCooldownMs)
     }
 
     @Test

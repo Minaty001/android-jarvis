@@ -9,7 +9,7 @@ data class WakeWordConfig(
     /** Consecutive low-energy 80ms frames permitted before accumulated temporal confirmation history is reset (~160ms decay). */
     val silenceFramesBeforeReset: Int = 2,
     val inferenceIntervalSamples: Int = 1600,
-    val detectionCooldownMs: Long = 1500L
+    val detectionCooldownMs: Long = 2000L
 ) {
     init {
         require(confirmationWindowCount in 1..10)
