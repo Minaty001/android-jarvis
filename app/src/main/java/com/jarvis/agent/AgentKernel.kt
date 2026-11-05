@@ -938,6 +938,40 @@ import java.util.Locale
                     lower.contains("build") || lower.contains("make") || lower.contains("code") || lower.contains("develop") || lower.contains("design")
 
             return when {
+                // Conversational greetings & status queries (Bilingual EN/HI)
+                Regex("^(?:hello|hi|hey|namaste|halo|good morning|good evening|good afternoon)[.!?,]*$", RegexOption.IGNORE_CASE).matches(lower) -> {
+                    AgentDecision(
+                        DecisionType.ACT,
+                        AgentAction("SPEAK", mapOf("text" to "Hello sir! How can I assist you today?")),
+                        reasonCode = "GREETING",
+                        successCriteria = listOf("greeting spoken")
+                    )
+                }
+                Regex(".*\\b(how are you|kaise ho|kya haal hai|sab theek)\\b.*", RegexOption.IGNORE_CASE).matches(lower) -> {
+                    AgentDecision(
+                        DecisionType.ACT,
+                        AgentAction("SPEAK", mapOf("text" to "I am fully operational and ready to assist you, sir.")),
+                        reasonCode = "STATUS_QUERY",
+                        successCriteria = listOf("status spoken")
+                    )
+                }
+                Regex(".*\\b(who are you|what is your name|naam kya hai|kaun ho tum)\\b.*", RegexOption.IGNORE_CASE).matches(lower) -> {
+                    AgentDecision(
+                        DecisionType.ACT,
+                        AgentAction("SPEAK", mapOf("text" to "I am J.A.R.V.I.S., your personal AI assistant.")),
+                        reasonCode = "IDENTITY_QUERY",
+                        successCriteria = listOf("identity spoken")
+                    )
+                }
+                Regex(".*\\b(thank you|thanks|dhanyawad|shukriya)\\b.*", RegexOption.IGNORE_CASE).matches(lower) -> {
+                    AgentDecision(
+                        DecisionType.ACT,
+                        AgentAction("SPEAK", mapOf("text" to "You're welcome, sir. Always at your service.")),
+                        reasonCode = "GRATITUDE",
+                        successCriteria = listOf("gratitude spoken")
+                    )
+                }
+
                 // Flashlight first so "stop torch", "torch band karo" reach it before media-stop.
                 lower.contains("torch") || lower.contains("flashlight") || Regex("\\b(torch|flashlight)\\b").containsMatchIn(lower) ||
                     (Regex("\\blight\\b").containsMatchIn(lower) && !lower.contains("flight")) -> {

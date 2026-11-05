@@ -235,10 +235,32 @@ class AgentPlanner:
                     )
                 )
 
-        # Default conversational Q&A / Banter
+        # 8. Conversational greetings & status queries (Bilingual EN/HI)
+        if any(lower == w or lower.startswith(f"{w} ") for w in ["hello", "hi", "hey", "namaste", "halo", "good morning", "good evening"]):
+            return PlannerDecision(
+                decision_type="SPEAK",
+                spoken_response="Hello sir! How can I assist you today?"
+            )
+        if any(w in lower for w in ["how are you", "kaise ho", "kya haal hai", "sab theek"]):
+            return PlannerDecision(
+                decision_type="SPEAK",
+                spoken_response="I am fully operational and ready to assist you, sir."
+            )
+        if any(w in lower for w in ["who are you", "what is your name", "naam kya hai", "kaun ho tum"]):
+            return PlannerDecision(
+                decision_type="SPEAK",
+                spoken_response="I am J.A.R.V.I.S., your personal AI assistant."
+            )
+        if any(w in lower for w in ["thank you", "thanks", "dhanyawad", "shukriya"]):
+            return PlannerDecision(
+                decision_type="SPEAK",
+                spoken_response="You're welcome, sir. Always at your service."
+            )
+
+        # Fallback: if no tool or direct conversation rule matched, signal device fallback or LLM
         return PlannerDecision(
-            decision_type="ANSWER",
-            spoken_response=f"I have received your request: {utterance}"
+            decision_type="FALLBACK",
+            spoken_response=None
         )
 
     async def finalize_action(

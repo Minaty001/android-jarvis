@@ -158,7 +158,7 @@ async def websocket_jarvis(
                     client_api_key = device_state.api_key if device_state else None
                     has_cloud_llm = bool(client_api_key or llm_router.groq_key or llm_router.gemini_key or llm_router.openrouter_key)
 
-                    if decision.decision_type in ["CLARIFY", "SPEAK"] or not has_cloud_llm:
+                    if decision.decision_type in ["CLARIFY", "SPEAK"]:
                         tokens = (decision.spoken_response or "").split(" ")
                         for t in tokens:
                             await websocket.send_json({
@@ -167,7 +167,14 @@ async def websocket_jarvis(
                             })
                             await asyncio.sleep(0.01)
                         full_resp = decision.spoken_response or "Understood."
-                    else:
+                        memory_vault.remember_turn(session_id, "assistant", full_resp)
+                        await websocket.send_json({
+                            "type": ServerMessageType.COMPLETED.value,
+                            "session_id": session_id,
+                            "spoken_response": full_resp,
+                            "success": True
+                        })
+                    elif has_cloud_llm:
                         # Full conversational banter & dynamic cognitive response from LLM
                         system_prompt = agent_planner.build_conversational_system_prompt(device_state=device_state)
                         messages = [{"role": "system", "content": system_prompt}]
@@ -180,13 +187,21 @@ async def websocket_jarvis(
                                 "token": token
                             })
                         full_resp = "".join(full_chunks).strip() or "Understood."
-                    memory_vault.remember_turn(session_id, "assistant", full_resp)
-                    await websocket.send_json({
-                        "type": ServerMessageType.COMPLETED.value,
-                        "session_id": session_id,
-                        "spoken_response": full_resp,
-                        "success": True
-                    })
+                        memory_vault.remember_turn(session_id, "assistant", full_resp)
+                        await websocket.send_json({
+                            "type": ServerMessageType.COMPLETED.value,
+                            "session_id": session_id,
+                            "spoken_response": full_resp,
+                            "success": True
+                        })
+                    else:
+                        # No server rule and no cloud LLM available: fallback to on-device agent
+                        await websocket.send_json({
+                            "type": ServerMessageType.ERROR.value,
+                            "session_id": session_id,
+                            "error": "FALLBACK_TO_DEVICE",
+                            "message": "No server rule or cloud LLM available for this request."
+                        })
 
             elif msg_type == ClientMessageType.ACTION_RESULT.value:
                 action_id = data.get("action_id", "")

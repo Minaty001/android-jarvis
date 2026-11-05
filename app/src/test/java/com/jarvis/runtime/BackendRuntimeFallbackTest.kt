@@ -28,4 +28,40 @@ class BackendRuntimeFallbackTest {
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()?.message?.contains("not connected") == true)
     }
+
+    @Test
+    fun testConversationalGreetingsFastPath() {
+        // Greetings
+        val resHello = com.jarvis.ai.IntentResolver.resolve("Hello")
+        assertNotNull(resHello)
+        assertEquals("Hello sir! How can I assist you today?", resHello?.directPlan?.response)
+        assertEquals("SPEAK", resHello?.directPlan?.actions?.firstOrNull()?.type)
+
+        val resHi = com.jarvis.ai.IntentResolver.resolve("hi jarvis")
+        assertNotNull(resHi)
+        assertEquals("SPEAK", resHi?.directPlan?.actions?.firstOrNull()?.type)
+
+        // Status
+        val resStatus = com.jarvis.ai.IntentResolver.resolve("how are you?")
+        assertNotNull(resStatus)
+        assertEquals("I am fully operational and ready to assist you, sir.", resStatus?.directPlan?.response)
+
+        // Identity
+        val resIdentity = com.jarvis.ai.IntentResolver.resolve("who are you")
+        assertNotNull(resIdentity)
+        assertEquals("I am J.A.R.V.I.S., your personal AI assistant.", resIdentity?.directPlan?.response)
+
+        // Gratitude
+        val resThanks = com.jarvis.ai.IntentResolver.resolve("thank you")
+        assertNotNull(resThanks)
+        assertEquals("You're welcome, sir. Always at your service.", resThanks?.directPlan?.response)
+    }
+
+    @Test
+    fun testAgentKernelFallbackRulesGreetings() {
+        val decision = com.jarvis.agent.AgentKernel.matchFallbackRules("hello")
+        assertEquals(com.jarvis.agent.DecisionType.ACT, decision.type)
+        assertEquals("SPEAK", decision.action?.type)
+        assertEquals("Hello sir! How can I assist you today?", decision.action?.params?.get("text"))
+    }
 }

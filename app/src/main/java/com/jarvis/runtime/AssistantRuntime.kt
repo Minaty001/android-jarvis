@@ -934,21 +934,27 @@ class AssistantRuntime(
             )
         }
 
-        // 1.5. Offload to dedicated backend server if enabled and connected
+        // 1.5. Offload to dedicated backend server if enabled, connected, and intent was not already resolved on-device
         val appSettings = UiPreferencesStore(context).loadSettings()
-        if (appSettings.backendServerEnabled && backendClient?.isConnected == true) {
+        if (resolvedIntent == null && appSettings.backendServerEnabled && backendClient?.isConnected == true) {
             Log.i(TAG, "Offloading query '$commandUtterance' to dedicated backend server...")
 
             val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
             val isWifi = cm?.getNetworkCapabilities(cm.activeNetwork)?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ?: true
 
-            // Real-time SentenceChunker for sub-400ms time-to-first-sound
+            // Real-time SentenceChunker for sub-400ms time-to-first-sound (sequential chunk queue)
             var hasStreamedAudio = false
-            val chunker = com.jarvis.voice.SentenceChunker { chunk ->
-                hasStreamedAudio = true
-                ensureActiveScope().launch {
+            val chunkChannel = kotlinx.coroutines.channels.Channel<String>(kotlinx.coroutines.channels.Channel.UNLIMITED)
+            val streamScope = ensureActiveScope()
+            val playbackJob = streamScope.launch {
+                for (chunk in chunkChannel) {
                     ttsEngine.speak(chunk)
                 }
+            }
+
+            val chunker = com.jarvis.voice.SentenceChunker { chunk ->
+                hasStreamedAudio = true
+                chunkChannel.trySend(chunk)
             }
 
             val originalTokenCallback = backendClient!!.onTokenReceived
@@ -987,25 +993,36 @@ class AssistantRuntime(
                 Result.failure<String>(e)
             } finally {
                 backendClient?.onTokenReceived = originalTokenCallback
+                chunkChannel.close()
                 activeTaskJob = null
             }
 
             if (backendRes.isSuccess) {
                 val spoken = backendRes.getOrThrow()
-                if (hasStreamedAudio) {
-                    recordSpokenUtterance(spoken)
+                val isPlaceholder = spoken.isBlank() ||
+                    spoken.contains("received your request", ignoreCase = true) ||
+                    spoken.contains("receive your request", ignoreCase = true) ||
+                    spoken.contains("recieve your request", ignoreCase = true) ||
+                    spoken.contains("received have your request", ignoreCase = true)
+
+                if (isPlaceholder && appSettings.backendFallbackToDirect) {
+                    Log.i(TAG, "Backend returned placeholder reply '$spoken'; falling back to on-device AgentKernel.")
+                } else {
+                    if (hasStreamedAudio) {
+                        recordSpokenUtterance(spoken)
+                    }
+                    augmentedMemoryPipeline.rememberUserTurn(currentSessionId, utterance)
+                    augmentedMemoryPipeline.rememberAssistantTurn(currentSessionId, spoken)
+                    conversationManager.addMessage("assistant", spoken)
+                    onEvent(AgentEvent.Completed(spoken))
+                    emotionalAdapter.onTaskCompleted("backend_$now", verified = true, message = spoken)
+                    return RuntimeExecutionResult(
+                        success = true,
+                        spokenResponse = spoken,
+                        stepResults = emptyList(),
+                        verified = true
+                    )
                 }
-                augmentedMemoryPipeline.rememberUserTurn(currentSessionId, utterance)
-                augmentedMemoryPipeline.rememberAssistantTurn(currentSessionId, spoken)
-                conversationManager.addMessage("assistant", spoken)
-                onEvent(AgentEvent.Completed(spoken))
-                emotionalAdapter.onTaskCompleted("backend_$now", verified = true, message = spoken)
-                return RuntimeExecutionResult(
-                    success = true,
-                    spokenResponse = spoken,
-                    stepResults = emptyList(),
-                    verified = true
-                )
             } else {
                 Log.w(TAG, "Backend query failed (${backendRes.exceptionOrNull()?.message}); falling back to on-device AgentKernel.")
             }

@@ -251,6 +251,51 @@ object IntentResolver {
         val text = utterance.trim().lowercase(Locale.ROOT)
         if (text.isBlank()) return null
 
+        // 0.00 Conversational Greetings & Pleasantries Fast-Path (<5ms on-device response)
+        if (Regex("^(?:hello|hi|hey|namaste|halo|good morning|good evening|good afternoon)(?:\\s+jarvis)?[.!?,]*$", RegexOption.IGNORE_CASE).matches(text)) {
+            val response = "Hello sir! How can I assist you today?"
+            val params = mapOf("text" to response)
+            return ResolvedIntent(
+                intent = AssistantIntent.DAILY_BRIEFING,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan(response, listOf(ActionPlan("SPEAK", params)))
+            )
+        }
+
+        if (Regex("^(?:how are you|kaise ho|kya haal hai|sab theek)(?:\\s+jarvis)?[.?]*$", RegexOption.IGNORE_CASE).matches(text)) {
+            val response = "I am fully operational and ready to assist you, sir."
+            val params = mapOf("text" to response)
+            return ResolvedIntent(
+                intent = AssistantIntent.DAILY_BRIEFING,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan(response, listOf(ActionPlan("SPEAK", params)))
+            )
+        }
+
+        if (Regex("^(?:who are you|what is your name|naam kya hai|kaun ho tum)(?:\\s+jarvis)?[.?]*$", RegexOption.IGNORE_CASE).matches(text)) {
+            val response = "I am J.A.R.V.I.S., your personal AI assistant."
+            val params = mapOf("text" to response)
+            return ResolvedIntent(
+                intent = AssistantIntent.DAILY_BRIEFING,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan(response, listOf(ActionPlan("SPEAK", params)))
+            )
+        }
+
+        if (Regex("^(?:thank you|thanks|dhanyawad|shukriya)(?:\\s+jarvis)?[.!]*$", RegexOption.IGNORE_CASE).matches(text)) {
+            val response = "You're welcome, sir. Always at your service."
+            val params = mapOf("text" to response)
+            return ResolvedIntent(
+                intent = AssistantIntent.DAILY_BRIEFING,
+                confidence = 0.99f,
+                params = params,
+                directPlan = ExecutionPlan(response, listOf(ActionPlan("SPEAK", params)))
+            )
+        }
+
         // 0.0 Emergency SOS Triggers & Cancellations (Life-Critical Fast-Path)
         if (SOS_CANCEL_REGEX.matches(text)) {
             val params = mapOf("action" to "stop")
